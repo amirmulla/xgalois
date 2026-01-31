@@ -1,0 +1,106 @@
+load("@rules_cc//cc:defs.bzl", "cc_binary")
+
+package(default_visibility = ["//visibility:public"])
+
+#==============================================================================
+# Field Examples - Updated with modern xgalois API and type aliases
+#==============================================================================
+
+# Comprehensive factory example - demonstrates the modern GF() factory function
+# with different field types, representations, and implementations
+cc_binary(
+    name = "gf_factory_example",
+    srcs = ["field/gf_factory_example.cpp"],
+    deps = [
+        "//xgalois:xgalois",
+    ],
+)
+
+# Prime field examples - showcases GFP aliases, arithmetic operations,
+# different representations, and performance characteristics
+cc_binary(
+    name = "gf_prime_example",
+    srcs = ["field/gf_prime_example.cpp"],
+    deps = [
+        "//xgalois:xgalois",
+    ],
+)
+
+# Binary field examples - demonstrates GF2, GF2X, GF2XLOG, GF2XZECH aliases
+# with different implementations and polynomial representations
+cc_binary(
+    name = "gf_binary_example",
+    srcs = ["field/gf_binary_example.cpp"],
+    deps = [
+        "//xgalois:xgalois",
+    ],
+)
+
+# Extension field examples - showcases GFPX alias, field towers,
+# polynomial arithmetic, and custom irreducible polynomials
+cc_binary(
+    name = "gf_extension_example",
+    srcs = ["field/gf_extension_example.cpp"],
+    deps = [
+        "//xgalois:xgalois",
+    ],
+)
+
+#==============================================================================
+# Polynomial Examples - Updated with comprehensive polynomial operations
+#==============================================================================
+
+# Comprehensive polynomial operations - demonstrates PolynomialDense class
+# with various field types, arithmetic, GCD, factorization, and interpolation
+cc_binary(
+    name = "poly_example",
+    srcs = ["poly/poly_example.cpp"],
+    deps = [
+        "//xgalois:xgalois",
+    ],
+)
+
+#==============================================================================
+# Linear Algebra Examples - Updated with xtensor integration
+#==============================================================================
+
+# Linear algebra operations - demonstrates matrix operations, system solving,
+# vector operations, and performance analysis over Galois fields
+cc_binary(
+    name = "linalg_example",
+    srcs = ["linalg/linalg_example.cpp"],
+    deps = [
+        "//xgalois:xgalois",
+    ],
+)
+
+#==============================================================================
+# XTensor Integration Examples - Advanced tensor operations
+#==============================================================================
+
+# Advanced xtensor integration - demonstrates sophisticated tensor operations,
+# broadcasting, reductions, performance optimization, and practical applications
+# like error correction codes with xgalois fields
+cc_binary(
+    name = "xtensor_example",
+    srcs = ["xtensor/xtensor_example.cpp"],
+    deps = [
+        "//xgalois:xgalois",
+    ],
+)
+
+#==============================================================================
+# Channel Examples - Updated with modern xgalois API and channel operations
+#==============================================================================
+
+# Channel examples - demonstrates creating and using various channel models,
+# such as static error rate, error-erasure, and q-ary symmetric channels,
+# to simulate transmission errors over different field types.
+
+cc_binary(
+    name = "channel_example",
+    srcs = ["channel/channel_example.cpp"],
+    deps = [
+        "//xgalois:xgalois",
+    ],
+)

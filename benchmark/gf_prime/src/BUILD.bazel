@@ -1,0 +1,14 @@
+"""
+GF Prime field implementation comparison benchmarks.
+"""
+load("@rules_cc//cc:defs.bzl", "cc_binary")
+
+cc_binary(
+    name = "gf_prime_benchmark",
+    srcs = ["gf_prime_benchmark.cpp"],
+    deps = [
+        "//xgalois:xgalois",
+        "@google_benchmark//:benchmark_main",
+    ],
+    copts = ["-std=c++23"],
+)

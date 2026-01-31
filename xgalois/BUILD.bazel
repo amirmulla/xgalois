@@ -1,0 +1,42 @@
+load("@rules_foreign_cc//foreign_cc:defs.bzl", "cmake")
+load("@rules_cc//cc:defs.bzl", "cc_library")
+
+package(default_visibility = ["//visibility:public"])
+
+cmake(
+    name = "xtl",
+    lib_source = "@xtl//:all_srcs",
+    out_headers_only = True,
+)
+
+cmake(
+    name = "xtensor",
+    lib_source = "@xtensor//:all_srcs",
+    out_headers_only = True,
+    deps = [":xtl"],
+)
+
+cc_library(
+    name = "xgalois",
+    hdrs = glob([
+        "**/*.hpp",
+    ]),
+    data = glob([
+        "databases/*.db",
+    ]),
+    visibility = ["//visibility:public"],
+    deps = [
+        ":xtensor",
+    ],
+)
+
+cc_library(
+    name = "coding",
+    hdrs = glob([
+        "coding/**/*.hpp",
+    ]),
+    visibility = ["//visibility:public"],
+    deps = [
+        ":xgalois",
+    ],
+)

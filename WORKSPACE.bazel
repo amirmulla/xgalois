@@ -1,0 +1,49 @@
+workspace(name = "xgalois")
+
+load("@bazel_tools//tools/build_defs/repo:http.bzl", "http_archive")
+
+http_archive(
+    name = "gtest",
+    urls = ["https://github.com/google/googletest/releases/download/v1.17.0/googletest-1.17.0.tar.gz"],
+    strip_prefix = "googletest-1.17.0",
+)
+
+http_archive(
+    name = "rules_foreign_cc",
+    sha256 = "92bf237df47776ef5127506234135a48de939b57553c253097b632726d881a7d",
+    strip_prefix = "rules_foreign_cc-0.15.0",
+    url = "https://github.com/bazel-contrib/rules_foreign_cc/releases/download/0.15.0/rules_foreign_cc-0.15.0.tar.gz",
+)
+
+load("@rules_foreign_cc//foreign_cc:repositories.bzl", "rules_foreign_cc_dependencies")
+
+rules_foreign_cc_dependencies(
+    cmake_version = "3.29.0",
+)
+
+_ALL_CONTENT = """\
+filegroup(
+    name = "all_srcs",
+    srcs = glob(["**"]),
+    visibility = ["//visibility:public"],
+)
+"""
+
+# XTL (using latest release)
+http_archive(
+    name = "xtl",
+    build_file_content = _ALL_CONTENT,
+    sha256 = "ee38153b7dd0ec84cee3361f5488a4e7e6ddd26392612ac8821cbc76e740273a",
+    strip_prefix = "xtl-0.8.0",
+    urls = ["https://github.com/xtensor-stack/xtl/archive/0.8.0.tar.gz"],
+)
+
+# Xtensor (using latest release)
+http_archive(
+    name = "xtensor",
+    build_file_content = _ALL_CONTENT,
+    sha256 = "f5f42267d850f781d71097b50567a480a82cd6875a5ec3e6238555e0ef987dc6",
+    strip_prefix = "xtensor-0.26.0",
+    urls = ["https://github.com/xtensor-stack/xtensor/archive/0.26.0.tar.gz"],
+)
+

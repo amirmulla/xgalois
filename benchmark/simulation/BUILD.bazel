@@ -1,0 +1,51 @@
+load("@rules_cc//cc:defs.bzl", "cc_binary")
+
+cc_binary(
+    name = "zech_mul_simulation",
+    srcs = ["zech_mul_simulation.cpp"],
+    copts = ["-std=c++23 -O3"],
+    deps = [
+        "//xgalois",
+        "@google_benchmark//:benchmark_main",
+    ],
+)
+
+cc_binary(
+    name = "zech_add_simulation",
+    srcs = ["zech_add_simulation.cpp"],
+    copts = ["-std=c++23 -O3"],
+    deps = [
+        "//xgalois",
+        "@google_benchmark//:benchmark_main",
+    ],
+)
+
+cc_binary(
+    name = "zech_div_simulation",
+    srcs = ["zech_div_simulation.cpp"],
+    copts = ["-std=c++23 -O3"],
+    deps = [
+        "//xgalois",
+        "@google_benchmark//:benchmark_main",
+    ],
+)
+
+cc_binary(
+    name = "zech_pow_simulation",
+    srcs = ["zech_pow_simulation.cpp"],
+    copts = ["-std=c++23 -O3"],
+    deps = [
+        "//xgalois",
+        "@google_benchmark//:benchmark_main",
+    ],
+)
+
+cc_binary(
+    name = "zech_inv_simulation",
+    srcs = ["zech_inv_simulation.cpp"],
+    copts = ["-std=c++23 -O3"],
+    deps = [
+        "//xgalois",
+        "@google_benchmark//:benchmark_main",
+    ],
+)
