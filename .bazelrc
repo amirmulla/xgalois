@@ -1,0 +1,2 @@
+common --enable_workspace
+build --action_env=BAZEL_CXXOPTS="-std=c++23 -O3" --xcode_version=16.4
