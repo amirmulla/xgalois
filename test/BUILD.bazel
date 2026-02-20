@@ -1,167 +1,168 @@
 load("@rules_cc//cc:defs.bzl", "cc_test")
+
 package(default_visibility = ["//visibility:public"])
 
 # Test for GaloisFieldPrime class
 cc_test(
     name = "gf_prime_test",
     size = "medium",
+    timeout = "moderate",
     srcs = ["field/gf_prime_test.cpp"],
     deps = [
-        "//xgalois:xgalois",
-        "@gtest//:gtest",
+        "//xgalois",
+        "@gtest",
         "@gtest//:gtest_main",
     ],
-    timeout = "moderate",
 )
 
 # Comprehensive test for GF(2) and GF(2^m) binary field classes
 cc_test(
     name = "gf_binary_test",
     size = "large",
+    timeout = "long",
     srcs = ["field/gf_binary_test.cpp"],
     deps = [
-        "//xgalois:xgalois",
-        "@gtest//:gtest",
+        "//xgalois",
+        "@gtest",
         "@gtest//:gtest_main",
     ],
-    timeout = "long",
 )
 
 cc_test(
     name = "gf_extension_test",
     size = "large",
+    timeout = "long",
     srcs = ["field/gf_extension_test.cpp"],
     deps = [
-        "//xgalois:xgalois",
-        "@gtest//:gtest",
+        "//xgalois",
+        "@gtest",
         "@gtest//:gtest_main",
     ],
-    timeout = "long",
 )
 
 # Test for GaloisFieldFactory class
 cc_test(
     name = "gf_factory_test",
     size = "large",
+    timeout = "long",
     srcs = ["field/gf_factory_test.cpp"],
     deps = [
-        "//xgalois:xgalois",
-        "@gtest//:gtest",
+        "//xgalois",
+        "@gtest",
         "@gtest//:gtest_main",
     ],
-    timeout = "long",
 )
 
 # Test for PolynomialDense class
 cc_test(
     name = "poly_dense_test",
     size = "large",
+    timeout = "long",
     srcs = ["poly/poly_dense_test.cpp"],
     deps = [
-        "//xgalois:xgalois",
-        "@gtest//:gtest",
+        "//xgalois",
+        "@gtest",
         "@gtest//:gtest_main",
     ],
-    timeout = "long",
 )
 
 # Test for GaloisFieldElement classes
 cc_test(
     name = "gf_element_test",
     size = "medium",
+    timeout = "moderate",
     srcs = ["field/gf_element_test.cpp"],
     deps = [
-        "//xgalois:xgalois",
-        "@gtest//:gtest",
+        "//xgalois",
+        "@gtest",
         "@gtest//:gtest_main",
     ],
-    timeout = "moderate",
 )
 
 # Test for database interface classes
 cc_test(
     name = "interface_test",
     size = "large",
+    timeout = "long",
     srcs = ["databases/interface_test.cpp"],
     deps = [
-        "//xgalois:xgalois",
-        "@gtest//:gtest",
+        "//xgalois",
+        "@gtest",
         "@gtest//:gtest_main",
     ],
-    timeout = "long",
 )
 
 # Test for Linalg class over prime fields
 cc_test(
     name = "linalg_prime_test",
     size = "large",
+    timeout = "long",
     srcs = ["linalg/linalg_prime_test.cpp"],
     deps = [
-        "//xgalois:xgalois",
-        "@gtest//:gtest",
+        "//xgalois",
+        "@gtest",
         "@gtest//:gtest_main",
     ],
-    timeout = "long",
 )
 
 # Test for Linalg class over binary fields
 cc_test(
     name = "linalg_binary_test",
     size = "medium",
+    timeout = "moderate",
     srcs = ["linalg/linalg_binary_test.cpp"],
     deps = [
-        "//xgalois:xgalois",
-        "@gtest//:gtest",
+        "//xgalois",
+        "@gtest",
         "@gtest//:gtest_main",
     ],
-    timeout = "moderate",
 )
 
 # Test for math utilities
 cc_test(
     name = "math_test",
     size = "medium",
+    timeout = "moderate",
     srcs = ["utils/math_test.cpp"],
     deps = [
-        "//xgalois:xgalois",
-        "@gtest//:gtest",
+        "//xgalois",
+        "@gtest",
         "@gtest//:gtest_main",
     ],
-    timeout = "moderate",
 )
 
 # Test for field utilities
 cc_test(
     name = "field_test",
     size = "small",
+    timeout = "short",
     srcs = ["utils/field_test.cpp"],
     deps = [
-        "//xgalois:xgalois",
-        "@gtest//:gtest",
+        "//xgalois",
+        "@gtest",
         "@gtest//:gtest_main",
     ],
-    timeout = "short",
 )
 
 # Test for polynomial utilities
 cc_test(
     name = "poly_test",
     size = "medium",
+    timeout = "moderate",
     srcs = ["utils/poly_test.cpp"],
     deps = [
-        "//xgalois:xgalois",
-        "@gtest//:gtest",
+        "//xgalois",
+        "@gtest",
         "@gtest//:gtest_main",
     ],
-    timeout = "moderate",
 )
 
 cc_test(
     name = "channel_test",
     srcs = ["channel/channel_test.cpp"],
     deps = [
-        "//xgalois:xgalois",
-        "@gtest//:gtest",
+        "//xgalois",
+        "@gtest",
         "@gtest//:gtest_main",
     ],
 )
@@ -169,18 +170,18 @@ cc_test(
 test_suite(
     name = "galois_field_tests",
     tests = [
-        ":gf_prime_test",
+        ":channel_test",
+        ":field_test",
         ":gf_binary_test",
+        ":gf_element_test",
         ":gf_extension_test",
         ":gf_factory_test",
-        ":poly_dense_test",
-        ":gf_element_test",
+        ":gf_prime_test",
         ":interface_test",
-        ":linalg_prime_test",
         ":linalg_binary_test",
+        ":linalg_prime_test",
         ":math_test",
-        ":field_test",
+        ":poly_dense_test",
         ":poly_test",
-        ":channel_test",
     ],
 )
