@@ -243,6 +243,7 @@ FetchElementStrict(const GaloisFieldVariant &field_variant, uint64_t value) {
       field_variant);
 }
 
+#ifndef DOXYGEN_SHOULD_SKIP_THIS
 /**
  * @brief Template factory function to create a specific GaloisFieldElement type
  * from integer values
@@ -279,6 +280,7 @@ FetchElement(const GaloisFieldVariant &field_variant, uint64_t value) {
   ElementType element_value = static_cast<ElementType>(value);
   return GaloisFieldElement<FieldType>(element_value, field_ptr);
 }
+#endif // DOXYGEN_SHOULD_SKIP_THIS
 
 /**
  * @brief Advanced factory class for creating optimized finite field

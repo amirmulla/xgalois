@@ -1,0 +1,196 @@
+/* ═══════════════════════════════════════════════════
+   xgalois Documentation — Custom Theme Overrides
+   Modeled after the SageMath documentation site
+   ═══════════════════════════════════════════════════ */
+
+/* ── Color Variables ────────────────────────────── */
+:root {
+  /* Primary brand palette */
+  --color-brand-primary: #1F425F;
+  --color-brand-content: #0d4b8e;
+  --color-brand-accent: #2AA198;
+
+  /* Sidebar */
+  --color-sidebar-background: #f8fafc;
+  --color-sidebar-search-background: #eef2f7;
+  --color-sidebar-brand-text: #1F425F;
+  --color-sidebar-link-text: #0B559F;
+  --color-sidebar-link-text--hover: #032b53;
+  --color-sidebar-link-text--top-level: #1F425F;
+
+  /* Background & surface */
+  --color-background-primary: #ffffff;
+  --color-background-secondary: #f8fafc;
+  --color-background-hover: #eef2f7;
+  --color-background-border: #d0dae6;
+
+  /* Admonitions */
+  --color-admonition-background: #eaf4ff;
+  --color-admonition-title: #1F425F;
+
+  /* Typography */
+  --font-stack: "Inter", "Segoe UI", "Helvetica Neue", Helvetica, Arial, sans-serif;
+  --font-stack--monospace: "JetBrains Mono", "Fira Code", "Consolas", monospace;
+}
+
+/* ── Google Fonts ───────────────────────────────── */
+@import url('https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&family=JetBrains+Mono:wght@400;500&display=swap');
+
+/* ── Base ────────────────────────────────────────── */
+body {
+  font-family: var(--font-stack);
+  -webkit-font-smoothing: antialiased;
+  -moz-osx-font-smoothing: grayscale;
+}
+
+/* ── Headers ─────────────────────────────────────── */
+h1 {
+  color: var(--color-brand-primary);
+  font-weight: 700;
+  letter-spacing: -0.02em;
+  border-bottom: 3px solid var(--color-brand-accent);
+  padding-bottom: 0.4em;
+  margin-bottom: 0.8em;
+}
+
+h2 {
+  color: var(--color-brand-primary);
+  font-weight: 600;
+  border-bottom: 2px solid #cce2ff;
+  padding-bottom: 0.3em;
+  margin-top: 2em;
+}
+
+h3,
+h4 {
+  color: #2c5a82;
+  font-weight: 600;
+}
+
+/* ── Content Links ───────────────────────────────── */
+.content a:not(.headerlink) {
+  color: var(--color-brand-content);
+  text-decoration: none;
+  border-bottom: 1px solid transparent;
+  transition: border-color 0.2s ease, color 0.2s ease;
+}
+
+.content a:not(.headerlink):hover {
+  color: #032b53;
+  border-bottom: 1px solid #032b53;
+}
+
+/* ── Sidebar Branding ────────────────────────────── */
+.sidebar-brand-text {
+  font-weight: 700;
+  font-size: 1.3rem;
+  letter-spacing: -0.01em;
+  color: var(--color-brand-primary) !important;
+}
+
+.sidebar-logo {
+  max-width: 72px;
+  margin-bottom: 0.5rem;
+}
+
+/* ── Table of Contents / Toctree ──────────────────── */
+.toctree-l1>a {
+  font-weight: 600;
+  font-size: 0.95rem;
+}
+
+.toctree-l2>a {
+  font-size: 0.9rem;
+}
+
+/* ── Code Blocks ─────────────────────────────────── */
+code,
+pre {
+  font-family: var(--font-stack--monospace);
+  font-size: 0.88em;
+}
+
+pre {
+  background: #f0f4f8;
+  border: 1px solid #d0dae6;
+  border-radius: 6px;
+  padding: 1em;
+}
+
+/* ── Admonitions (Note, Warning, etc.) ────────────── */
+.admonition {
+  border-radius: 8px;
+  border-left: 4px solid var(--color-brand-accent);
+  background: var(--color-admonition-background);
+  padding: 0.8em 1em;
+  margin: 1.2em 0;
+}
+
+.admonition>.admonition-title {
+  color: var(--color-brand-primary);
+  font-weight: 600;
+}
+
+/* ── Section Cards (used in index.rst) ────────────── */
+.topic {
+  background: #f8fafc;
+  border: 1px solid #d0dae6;
+  border-radius: 10px;
+  padding: 1.2em 1.5em;
+  margin: 1em 0;
+  transition: box-shadow 0.2s ease;
+}
+
+.topic:hover {
+  box-shadow: 0 4px 16px rgba(31, 66, 95, 0.08);
+}
+
+.topic>.topic-title {
+  color: var(--color-brand-primary);
+  font-size: 1.1em;
+  font-weight: 600;
+  margin-bottom: 0.4em;
+}
+
+/* ── Tables ───────────────────────────────────────── */
+table.docutils {
+  border-collapse: separate;
+  border-spacing: 0;
+  border-radius: 8px;
+  overflow: hidden;
+  border: 1px solid #d0dae6;
+}
+
+table.docutils th {
+  background: #1F425F;
+  color: white;
+  font-weight: 600;
+  padding: 0.6em 1em;
+}
+
+table.docutils td {
+  padding: 0.5em 1em;
+  border-top: 1px solid #e8eef5;
+}
+
+table.docutils tr:nth-child(even) td {
+  background: #f8fafc;
+}
+
+/* ── Footer ───────────────────────────────────────── */
+.bottom-of-page {
+  border-top: 2px solid #d0dae6;
+  margin-top: 3em;
+  padding-top: 1em;
+}
+
+/* ── Responsive Tweaks ────────────────────────────── */
+@media (max-width: 768px) {
+  h1 {
+    font-size: 1.5rem;
+  }
+
+  h2 {
+    font-size: 1.25rem;
+  }
+}

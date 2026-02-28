@@ -42,3 +42,9 @@
 
 # Bazel
 bazel-*
+
+# Documentation / Sphinx
+doc/_build/
+doc/api/
+doc/doxyoutput/
+doc/.venv/
