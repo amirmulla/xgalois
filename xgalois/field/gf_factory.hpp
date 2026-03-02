@@ -59,24 +59,25 @@ namespace xg {
  * uint16_t, uint32_t) used to store field elements, automatically
  * selected based on the field order for optimal memory usage and performance.
  */
-using GaloisFieldVariant = std::variant<
-    std::shared_ptr<GaloisFieldBinary>,
-    std::shared_ptr<GaloisFieldBinaryExtension<uint8_t>>,
-    std::shared_ptr<GaloisFieldBinaryExtension<uint16_t>>,
-    std::shared_ptr<GaloisFieldBinaryExtension<uint32_t>>,
-    std::shared_ptr<GFBELogTables<uint8_t>>,
-    std::shared_ptr<GFBELogTables<uint16_t>>,
-    std::shared_ptr<GFBELogTables<uint32_t>>,
-    std::shared_ptr<GFBELogTablesOpt<uint8_t>>,
-    std::shared_ptr<GFBELogTablesOpt<uint16_t>>,
-    std::shared_ptr<GFBELogTablesOpt<uint32_t>>,
-    std::shared_ptr<GFBEZechLogTables>,
-    std::shared_ptr<GaloisFieldPrime<uint8_t>>,
-    std::shared_ptr<GaloisFieldPrime<uint16_t>>,
-    std::shared_ptr<GaloisFieldPrime<uint32_t>>,
-    std::shared_ptr<GaloisFieldExtension<uint8_t>>,
-    std::shared_ptr<GaloisFieldExtension<uint16_t>>,
-    std::shared_ptr<GaloisFieldExtension<uint32_t>>>;;
+using GaloisFieldVariant =
+    std::variant<std::shared_ptr<GaloisFieldBinary>,
+                 std::shared_ptr<GaloisFieldBinaryExtension<uint8_t>>,
+                 std::shared_ptr<GaloisFieldBinaryExtension<uint16_t>>,
+                 std::shared_ptr<GaloisFieldBinaryExtension<uint32_t>>,
+                 std::shared_ptr<GFBELogTables<uint8_t>>,
+                 std::shared_ptr<GFBELogTables<uint16_t>>,
+                 std::shared_ptr<GFBELogTables<uint32_t>>,
+                 std::shared_ptr<GFBELogTablesOpt<uint8_t>>,
+                 std::shared_ptr<GFBELogTablesOpt<uint16_t>>,
+                 std::shared_ptr<GFBELogTablesOpt<uint32_t>>,
+                 std::shared_ptr<GFBEZechLogTables<uint32_t>>,
+                 std::shared_ptr<GaloisFieldPrime<uint8_t>>,
+                 std::shared_ptr<GaloisFieldPrime<uint16_t>>,
+                 std::shared_ptr<GaloisFieldPrime<uint32_t>>,
+                 std::shared_ptr<GaloisFieldExtension<uint8_t>>,
+                 std::shared_ptr<GaloisFieldExtension<uint16_t>>,
+                 std::shared_ptr<GaloisFieldExtension<uint32_t>>>;
+;
 
 /**
  * @brief Type-safe variant container for Galois field elements with simple
@@ -97,7 +98,7 @@ using GaloisFieldElementVariant =
                  GaloisFieldElementBase<GFBELogTablesOpt<uint8_t>>,
                  GaloisFieldElementBase<GFBELogTablesOpt<uint16_t>>,
                  GaloisFieldElementBase<GFBELogTablesOpt<uint32_t>>,
-                 GaloisFieldElementBase<GFBEZechLogTables>,
+                 GaloisFieldElementBase<GFBEZechLogTables<uint32_t>>,
                  GaloisFieldElementBase<GaloisFieldPrime<uint8_t>>,
                  GaloisFieldElementBase<GaloisFieldPrime<uint16_t>>,
                  GaloisFieldElementBase<GaloisFieldPrime<uint32_t>>>;
@@ -138,13 +139,12 @@ GaloisFieldElementVariant FetchElement(const GaloisFieldVariant &field_variant,
 
         // Check if this is an extension field (which we don't support for
         // simple element creation)
-        if constexpr (
-            std::is_same_v<FieldType,
-                           GaloisFieldExtension<uint8_t>> ||
-            std::is_same_v<FieldType,
-                           GaloisFieldExtension<uint16_t>> ||
-            std::is_same_v<FieldType,
-                           GaloisFieldExtension<uint32_t>>) {
+        if constexpr (std::is_same_v<FieldType,
+                                     GaloisFieldExtension<uint8_t>> ||
+                      std::is_same_v<FieldType,
+                                     GaloisFieldExtension<uint16_t>> ||
+                      std::is_same_v<FieldType,
+                                     GaloisFieldExtension<uint32_t>>) {
           throw std::invalid_argument(
               "Extension fields require polynomial element creation - use "
               "field methods directly");
@@ -177,7 +177,7 @@ using GaloisFieldElementStrictVariant =
                  GaloisFieldElement<GFBELogTablesOpt<uint8_t>>,
                  GaloisFieldElement<GFBELogTablesOpt<uint16_t>>,
                  GaloisFieldElement<GFBELogTablesOpt<uint32_t>>,
-                 GaloisFieldElement<GFBEZechLogTables>,
+                 GaloisFieldElement<GFBEZechLogTables<uint32_t>>,
                  GaloisFieldElement<GaloisFieldPrime<uint8_t>>,
                  GaloisFieldElement<GaloisFieldPrime<uint16_t>>,
                  GaloisFieldElement<GaloisFieldPrime<uint32_t>>>;
@@ -223,13 +223,12 @@ FetchElementStrict(const GaloisFieldVariant &field_variant, uint64_t value) {
 
         // Check if this is an extension field (which we don't support for
         // simple element creation)
-        if constexpr (
-            std::is_same_v<FieldType,
-                           GaloisFieldExtension<uint8_t>> ||
-            std::is_same_v<FieldType,
-                           GaloisFieldExtension<uint16_t>> ||
-            std::is_same_v<FieldType,
-                           GaloisFieldExtension<uint32_t>>) {
+        if constexpr (std::is_same_v<FieldType,
+                                     GaloisFieldExtension<uint8_t>> ||
+                      std::is_same_v<FieldType,
+                                     GaloisFieldExtension<uint16_t>> ||
+                      std::is_same_v<FieldType,
+                                     GaloisFieldExtension<uint32_t>>) {
           throw std::invalid_argument(
               "Extension fields require polynomial element creation - use "
               "field methods directly");
@@ -328,7 +327,8 @@ public:
    * "log_opt", "zech"
    * @param check_irreducible Whether to verify polynomial irreducibility
    * (disabled by default for performance)
-   * @param prime_testing Whether to verify that the base prime is actually prime
+   * @param prime_testing Whether to verify that the base prime is actually
+   * prime
    *
    * @return GaloisFieldVariant containing the optimally configured field
    * implementation
@@ -366,7 +366,8 @@ public:
       return CreateBinaryField(representation, impl);
     }
 
-    /* Specialized optimized path for binary extension fields GF(2^m) with multiple algorithms */
+    /* Specialized optimized path for binary extension fields GF(2^m) with
+     * multiple algorithms */
     if (prime == 2 && exponent > 1) {
       return CreateBinaryExtensionField(exponent, representation, modulus,
                                         variable_name, impl, check_irreducible);
@@ -379,7 +380,8 @@ public:
 
     /* Handle prime extension fields GF(p^n) */
     return CreatePrimeExtensionField(prime, exponent, modulus, variable_name,
-                                     representation, impl, check_irreducible, prime_testing);
+                                     representation, impl, check_irreducible,
+                                     prime_testing);
   }
 
   /**
@@ -401,7 +403,8 @@ public:
    * @param impl Implementation preference: "auto", "standard", "log",
    * "log_opt", "zech"
    * @param check_irreducible Whether to verify polynomial irreducibility
-   * @param prime_testing Whether to verify that the base prime is actually prime
+   * @param prime_testing Whether to verify that the base prime is actually
+   * prime
    *
    * @return GaloisFieldVariant containing the constructed finite field
    *
@@ -491,7 +494,8 @@ private:
    * @param impl Implementation preference (may be limited for general
    * extensions)
    * @param check_irreducible Polynomial verification flag
-   * @param prime_testing Whether to verify that the base prime is actually prime
+   * @param prime_testing Whether to verify that the base prime is actually
+   * prime
    *
    * @return GaloisFieldVariant containing the constructed extension field
    *
@@ -517,7 +521,8 @@ private:
                                   "supported size (uint32_t)");
     }
 
-    /* Automatic element type selection based on field order for optimal memory usage */
+    /* Automatic element type selection based on field order for optimal memory
+     * usage */
     if (order <= std::numeric_limits<uint8_t>::max()) {
       return CreatePrimeExtensionFieldType<uint8_t>(
           prime, exponent, modulus, variable_name, representation, impl,
@@ -544,11 +549,12 @@ private:
       throw std::invalid_argument("Extension degree must be at least 2");
     }
 
-    /* Construct the extension field with all validated parameters - let the constructor
-     * handle database fetching, polynomial parsing, and irreducibility checking */
+    /* Construct the extension field with all validated parameters - let the
+     * constructor handle database fetching, polynomial parsing, and
+     * irreducibility checking */
     return std::make_shared<GaloisFieldExtension<ElementType>>(
-        std::make_pair(prime, exponent), modulus,
-        representation, variable_name, check_irreducible, prime_testing);
+        std::make_pair(prime, exponent), modulus, representation, variable_name,
+        check_irreducible, prime_testing);
   }
 
   /**
@@ -639,31 +645,37 @@ private:
 
     /* Intelligent implementation selection for optimal performance */
     if (impl == "auto") {
-      /* Heuristic-based algorithm selection optimized for different field sizes
-       */
-      if (exponent <= 8) {
+      /* Heuristic-based algorithm selection optimized for different field
+       * sizes. Note: For ElementType T, degree m must be <= (sizeof(T)*8) - 1
+       * to prevent overflow (GaloisFieldBinaryExtension constructor
+       * constraint). So uint8_t handles m <= 7, uint16_t handles m <= 15. */
+      if (exponent <= 7) {
         return CreateBinaryExtensionFieldTyped<uint8_t>(
-            exponent, representation, modulus, variable_name,
-            "log_opt", check_irreducible);
-      } else if (exponent <= 16) {
+            exponent, representation, modulus, variable_name, "log_opt",
+            check_irreducible);
+      } else if (exponent <= 15) {
         return CreateBinaryExtensionFieldTyped<uint16_t>(
-            exponent, representation, modulus, variable_name, "log", check_irreducible);
+            exponent, representation, modulus, variable_name, "log",
+            check_irreducible);
       } else {
         return CreateBinaryExtensionFieldTyped<uint32_t>(
-            exponent, representation, modulus, variable_name,
-            "standard", check_irreducible);
+            exponent, representation, modulus, variable_name, "standard",
+            check_irreducible);
       }
     }
     // Manual implementation selection with automatic element type optimization
     if (order <= std::numeric_limits<uint8_t>::max()) {
-      return CreateBinaryExtensionFieldTyped<uint8_t>(
-          exponent, representation, modulus, variable_name, impl, check_irreducible);
+      return CreateBinaryExtensionFieldTyped<uint8_t>(exponent, representation,
+                                                      modulus, variable_name,
+                                                      impl, check_irreducible);
     } else if (order <= std::numeric_limits<uint16_t>::max()) {
-      return CreateBinaryExtensionFieldTyped<uint16_t>(
-          exponent, representation, modulus, variable_name, impl, check_irreducible);
+      return CreateBinaryExtensionFieldTyped<uint16_t>(exponent, representation,
+                                                       modulus, variable_name,
+                                                       impl, check_irreducible);
     } else {
-      return CreateBinaryExtensionFieldTyped<uint32_t>(
-          exponent, representation, modulus, variable_name, impl, check_irreducible);
+      return CreateBinaryExtensionFieldTyped<uint32_t>(exponent, representation,
+                                                       modulus, variable_name,
+                                                       impl, check_irreducible);
     }
   }
   // Helper method to create binary extension fields with specific element type
@@ -695,8 +707,8 @@ private:
     } else if (impl == "zech" || impl == "zech_log") {
       // Zech logarithm tables implementation (only for specific types)
       if constexpr (std::is_same_v<ElementType, uint32_t>) {
-        auto field = std::make_shared<GFBEZechLogTables>(m, representation,
-                                                         modulus, variable_name, check_irreducible);
+        auto field = std::make_shared<GFBEZechLogTables<uint32_t>>(
+            m, representation, modulus, variable_name, check_irreducible);
         return field;
       } else {
         throw std::invalid_argument("Zech logarithm implementation only "
@@ -753,7 +765,8 @@ private:
  *                          - true: Verify polynomial irreducibility (slower
  * but safer)
  * @param prime_testing Whether to verify that the base prime is actually prime:
- *                      - false: Skip prime verification for performance (default)
+ *                      - false: Skip prime verification for performance
+ * (default)
  *                      - true: Verify primality of base field characteristic
  *
  * @return GaloisFieldVariant containing the optimized field implementation
@@ -781,16 +794,15 @@ private:
  * field auto gf8 = GF({2, 3}, "pow", "", "β");           // GF(2^3) with power
  * representation, database polynomial
  */
-GaloisFieldVariant GF(std::pair<uint64_t, uint64_t> prime_exp,
-                      const std::string &representation = "int",
-                      const std::string &modulus = "",
-                      const std::string &variable_name = "",
-                      const std::string &impl = "auto",
-                      bool check_irreducible = false,
-                      bool prime_testing = false) {
+GaloisFieldVariant
+GF(std::pair<uint64_t, uint64_t> prime_exp,
+   const std::string &representation = "int", const std::string &modulus = "",
+   const std::string &variable_name = "", const std::string &impl = "auto",
+   bool check_irreducible = false, bool prime_testing = false) {
 
   return GaloisFieldFactory::Create(prime_exp, representation, modulus,
-                                    variable_name, impl, check_irreducible, prime_testing);
+                                    variable_name, impl, check_irreducible,
+                                    prime_testing);
 }
 /**
  * @brief Creates a Galois finite field GF(q) using total field order
@@ -833,7 +845,8 @@ GaloisFieldVariant GF(std::pair<uint64_t, uint64_t> prime_exp,
  *                          - true: Verify polynomial irreducibility (slower
  * but safer)
  * @param prime_testing Whether to verify that the base prime is actually prime:
- *                      - false: Skip prime verification for performance (default)
+ *                      - false: Skip prime verification for performance
+ * (default)
  *                      - true: Verify primality of base field characteristic
  *
  * @return GaloisFieldVariant containing the optimized field implementation
@@ -870,7 +883,8 @@ GaloisFieldVariant GF(uint64_t order, const std::string &representation = "int",
                       bool prime_testing = false) {
 
   return GaloisFieldFactory::Create(order, representation, modulus,
-                                    variable_name, impl, check_irreducible, prime_testing);
+                                    variable_name, impl, check_irreducible,
+                                    prime_testing);
 }
 
 } // namespace xg

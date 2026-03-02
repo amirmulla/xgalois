@@ -263,7 +263,7 @@ TEST_F(GaloisFieldFactoryTest, VariantTypeHandling) {
            std::is_same_v<FieldType, GFBELogTablesOpt<uint8_t>> ||
            std::is_same_v<FieldType, GFBELogTablesOpt<uint16_t>> ||
            std::is_same_v<FieldType, GFBELogTablesOpt<uint32_t>> ||
-           std::is_same_v<FieldType, GFBEZechLogTables>;
+           std::is_same_v<FieldType, GFBEZechLogTables<uint32_t>>;
   }, gf8);
 
   EXPECT_TRUE(is_prime_field);
