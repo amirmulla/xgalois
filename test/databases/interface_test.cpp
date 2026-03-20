@@ -10,14 +10,8 @@
 
 #include <gtest/gtest.h>
 
-#include <algorithm>
 #include <chrono>
 #include <filesystem>
-#include <fstream>
-#include <map>
-#include <memory>
-#include <random>
-#include <sstream>
 #include <vector>
 
 namespace xg {
@@ -29,8 +23,8 @@ namespace databases {
 
 // Test data for prime factorization
 struct PrimeTestCase {
-  long long number;
-  std::vector<long long> expected_factors;
+  uint64_t number;
+  std::vector<uint64_t> expected_factors;
   std::vector<int> expected_multiplicities;
   int expected_composite;
 };
@@ -240,9 +234,9 @@ TEST_F(DatabaseInterfaceTest, DatabasePerformance) {
   auto start = std::chrono::high_resolution_clock::now();
 
   // Test multiple lookups to measure performance
-  std::vector<long long> test_numbers = {273323, 142903, 21218, 643482, 309550};
+  std::vector<uint64_t> test_numbers = {273323, 142903, 21218, 643482, 309550};
 
-  for (long long num : test_numbers) {
+  for (uint64_t num : test_numbers) {
     PrimeFactorsResult result = db.fetch(num);
     EXPECT_GT(result.factors.size(), 0);  // Should find valid results
   }
@@ -429,7 +423,8 @@ TEST_F(DatabaseInterfaceTest, PrimeFactorsEdgeCases) {
   PrimeFactorsDatabase db;
 
   // Test edge cases that should throw exceptions
-  std::vector<long long> invalid_numbers = {0, -1, 999999999};
+  std::vector<uint64_t> invalid_numbers = {0, static_cast<uint64_t>(-1),
+                                           999999999};
 
   for (auto num : invalid_numbers) {
     EXPECT_THROW(db.fetch(num), std::runtime_error)

@@ -7,7 +7,7 @@
 
 #include "xgalois/field/gf_binary.hpp"
 
-using namespace xg;
+using xg::GFBEZechLogTables;
 
 int main() {
   // Use GF(2^20) as an example field
@@ -17,10 +17,10 @@ int main() {
             << ") using Zech Log Tables..." << '\n';
 
   // Create the field using Zech Log Tables implementation
-  auto field = std::make_shared<GFBEZechLogTables>(m);
+  auto field = std::make_shared<GFBEZechLogTables<uint32_t>>(m);
 
-  std::cout << "Field order: " << field->Order() << std::endl;
-  std::cout << "Field characteristic: " << field->Characteristic() << std::endl;
+  std::cout << "Field order: " << field->Order() << '\n';
+  std::cout << "Field characteristic: " << field->Characteristic() << '\n';
 
   // Generate 1000000 random field elements (in log representation)
   std::mt19937 gen(42);  // Fixed seed for reproducibility
@@ -106,7 +106,7 @@ int main() {
   std::cout << "\n=== Performance Comparison Across Field Sizes ===" << '\n';
 
   for (uint8_t test_m : {4, 6, 8, 10, 12}) {
-    auto test_field = std::make_shared<GFBEZechLogTables>(test_m);
+    auto test_field = std::make_shared<GFBEZechLogTables<uint32_t>>(test_m);
 
     // Generate some test elements
     std::uniform_int_distribution<uint64_t> test_dis(0,
@@ -133,7 +133,7 @@ int main() {
     std::cout << "GF(2^" << static_cast<int>(test_m)
               << ") [Order: " << test_field->Order() << "]: " << avg_time_ns
               << " ns/op, " << static_cast<uint64_t>(operations_per_second)
-              << " ops/sec" << std::endl;
+              << " ops/sec" << '\n';
   }
 
   // Test with different exponent ranges

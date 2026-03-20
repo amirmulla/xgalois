@@ -17,7 +17,7 @@ int main() {
             << ") using Zech Log Tables..." << '\n';
 
   // Create the field using Zech Log Tables implementation
-  auto field = std::make_shared<GFBEZechLogTables>(m);
+  auto field = std::make_shared<GFBEZechLogTables<uint32_t>>(m);
 
   std::cout << "Field order: " << field->Order() << std::endl;
   std::cout << "Field characteristic: " << field->Characteristic() << std::endl;
@@ -118,7 +118,7 @@ int main() {
   std::cout << "\n=== Performance Comparison Across Field Sizes ===" << '\n';
 
   for (uint8_t test_m : {4, 6, 8, 10, 12}) {
-    auto test_field = std::make_shared<GFBEZechLogTables>(test_m);
+    auto test_field = std::make_shared<GFBEZechLogTables<uint32_t>>(test_m);
 
     // Generate some test elements
     std::uniform_int_distribution<uint64_t> test_dis(0,

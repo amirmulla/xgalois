@@ -23,18 +23,13 @@
 #include <type_traits>
 #include <utility>
 #include <variant>
-#include <vector>
 
 /* Project-specific headers providing field implementations and utilities */
-#include "xgalois/databases/interface.hpp"
-#include "xgalois/field/gf_base.hpp"
 #include "xgalois/field/gf_binary.hpp"
 #include "xgalois/field/gf_extension.hpp"
 #include "xgalois/field/gf_prime.hpp"
-#include "xgalois/poly/poly_dense.hpp"
 #include "xgalois/utils/field.hpp"
 #include "xgalois/utils/math.hpp"
-#include "xgalois/utils/poly.hpp"
 
 namespace xg {
 

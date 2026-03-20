@@ -386,7 +386,7 @@ static void BM_GF2XLOGOPT_Small_Exponentiation(benchmark::State& state) {
 // GFBEZechLogTables - Zech Log Table Implementation
 static void BM_GF2XZECH_Small_Addition(benchmark::State& state) {
   uint8_t m = static_cast<uint8_t>(state.range(0));
-  auto field = std::make_shared<GFBEZechLogTables>(m);
+  auto field = std::make_shared<GFBEZechLogTables<uint32_t>>(m);
 
   // For Zech logs, we work with logarithmic representations
   std::mt19937 gen(42);
@@ -413,7 +413,7 @@ static void BM_GF2XZECH_Small_Addition(benchmark::State& state) {
 
 static void BM_GF2XZECH_Small_Multiplication(benchmark::State& state) {
   uint8_t m = static_cast<uint8_t>(state.range(0));
-  auto field = std::make_shared<GFBEZechLogTables>(m);
+  auto field = std::make_shared<GFBEZechLogTables<uint32_t>>(m);
 
   std::mt19937 gen(42);
   std::uniform_int_distribution<uint64_t> dis(0, field->Order() - 2);
@@ -439,7 +439,7 @@ static void BM_GF2XZECH_Small_Multiplication(benchmark::State& state) {
 
 static void BM_GF2XZECH_Small_Division(benchmark::State& state) {
   uint8_t m = static_cast<uint8_t>(state.range(0));
-  auto field = std::make_shared<GFBEZechLogTables>(m);
+  auto field = std::make_shared<GFBEZechLogTables<uint32_t>>(m);
 
   std::mt19937 gen(42);
   std::uniform_int_distribution<uint64_t> dis(0, field->Order() - 2);
@@ -465,7 +465,7 @@ static void BM_GF2XZECH_Small_Division(benchmark::State& state) {
 
 static void BM_GF2XZECH_Small_Inversion(benchmark::State& state) {
   uint8_t m = static_cast<uint8_t>(state.range(0));
-  auto field = std::make_shared<GFBEZechLogTables>(m);
+  auto field = std::make_shared<GFBEZechLogTables<uint32_t>>(m);
 
   std::mt19937 gen(42);
   std::uniform_int_distribution<uint64_t> dis(0, field->Order() - 2);
@@ -490,7 +490,7 @@ static void BM_GF2XZECH_Small_Inversion(benchmark::State& state) {
 
 static void BM_GF2XZECH_Small_Exponentiation(benchmark::State& state) {
   uint8_t m = static_cast<uint8_t>(state.range(0));
-  auto field = std::make_shared<GFBEZechLogTables>(m);
+  auto field = std::make_shared<GFBEZechLogTables<uint32_t>>(m);
 
   std::mt19937 gen(42);
   std::uniform_int_distribution<uint64_t> dis(0, field->Order() - 2);
@@ -806,7 +806,7 @@ static void BM_GF2XLOGOPT_Medium_Exponentiation(benchmark::State& state) {
 // Zech Log Table Implementation - Medium Fields
 static void BM_GF2XZECH_Medium_Addition(benchmark::State& state) {
   uint8_t m = static_cast<uint8_t>(state.range(0));
-  auto field = std::make_shared<GFBEZechLogTables>(m);
+  auto field = std::make_shared<GFBEZechLogTables<uint32_t>>(m);
 
   std::mt19937 gen(42);
   std::uniform_int_distribution<uint64_t> dis(0, field->Order() - 2);
@@ -832,7 +832,7 @@ static void BM_GF2XZECH_Medium_Addition(benchmark::State& state) {
 
 static void BM_GF2XZECH_Medium_Multiplication(benchmark::State& state) {
   uint8_t m = static_cast<uint8_t>(state.range(0));
-  auto field = std::make_shared<GFBEZechLogTables>(m);
+  auto field = std::make_shared<GFBEZechLogTables<uint32_t>>(m);
 
   std::mt19937 gen(42);
   std::uniform_int_distribution<uint64_t> dis(0, field->Order() - 2);
@@ -858,7 +858,7 @@ static void BM_GF2XZECH_Medium_Multiplication(benchmark::State& state) {
 
 static void BM_GF2XZECH_Medium_Division(benchmark::State& state) {
   uint8_t m = static_cast<uint8_t>(state.range(0));
-  auto field = std::make_shared<GFBEZechLogTables>(m);
+  auto field = std::make_shared<GFBEZechLogTables<uint32_t>>(m);
 
   std::mt19937 gen(42);
   std::uniform_int_distribution<uint64_t> dis(0, field->Order() - 2);
@@ -884,7 +884,7 @@ static void BM_GF2XZECH_Medium_Division(benchmark::State& state) {
 
 static void BM_GF2XZECH_Medium_Inversion(benchmark::State& state) {
   uint8_t m = static_cast<uint8_t>(state.range(0));
-  auto field = std::make_shared<GFBEZechLogTables>(m);
+  auto field = std::make_shared<GFBEZechLogTables<uint32_t>>(m);
 
   std::mt19937 gen(42);
   std::uniform_int_distribution<uint64_t> dis(0, field->Order() - 2);
@@ -909,7 +909,7 @@ static void BM_GF2XZECH_Medium_Inversion(benchmark::State& state) {
 
 static void BM_GF2XZECH_Medium_Exponentiation(benchmark::State& state) {
   uint8_t m = static_cast<uint8_t>(state.range(0));
-  auto field = std::make_shared<GFBEZechLogTables>(m);
+  auto field = std::make_shared<GFBEZechLogTables<uint32_t>>(m);
 
   std::mt19937 gen(42);
   std::uniform_int_distribution<uint64_t> dis(0, field->Order() - 2);
@@ -1225,7 +1225,7 @@ static void BM_GF2XLOGOPT_Large_Exponentiation(benchmark::State& state) {
 // Zech Log Table Implementation - Large Fields
 static void BM_GF2XZECH_Large_Addition(benchmark::State& state) {
   uint8_t m = static_cast<uint8_t>(state.range(0));
-  auto field = std::make_shared<GFBEZechLogTables>(m);
+  auto field = std::make_shared<GFBEZechLogTables<uint32_t>>(m);
 
   std::mt19937 gen(42);
   std::uniform_int_distribution<uint64_t> dis(0, field->Order() - 2);
@@ -1251,7 +1251,7 @@ static void BM_GF2XZECH_Large_Addition(benchmark::State& state) {
 
 static void BM_GF2XZECH_Large_Multiplication(benchmark::State& state) {
   uint8_t m = static_cast<uint8_t>(state.range(0));
-  auto field = std::make_shared<GFBEZechLogTables>(m);
+  auto field = std::make_shared<GFBEZechLogTables<uint32_t>>(m);
 
   std::mt19937 gen(42);
   std::uniform_int_distribution<uint64_t> dis(0, field->Order() - 2);
@@ -1277,7 +1277,7 @@ static void BM_GF2XZECH_Large_Multiplication(benchmark::State& state) {
 
 static void BM_GF2XZECH_Large_Division(benchmark::State& state) {
   uint8_t m = static_cast<uint8_t>(state.range(0));
-  auto field = std::make_shared<GFBEZechLogTables>(m);
+  auto field = std::make_shared<GFBEZechLogTables<uint32_t>>(m);
 
   std::mt19937 gen(42);
   std::uniform_int_distribution<uint64_t> dis(0, field->Order() - 2);
@@ -1303,7 +1303,7 @@ static void BM_GF2XZECH_Large_Division(benchmark::State& state) {
 
 static void BM_GF2XZECH_Large_Inversion(benchmark::State& state) {
   uint8_t m = static_cast<uint8_t>(state.range(0));
-  auto field = std::make_shared<GFBEZechLogTables>(m);
+  auto field = std::make_shared<GFBEZechLogTables<uint32_t>>(m);
 
   std::mt19937 gen(42);
   std::uniform_int_distribution<uint64_t> dis(0, field->Order() - 2);
@@ -1328,7 +1328,7 @@ static void BM_GF2XZECH_Large_Inversion(benchmark::State& state) {
 
 static void BM_GF2XZECH_Large_Exponentiation(benchmark::State& state) {
   uint8_t m = static_cast<uint8_t>(state.range(0));
-  auto field = std::make_shared<GFBEZechLogTables>(m);
+  auto field = std::make_shared<GFBEZechLogTables<uint32_t>>(m);
 
   std::mt19937 gen(42);
   std::uniform_int_distribution<uint64_t> dis(0, field->Order() - 2);

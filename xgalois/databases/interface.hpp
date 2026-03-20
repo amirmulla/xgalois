@@ -56,7 +56,7 @@ class DatabaseInterface {
 // number,factor1:mult1;factor2:mult2;...,composite_flag
 
 struct PrimeFactorsResult {
-  std::vector<long long> factors;
+  std::vector<uint64_t> factors;
   std::vector<int> multiplicities;
   int composite;  // Assuming 0 for prime, 1 for composite, -1 for unknown/error
 };
@@ -75,7 +75,7 @@ class PrimeFactorsDatabase : public DatabaseInterface {
   // 10,2:1;5:1,1
   // 7,7:1,0
 
-  PrimeFactorsResult fetch(long long n) const {
+  PrimeFactorsResult fetch(uint64_t n) const {
     if (!file_exists()) {
       throw std::runtime_error("Database file not found: " + get_db_path());
     }
@@ -99,7 +99,7 @@ class PrimeFactorsDatabase : public DatabaseInterface {
 
       if (segments.empty()) continue;
 
-      long long current_n;
+      uint64_t current_n;
       try {
         current_n = std::stoll(segments[0]);
       } catch (const std::invalid_argument& ia) {

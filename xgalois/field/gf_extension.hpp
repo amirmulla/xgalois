@@ -3,11 +3,9 @@
 
 // C system headers
 #include <cassert>
-#include <cmath>
 #include <cstdint>
 
 // C++ standard library headers
-#include <random>
 #include <sstream>
 #include <stdexcept>
 #include <vector>

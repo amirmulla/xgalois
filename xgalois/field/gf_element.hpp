@@ -7,8 +7,6 @@
 #include <stdexcept>
 #include <utility>
 
-#include "xgalois/field/gf_base.hpp"
-
 namespace xg {
 
 //------------------------------------------------------------------------------

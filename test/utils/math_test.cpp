@@ -49,8 +49,8 @@ TEST_F(MathUtilsTest, ExtendedGcdBasicCases) {
   EXPECT_EQ(result.first, 2);  // GCD(240, 46) = 2
 
   // Verify Bézout's identity: 240 * x + 46 * y = gcd
-  long long x = result.second.first;
-  long long y = result.second.second;
+  uint64_t x = result.second.first;
+  uint64_t y = result.second.second;
   EXPECT_EQ(240 * x + 46 * y, result.first);
 }
 
@@ -59,8 +59,8 @@ TEST_F(MathUtilsTest, ExtendedGcdCoprimeNumbers) {
   EXPECT_EQ(result.first, 1);  // GCD(17, 13) = 1
 
   // Verify Bézout's identity
-  long long x = result.second.first;
-  long long y = result.second.second;
+  uint64_t x = result.second.first;
+  uint64_t y = result.second.second;
   EXPECT_EQ(17 * x + 13 * y, 1);
 }
 
@@ -141,19 +141,19 @@ TEST_F(MathUtilsTest, TrialDivisionSmallNumbers) {
   EXPECT_TRUE(factors.empty());
 
   factors = TrialDivision(2);
-  EXPECT_EQ(factors, std::vector<long long>({2}));
+  EXPECT_EQ(factors, std::vector<uint64_t>({2}));
 
   factors = TrialDivision(12);
-  std::vector<long long> expected = {2, 2, 3};
+  std::vector<uint64_t> expected = {2, 2, 3};
   EXPECT_EQ(factors, expected);
 
   factors = TrialDivision(17);
-  EXPECT_EQ(factors, std::vector<long long>({17}));
+  EXPECT_EQ(factors, std::vector<uint64_t>({17}));
 }
 
 TEST_F(MathUtilsTest, TrialDivisionMediumNumbers) {
   auto factors = TrialDivision(60);
-  std::vector<long long> expected = {2, 2, 3, 5};
+  std::vector<uint64_t> expected = {2, 2, 3, 5};
   EXPECT_EQ(factors, expected);
 
   factors = TrialDivision(100);
@@ -172,11 +172,11 @@ TEST_F(MathUtilsTest, PrimeFactorizeComprehensive) {
 
   // Test prime numbers
   factors = PrimeFactorize(17);
-  EXPECT_EQ(factors, std::vector<long long>({17}));
+  EXPECT_EQ(factors, std::vector<uint64_t>({17}));
 
   // Test composite numbers
   factors = PrimeFactorize(12);
-  std::vector<long long> expected = {2, 2, 3};
+  std::vector<uint64_t> expected = {2, 2, 3};
   EXPECT_EQ(factors, expected);
 
   factors = PrimeFactorize(360);
@@ -190,11 +190,11 @@ TEST_F(MathUtilsTest, FermatFactorizationBasicCases) {
   EXPECT_TRUE(factors.empty());
 
   factors = FermatFactorization(2);
-  EXPECT_EQ(factors, std::vector<long long>({2}));
+  EXPECT_EQ(factors, std::vector<uint64_t>({2}));
 
   // Test perfect squares
   factors = FermatFactorization(9);
-  std::vector<long long> expected = {3, 3};
+  std::vector<uint64_t> expected = {3, 3};
   EXPECT_EQ(factors, expected);
 
   factors = FermatFactorization(25);
@@ -272,7 +272,7 @@ TEST_F(MathUtilsTest, DecomposePrimePowerNonPrimePowers) {
 
 TEST_F(MathUtilsTest, PollardsRhoBasicCases) {
   // Test small composite numbers
-  long long factor = PollardsRho(15);
+  uint64_t factor = PollardsRho(15);
   EXPECT_TRUE(factor == 3 || factor == 5 ||
               factor == 15);  // Allow for algorithm failure
 
@@ -292,7 +292,7 @@ TEST_F(MathUtilsTest, FactorizePollardsRhoComprehensive) {
   // Test factorization with recursive Pollard's Rho
   auto factors = FactorizePollardsRho(12);
   std::sort(factors.begin(), factors.end());
-  std::vector<long long> expected = {2, 2, 3};
+  std::vector<uint64_t> expected = {2, 2, 3};
   EXPECT_EQ(factors, expected);
 
   factors = FactorizePollardsRho(15);
@@ -302,7 +302,7 @@ TEST_F(MathUtilsTest, FactorizePollardsRhoComprehensive) {
 
   // Test prime numbers (should return the number itself)
   factors = FactorizePollardsRho(17);
-  EXPECT_EQ(factors, std::vector<long long>({17}));
+  EXPECT_EQ(factors, std::vector<uint64_t>({17}));
 }
 
 //===----------------------------------------------------------------------===//
@@ -312,9 +312,9 @@ TEST_F(MathUtilsTest, FactorizePollardsRhoComprehensive) {
 TEST_F(MathUtilsTest, PrimeFactorizeConsistency) {
   // Test that different factorization methods give consistent results
   // for numbers where both trial division and Pollard's Rho are applicable
-  std::vector<long long> test_numbers = {60, 84, 120, 180, 210, 300, 360, 420};
+  std::vector<uint64_t> test_numbers = {60, 84, 120, 180, 210, 300, 360, 420};
 
-  for (long long n : test_numbers) {
+  for (uint64_t n : test_numbers) {
     auto trial_factors = TrialDivision(n);
     auto smart_factors = PrimeFactorize(n);
 
@@ -323,13 +323,13 @@ TEST_F(MathUtilsTest, PrimeFactorizeConsistency) {
     std::sort(smart_factors.begin(), smart_factors.end());
 
     // Verify that the product of factors equals the original number
-    long long trial_product = 1;
-    for (long long factor : trial_factors) {
+    uint64_t trial_product = 1;
+    for (uint64_t factor : trial_factors) {
       trial_product *= factor;
     }
 
-    long long smart_product = 1;
-    for (long long factor : smart_factors) {
+    uint64_t smart_product = 1;
+    for (uint64_t factor : smart_factors) {
       smart_product *= factor;
     }
 
@@ -346,11 +346,11 @@ TEST_F(MathUtilsTest, PrimeFactorizeConsistency) {
 
 TEST_F(MathUtilsTest, IsPrimeConsistencyWithFactorization) {
   // Test that IsPrime is consistent with prime factorization
-  std::vector<long long> test_numbers = {2,  3,  4,  5,  6,  7,  8,   9,
-                                         10, 11, 12, 13, 14, 15, 16,  17,
-                                         18, 19, 20, 97, 98, 99, 100, 101};
+  std::vector<uint64_t> test_numbers = {2,  3,  4,  5,  6,  7,  8,   9,
+                                        10, 11, 12, 13, 14, 15, 16,  17,
+                                        18, 19, 20, 97, 98, 99, 100, 101};
 
-  for (long long n : test_numbers) {
+  for (uint64_t n : test_numbers) {
     bool is_prime_result = IsPrime(n);
     auto factors = PrimeFactorize(n);
     bool is_prime_from_factors = (factors.size() == 1 && factors[0] == n);

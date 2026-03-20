@@ -11,7 +11,6 @@
 #include <random>
 #include <sstream>
 #include <stdexcept>
-#include <utility>
 #include <vector>
 
 // Project headers
@@ -48,7 +47,7 @@ class GaloisFieldPrime : public GaloisFieldBase<ElementType> {
 
     // Check if the provided number is actually prime when prime_testing is
     // enabled
-    if (prime_testing && !xg::utils::IsPrime(static_cast<long long>(p_))) {
+    if (prime_testing && !xg::utils::IsPrime(static_cast<uint64_t>(p_))) {
       throw std::invalid_argument("Provided value is not prime.");
     }
 
@@ -274,13 +273,13 @@ class GaloisFieldPrime : public GaloisFieldBase<ElementType> {
     }
 
     uint64_t phi = static_cast<uint64_t>(this->p_) - 1;
-    std::vector<long long> prime_factors = utils::PrimeFactorize(phi);
+    std::vector<uint64_t> prime_factors = utils::PrimeFactorize(phi);
     prime_factors.erase(std::unique(prime_factors.begin(), prime_factors.end()),
                         prime_factors.end());
 
     for (ElementType candidate = 2; candidate < this->p_; ++candidate) {
       bool is_generator = true;
-      for (long long factor : prime_factors) {
+      for (uint64_t factor : prime_factors) {
         uint64_t exp = phi / static_cast<uint64_t>(factor);
         if (Pow(candidate, exp) == 1) {
           is_generator = false;
@@ -306,14 +305,14 @@ class GaloisFieldPrime : public GaloisFieldBase<ElementType> {
     }
 
     uint64_t phi = static_cast<uint64_t>(this->p_) - 1;
-    std::vector<long long> prime_factors = utils::PrimeFactorize(phi);
+    std::vector<uint64_t> prime_factors = utils::PrimeFactorize(phi);
     prime_factors.erase(std::unique(prime_factors.begin(), prime_factors.end()),
                         prime_factors.end());
 
     std::vector<ElementType> generators;
     for (ElementType candidate = 2; candidate < this->p_; ++candidate) {
       bool is_generator = true;
-      for (long long factor : prime_factors) {
+      for (uint64_t factor : prime_factors) {
         uint64_t exp = phi / static_cast<uint64_t>(factor);
         if (Pow(candidate, exp) == 1) {
           is_generator = false;
@@ -624,13 +623,13 @@ class GaloisFieldPrimeTable : public GaloisFieldPrime<ElementType> {
     }
 
     uint64_t phi = static_cast<uint64_t>(this->p_) - 1;
-    std::vector<long long> prime_factors = utils::PrimeFactorize(phi);
+    std::vector<uint64_t> prime_factors = utils::PrimeFactorize(phi);
     prime_factors.erase(std::unique(prime_factors.begin(), prime_factors.end()),
                         prime_factors.end());
 
     for (ElementType candidate = 2; candidate < this->p_; ++candidate) {
       bool is_generator = true;
-      for (long long factor : prime_factors) {
+      for (uint64_t factor : prime_factors) {
         uint64_t exp = phi / static_cast<uint64_t>(factor);
         // Critical: Use GaloisFieldPrime::Pow to avoid recursion if tables
         // are not yet initialized or if this method is called during init.
@@ -659,14 +658,14 @@ class GaloisFieldPrimeTable : public GaloisFieldPrime<ElementType> {
     }
 
     uint64_t phi = static_cast<uint64_t>(this->p_) - 1;
-    std::vector<long long> prime_factors = utils::PrimeFactorize(phi);
+    std::vector<uint64_t> prime_factors = utils::PrimeFactorize(phi);
     prime_factors.erase(std::unique(prime_factors.begin(), prime_factors.end()),
                         prime_factors.end());
 
     std::vector<ElementType> generators;
     for (ElementType candidate = 2; candidate < this->p_; ++candidate) {
       bool is_generator = true;
-      for (long long factor : prime_factors) {
+      for (uint64_t factor : prime_factors) {
         uint64_t exp = phi / static_cast<uint64_t>(factor);
         if (GaloisFieldPrime<ElementType>::Pow(candidate, exp) == 1) {
           is_generator = false;

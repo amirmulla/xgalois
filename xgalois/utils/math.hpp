@@ -4,7 +4,6 @@
 #include <algorithm>
 #include <chrono>
 #include <cmath>
-#include <iostream>
 #include <numeric>
 #include <random>
 #include <utility>
@@ -94,8 +93,8 @@ std::pair<T, std::pair<T, T>> ExtendedGcd(T a, T b) {
 //
 // Complexity: O(sqrt(n)) in the worst case (when n is prime or a product of two
 // large primes). Effective for small numbers (typically up to 10^7).
-std::vector<long long> TrialDivision(long long n) {
-  std::vector<long long> factors;
+std::vector<uint64_t> TrialDivision(uint64_t n) {
+  std::vector<uint64_t> factors;
   if (n <= 1) {
     return factors;  // Numbers less than or equal to 1 have no prime factors.
   }
@@ -108,7 +107,7 @@ std::vector<long long> TrialDivision(long long n) {
 
   // Handle odd factors: Check odd numbers from 3 up to the square root of the
   // remaining n. We increment by 2 (i += 2) to only check odd numbers.
-  for (long long i = 3; i * i <= n; i += 2) {
+  for (uint64_t i = 3; i * i <= n; i += 2) {
     while (n % i == 0) {
       factors.push_back(i);
       n /= i;
@@ -139,8 +138,8 @@ std::vector<long long> TrialDivision(long long n) {
 // Complexity: Depends on how close the factors are. If factors p and q are
 // close, a is close to sqrt(n), and the algorithm is fast. If factors are far
 // apart, it's slow. Not a general-purpose algorithm for arbitrary numbers.
-std::vector<long long> FermatFactorization(long long n) {
-  std::vector<long long> factors;
+std::vector<uint64_t> FermatFactorization(uint64_t n) {
+  std::vector<uint64_t> factors;
   // Fermat's method is for odd numbers > 1.
   if (n <= 1 || n % 2 == 0) {
     if (n == 2) {
@@ -151,7 +150,7 @@ std::vector<long long> FermatFactorization(long long n) {
     return factors;
   }
 
-  long long a = static_cast<long long>(std::sqrt(n));
+  uint64_t a = static_cast<uint64_t>(std::sqrt(n));
   // Ensure a*a >= n. If sqrt(n) is an integer, a*a == n. Otherwise, we need to
   // start with the smallest integer 'a' such that a^2 >= n.
   if (a * a < n) {
@@ -169,27 +168,27 @@ std::vector<long long> FermatFactorization(long long n) {
   // Iterate to find a and b such that a^2 - b^2 = n.
   // We limit the iterations to avoid potential infinite loops for numbers where
   // Fermat's method is not efficient or applicable within a reasonable time.
-  const long long kMaxFermatIterations = 1000000;  // Limit search range
-  long long iterations = 0;
+  const uint64_t kMaxFermatIterations = 1000000;  // Limit search range
+  uint64_t iterations = 0;
 
   while (iterations < kMaxFermatIterations) {
-    long long bSquared = a * a - n;
+    uint64_t bSquared = a * a - n;
     // Check if bSquared is non-negative before taking sqrt.
     if (bSquared < 0) {
       a++;
       iterations++;
       continue;
     }
-    long long b = static_cast<long long>(std::sqrt(bSquared));
+    uint64_t b = static_cast<uint64_t>(std::sqrt(bSquared));
 
     // Check if bSquared is a perfect square (b*b == bSquared).
     if (b * b == bSquared) {
-      long long factor1 = a - b;
-      long long factor2 = a + b;
+      uint64_t factor1 = a - b;
+      uint64_t factor2 = a + b;
       // Once factors are found, recursively factor them using Trial Division
       // to get the prime factors.
-      std::vector<long long> factors1 = TrialDivision(factor1);
-      std::vector<long long> factors2 = TrialDivision(factor2);
+      std::vector<uint64_t> factors1 = TrialDivision(factor1);
+      std::vector<uint64_t> factors2 = TrialDivision(factor2);
       factors.insert(factors.end(), factors1.begin(), factors1.end());
       factors.insert(factors.end(), factors2.begin(), factors2.end());
       // Sort factors for consistent output after combining.
@@ -227,7 +226,7 @@ std::vector<long long> FermatFactorization(long long n) {
 //
 // Complexity: Expected time complexity is roughly O(n^(1/4)). Its efficiency
 // depends on the size of the smallest prime factor of n.
-long long PollardsRho(long long n) {
+uint64_t PollardsRho(uint64_t n) {
   if (n <= 1) {
     return n;
   }
@@ -240,17 +239,17 @@ long long PollardsRho(long long n) {
   std::mt19937_64 rng(
       std::chrono::steady_clock::now().time_since_epoch().count());
   // Ensure distribution range is valid for n > 1.
-  std::uniform_int_distribution<long long> dist(1, n - 1 > 0 ? n - 1 : 1);
+  std::uniform_int_distribution<uint64_t> dist(1, n - 1 > 0 ? n - 1 : 1);
 
-  long long x = dist(rng);  // Tortoise
-  long long y = x;          // Hare
-  long long c = dist(rng);  // Constant for the function f(x)
-  long long d = 1;          // GCD, initialized to 1
+  uint64_t x = dist(rng);  // Tortoise
+  uint64_t y = x;          // Hare
+  uint64_t c = dist(rng);  // Constant for the function f(x)
+  uint64_t d = 1;          // GCD, initialized to 1
 
   // The function f(x) = (x^2 + c) mod n.
   // Use __int128 for intermediate calculation (val * val) to prevent overflow
-  // before taking the modulo, especially for large `long long` values of `val`.
-  auto f = [&](long long val) {
+  // before taking the modulo, especially for large `uint64_t` values of `val`.
+  auto f = [&](uint64_t val) {
     return (static_cast<__int128>(val) * val + c) % n;
   };
 
@@ -265,7 +264,8 @@ long long PollardsRho(long long n) {
     y = f(f(y));  // Hare moves two steps
     // Calculate the GCD of the absolute difference and n.
     // std::gcd is available in C++17 and later.
-    d = std::gcd(std::abs(x - y), n);
+    uint64_t diff = x > y ? x - y : y - x;
+    d = std::gcd(diff, n);
     iterations++;
   }
 
@@ -289,8 +289,8 @@ long long PollardsRho(long long n) {
 // Factors a given number `n` completely by repeatedly applying Pollard's Rho
 // to find one factor, then recursively factoring the resulting parts.
 // Uses Trial Division for smaller numbers for efficiency.
-std::vector<long long> FactorizePollardsRho(long long n) {
-  std::vector<long long> factors;
+std::vector<uint64_t> FactorizePollardsRho(uint64_t n) {
+  std::vector<uint64_t> factors;
   if (n <= 1) {
     return factors;
   }
@@ -308,15 +308,15 @@ std::vector<long long> FactorizePollardsRho(long long n) {
   // Use trial division for small remaining numbers for efficiency.
   // Pollard's Rho has overhead, so for small numbers, Trial Division is faster.
   // The threshold can be adjusted based on performance testing.
-  const long long kTrialDivisionThreshold = 1000000;
+  const uint64_t kTrialDivisionThreshold = 1000000;
   if (n < kTrialDivisionThreshold) {
-    std::vector<long long> trialFactors = TrialDivision(n);
+    std::vector<uint64_t> trialFactors = TrialDivision(n);
     factors.insert(factors.end(), trialFactors.begin(), trialFactors.end());
     return factors;
   }
 
   // Use Pollard's Rho to find one factor of the remaining n.
-  long long factor = PollardsRho(n);
+  uint64_t factor = PollardsRho(n);
 
   if (factor == n) {
     // If Pollard's Rho returned n, it means it failed to find a non-trivial
@@ -327,8 +327,8 @@ std::vector<long long> FactorizePollardsRho(long long n) {
   } else {
     // If a non-trivial factor is found, recursively factor the found factor
     // and the remaining part (n / factor).
-    std::vector<long long> factors1 = FactorizePollardsRho(factor);
-    std::vector<long long> factors2 = FactorizePollardsRho(n / factor);
+    std::vector<uint64_t> factors1 = FactorizePollardsRho(factor);
+    std::vector<uint64_t> factors2 = FactorizePollardsRho(n / factor);
     factors.insert(factors.end(), factors1.begin(), factors1.end());
     factors.insert(factors.end(), factors2.begin(), factors2.end());
   }
@@ -349,7 +349,7 @@ std::vector<long long> FactorizePollardsRho(long long n) {
 // Process: First check if factors exist in the database. If not found, check
 // the input number against predefined thresholds and call the appropriate
 // factorization function.
-std::vector<long long> PrimeFactorize(long long n) {
+std::vector<uint64_t> PrimeFactorize(uint64_t n) {
   if (n <= 1) {
     return {};  // Return empty vector for numbers <= 1
   }
@@ -360,7 +360,7 @@ std::vector<long long> PrimeFactorize(long long n) {
     xg::databases::PrimeFactorsResult result = db.fetch(n);
 
     // Convert the database result to the expected format
-    std::vector<long long> factors;
+    std::vector<uint64_t> factors;
     for (size_t i = 0; i < result.factors.size(); ++i) {
       // Add each factor according to its multiplicity
       for (int j = 0; j < result.multiplicities[i]; ++j) {
@@ -380,7 +380,7 @@ std::vector<long long> PrimeFactorize(long long n) {
   // Define thresholds for switching algorithms.
   // These thresholds are approximate and can be tuned based on performance
   // testing on your specific system and typical input range.
-  const long long kTrialDivisionLimit =
+  const uint64_t kTrialDivisionLimit =
       10000000;  // Use trial division up to this limit
   // For numbers larger than this, Pollard's Rho is generally better.
 
@@ -414,17 +414,17 @@ std::vector<long long> PrimeFactorize(long long n) {
  * @note Returns false for n < 2 as per mathematical convention.
  *       Uses optimized algorithms based on input size for best performance.
  */
-bool IsPrime(long long n) {
+bool IsPrime(uint64_t n) {
   // Handle edge cases
   if (n < 2) return false;
   if (n == 2) return true;
   if (n % 2 == 0) return false;
 
   // For small numbers, use direct trial division
-  const long long kDirectTestLimit = 1000000;
+  const uint64_t kDirectTestLimit = 1000000;
   if (n <= kDirectTestLimit) {
     // Test odd divisors up to sqrt(n)
-    for (long long i = 3; i * i <= n; i += 2) {
+    for (uint64_t i = 3; i * i <= n; i += 2) {
       if (n % i == 0) {
         return false;
       }
@@ -434,7 +434,7 @@ bool IsPrime(long long n) {
 
   // For larger numbers, use the factorization infrastructure
   // A number is prime if its only prime factor is itself
-  std::vector<long long> factors = PrimeFactorize(n);
+  std::vector<uint64_t> factors = PrimeFactorize(n);
   return factors.size() == 1 && factors[0] == n;
 }
 
@@ -464,11 +464,11 @@ std::pair<uint64_t, uint64_t> DecomposePrimePower(uint64_t n) {
   // First attempt: Use prime factors database for fast lookup
   try {
     databases::PrimeFactorsDatabase prime_db;
-    auto result = prime_db.fetch(static_cast<long long>(n));
+    auto result = prime_db.fetch(static_cast<uint64_t>(n));
 
     // Check if it's a prime power (all factors are the same)
     if (!result.factors.empty()) {
-      long long prime = result.factors[0];
+      uint64_t prime = result.factors[0];
       uint64_t total_exponent = 0;
 
       // Verify all factors are the same and sum multiplicities
@@ -487,8 +487,8 @@ std::pair<uint64_t, uint64_t> DecomposePrimePower(uint64_t n) {
 
   /* Fallback: Employ advanced prime factorization for robust number
    * decomposition */
-  std::vector<long long> prime_factors =
-      PrimeFactorize(static_cast<long long>(n));
+  std::vector<uint64_t> prime_factors =
+      PrimeFactorize(static_cast<uint64_t>(n));
 
   if (prime_factors.empty()) {
     return {0, 0};
@@ -496,8 +496,8 @@ std::pair<uint64_t, uint64_t> DecomposePrimePower(uint64_t n) {
 
   /* Verify that all prime factors are identical (i.e., n = p^k for some prime
    * p) */
-  long long prime = prime_factors[0];
-  for (long long factor : prime_factors) {
+  uint64_t prime = prime_factors[0];
+  for (uint64_t factor : prime_factors) {
     if (factor != prime) {
       return {0, 0}; /* n is not a prime power */
     }

@@ -2,14 +2,12 @@
 #define XGALOIS_FIELD_GF_BASE_HPP
 
 #include <cstdint>
-#include <iostream>  // Added for std::ostream
-#include <memory>
-#include <type_traits>
+#include <iostream>
 #include <vector>
 
 namespace xg {
 
-enum class FieldRepresentation {
+enum class FieldRepresentation : std::uint8_t {
   INT,  // E.g., 5 (default for prime fields)
   HEX,  // E.g., 0x5
   POW,  // E.g., g^k (useful for fields with known generator)

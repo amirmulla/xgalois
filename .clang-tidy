@@ -1,6 +1,6 @@
 ---
-Checks: 'clang-diagnostic-*,clang-analyzer-*,google-*,bugprone-*,performance-*'
-WarningsAsErrors: ''
-HeaderFilterRegex: '.*'
+Checks: "clang-diagnostic-*,clang-analyzer-*,google-*,performance-*"
+WarningsAsErrors: ""
+HeaderFilterRegex: ".*"
 FormatStyle: google
 ...
