@@ -14,7 +14,7 @@ int main() {
   constexpr uint8_t m = 20;
 
   std::cout << "Creating GF(2^" << static_cast<int>(m)
-            << ") using Zech Log Tables..." << std::endl;
+            << ") using Zech Log Tables..." << '\n';
 
   // Create the field using Zech Log Tables implementation
   auto field = std::make_shared<GFBEZechLogTables>(m);
@@ -34,7 +34,7 @@ int main() {
   exponents.reserve(num_elements);
 
   std::cout << "Generating " << num_elements
-            << " random field elements and exponents..." << std::endl;
+            << " random field elements and exponents..." << '\n';
   for (size_t i = 0; i < num_elements; ++i) {
     log_elements.push_back(static_cast<uint32_t>(dis(gen)));
     exponents.push_back(exp_dis(gen));
@@ -42,7 +42,7 @@ int main() {
 
   // Measure power performance
   std::cout << "Measuring exponentiation of " << num_elements
-            << " random pairs..." << std::endl;
+            << " random pairs..." << '\n';
 
   auto start_time = std::chrono::high_resolution_clock::now();
 
@@ -63,16 +63,16 @@ int main() {
   double operations_per_second = 1e9 / avg_time_ns;
 
   // Display results
-  std::cout << "\n=== Power Performance Results ===" << std::endl;
-  std::cout << "Total operations: " << log_elements.size() << std::endl;
-  std::cout << "Total time: " << total_time_ms << " ms" << std::endl;
+  std::cout << "\n=== Power Performance Results ===" << '\n';
+  std::cout << "Total operations: " << log_elements.size() << '\n';
+  std::cout << "Total time: " << total_time_ms << " ms" << '\n';
   std::cout << "Average time per exponentiation: " << avg_time_ns << " ns"
-            << std::endl;
+            << '\n';
   std::cout << "Operations per second: "
-            << static_cast<uint64_t>(operations_per_second) << std::endl;
+            << static_cast<uint64_t>(operations_per_second) << '\n';
 
   // Additional test: measure a batch of exponentiations with the same operands
-  std::cout << "\n=== Batch Power Test ===" << std::endl;
+  std::cout << "\n=== Batch Power Test ===" << '\n';
   // Pick a random element and exponent for repeated exponentiation
   std::uniform_int_distribution<size_t> index_dis(0, log_elements.size() - 1);
   uint32_t base = log_elements[index_dis(gen)];
@@ -95,16 +95,15 @@ int main() {
   avg_time_ns = static_cast<double>(duration.count()) / batch_size;
   operations_per_second = 1e9 / avg_time_ns;
 
-  std::cout << "Batch operations: " << batch_size << std::endl;
-  std::cout << "Total time: " << total_time_ms << " ms" << std::endl;
+  std::cout << "Batch operations: " << batch_size << '\n';
+  std::cout << "Total time: " << total_time_ms << " ms" << '\n';
   std::cout << "Average time per exponentiation: " << avg_time_ns << " ns"
-            << std::endl;
+            << '\n';
   std::cout << "Operations per second: "
-            << static_cast<uint64_t>(operations_per_second) << std::endl;
+            << static_cast<uint64_t>(operations_per_second) << '\n';
 
   // Test with different field sizes
-  std::cout << "\n=== Performance Comparison Across Field Sizes ==="
-            << std::endl;
+  std::cout << "\n=== Performance Comparison Across Field Sizes ===" << '\n';
 
   for (uint8_t test_m : {4, 6, 8, 10, 12}) {
     auto test_field = std::make_shared<GFBEZechLogTables>(test_m);
@@ -138,8 +137,7 @@ int main() {
   }
 
   // Test with different exponent ranges
-  std::cout << "\n=== Performance with Different Exponent Ranges ==="
-            << std::endl;
+  std::cout << "\n=== Performance with Different Exponent Ranges ===" << '\n';
 
   std::vector<std::pair<uint32_t, uint32_t>> exp_ranges = {
       {0, 10},    // Small exponents
@@ -173,9 +171,9 @@ int main() {
     std::cout << "Exponent range [" << range.first << ", " << range.second
               << "]: " << avg_time_ns << " ns/op, "
               << static_cast<uint64_t>(operations_per_second) << " ops/sec"
-              << std::endl;
+              << '\n';
   }
 
-  std::cout << "\nPower simulation completed successfully!" << std::endl;
+  std::cout << "\nPower simulation completed successfully!" << '\n';
   return 0;
 }

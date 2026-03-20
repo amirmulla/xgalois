@@ -193,7 +193,7 @@ int main() {
   std::cout << "Is zero? " << (zero_poly.Degree() == -1 ? "Yes" : "No") << "\n";
 
   // Check polynomial equality
-  auto poly2_copy = poly2;
+  const auto& poly2_copy = poly2;
   std::cout << "p2 == copy of p2? " << (poly2 == poly2_copy ? "Yes" : "No")
             << "\n";
   std::cout << "p1 == p2? " << (poly1 == poly2 ? "Yes" : "No") << "\n";

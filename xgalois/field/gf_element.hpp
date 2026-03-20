@@ -37,7 +37,7 @@ class GaloisFieldElementBase {
   // Throws:
   //   std::invalid_argument if field pointer is null
   GaloisFieldElementBase(ElementType value, std::shared_ptr<GaloisField> field)
-      : field_(field) {
+      : field_(std::move(field)) {
     if (!field_) {
       throw std::invalid_argument("GaloisField pointer cannot be null");
     }
@@ -54,7 +54,7 @@ class GaloisFieldElementBase {
   //   invalid
   GaloisFieldElementBase(const std::string &value_str,
                          std::shared_ptr<GaloisField> field)
-      : field_(field) {
+      : field_(std::move(field)) {
     if (!field_) {
       throw std::invalid_argument("GaloisField pointer cannot be null");
     }
@@ -243,7 +243,7 @@ class GaloisFieldElement : public GaloisFieldElementBase<GaloisField> {
   //   value: The numerical value of the element
   //   field: Shared pointer to the parent Galois field
   GaloisFieldElement(ElementType value, std::shared_ptr<GaloisField> field)
-      : Base(value, field) {}
+      : Base(value, std::move(field)) {}
 
   // Constructs a field element from a string representation.
   //
@@ -282,7 +282,8 @@ class GaloisFieldElement : public GaloisFieldElementBase<GaloisField> {
   // Useful when calling base class methods that return Base.
   // Note: This assumes the Base object was actually created from this
   // specific derived type's field.
-  GaloisFieldElement(const Base &other) : Base(other.Value(), other.Field()) {}
+  explicit GaloisFieldElement(const Base &other)
+      : Base(other.Value(), other.Field()) {}
 
  private:
   // Validates that arithmetic operations only occur between elements of the

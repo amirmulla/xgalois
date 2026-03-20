@@ -84,7 +84,7 @@ class DatabaseInterfaceTest : public ::testing::Test {
 
     // Log test duration for performance monitoring
     if (duration.count() > 100) {  // Log if test takes more than 100ms
-      std::cout << "Test took " << duration.count() << "ms" << std::endl;
+      std::cout << "Test took " << duration.count() << "ms" << '\n';
     }
   }
 

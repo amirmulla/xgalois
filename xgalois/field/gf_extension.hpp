@@ -47,12 +47,12 @@ class GaloisFieldExtension
 
   // Constructs a Galois field extension GF(q^m) with optional polynomial
   // string.
-  GaloisFieldExtension(std::pair<uint64_t, uint64_t> prime_exp,
-                       const std::string &irreducible_poly = "",
-                       const std::string &rep = "poly",
-                       const std::string &poly_var = "α",
-                       bool check_irreducible = false,
-                       bool prime_testing = false)
+  explicit GaloisFieldExtension(std::pair<uint64_t, uint64_t> prime_exp,
+                                const std::string &irreducible_poly = "",
+                                const std::string &rep = "poly",
+                                const std::string &poly_var = "α",
+                                bool check_irreducible = false,
+                                bool prime_testing = false)
       : base_field_(static_cast<BaseFieldElementType>(prime_exp.first), "int",
                     prime_testing),
         irreducible_poly_(CreateIrreduciblePolynomial(
@@ -82,11 +82,12 @@ class GaloisFieldExtension
   // Constructs a Galois field extension by decomposing the field order.
   // This constructor accepts a field order and automatically decomposes it
   // into prime and exponent components, similar to the factory pattern.
-  GaloisFieldExtension(uint64_t order, const std::string &irreducible_poly = "",
-                       const std::string &rep = "poly",
-                       const std::string &poly_var = "α",
-                       bool check_irreducible = false,
-                       bool prime_testing = false)
+  explicit GaloisFieldExtension(uint64_t order,
+                                const std::string &irreducible_poly = "",
+                                const std::string &rep = "poly",
+                                const std::string &poly_var = "α",
+                                bool check_irreducible = false,
+                                bool prime_testing = false)
       : GaloisFieldExtension(DecomposeOrderToPrimeExp(order), irreducible_poly,
                              rep, poly_var, check_irreducible, prime_testing) {
     // Delegate to the main constructor after decomposing the order
@@ -270,9 +271,9 @@ class GaloisFieldExtension
 
     // Handle polynomial representation (e.g., "α^2 + α + 1")
     if (value_str.find(variable_name_) != std::string::npos ||
-        value_str.find("x") != std::string::npos ||
-        value_str.find("+") != std::string::npos ||
-        value_str.find("-") != std::string::npos || value_str == "0" ||
+        value_str.find('x') != std::string::npos ||
+        value_str.find('+') != std::string::npos ||
+        value_str.find('-') != std::string::npos || value_str == "0" ||
         value_str == "1") {
       try {
         auto base_field_ptr = std::make_shared<BaseField>(base_field_);

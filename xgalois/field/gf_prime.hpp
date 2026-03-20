@@ -443,8 +443,9 @@ class GaloisFieldPrimeTable : public GaloisFieldPrime<ElementType> {
       alpha_pow_[0] = static_cast<ElementType>(1);  // g^0 = 1
       // log_alpha_[0] is undefined, often set to a special value like p-1.
       // log_alpha_[1] = 0 since g^0 = 1.
-      if (this->p_ > 0)
+      if (this->p_ > 0) {
         log_alpha_[0] = this->p_ - 1;  // Special value for log(0)
+      }
       if (this->p_ > 1) log_alpha_[1] = static_cast<ElementType>(0);
       return;
     }
@@ -487,8 +488,9 @@ class GaloisFieldPrimeTable : public GaloisFieldPrime<ElementType> {
     if (a == 0 || b == 0) {
       return 0;
     }
-    if (this->p_ == 2)
+    if (this->p_ == 2) {
       return GaloisFieldPrime<ElementType>::Mul(a, b);  // Base for GF(2).
+    }
     // Check bounds for table access.
     if (a >= this->p_ || b >= this->p_) {
       throw std::out_of_range("Operands out of field range in table Mul.");
@@ -511,8 +513,9 @@ class GaloisFieldPrimeTable : public GaloisFieldPrime<ElementType> {
     if (a == 0) {
       return 0;
     }
-    if (this->p_ == 2)
+    if (this->p_ == 2) {
       return GaloisFieldPrime<ElementType>::Div(a, b);  // Base for GF(2).
+    }
     if (a >= this->p_ || b >= this->p_) {
       throw std::out_of_range("Operands out of field range in table Div.");
     }
@@ -530,8 +533,9 @@ class GaloisFieldPrimeTable : public GaloisFieldPrime<ElementType> {
     if (a == 0) {
       throw std::domain_error("Element has no inverse (is zero).");
     }
-    if (this->p_ == 2)
+    if (this->p_ == 2) {
       return GaloisFieldPrime<ElementType>::Inv(a);  // Base for GF(2).
+    }
     if (a >= this->p_) {
       throw std::out_of_range("Operand out of field range in table Inv.");
     }
@@ -612,8 +616,9 @@ class GaloisFieldPrimeTable : public GaloisFieldPrime<ElementType> {
       // InitializeTables handles it, this won't be called for table init. If
       // called externally for p_ == 2, base class would return 1. This override
       // is for p_ > 2 context during table init.
-      if (this->p_ == 2)
+      if (this->p_ == 2) {
         return static_cast<ElementType>(1);  // Should be consistent.
+      }
       throw std::runtime_error(
           "Multiplicative generator context error for p <= 2 in table class.");
     }

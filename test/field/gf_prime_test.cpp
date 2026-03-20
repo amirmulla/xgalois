@@ -88,7 +88,8 @@ TEST_F(GaloisFieldPrimeTest, Inverse) {
   for (uint8_t a = 1; a < 7; ++a) {
     uint8_t inv_a = gf7->Inv(a);
     EXPECT_EQ(gf7->Mul(a, inv_a), 1)
-        << "Element " << (int)a << " * " << (int)inv_a << " != 1";
+        << "Element " << static_cast<int>(a) << " * " << static_cast<int>(inv_a)
+        << " != 1";
   }
 
   EXPECT_THROW(gf7->Inv(0), std::domain_error);
@@ -118,7 +119,7 @@ TEST_F(GaloisFieldPrimeTest, Logarithm) {
   for (uint8_t a = 1; a <= 3; ++a) {  // Test only first 3 elements for speed
     uint32_t log_a = gf7->Log(a, gen);
     EXPECT_EQ(gf7->Pow(gen, log_a), a)
-        << "gen^log(" << (int)a << ") != " << (int)a;
+        << "gen^log(" << static_cast<int>(a) << ") != " << static_cast<int>(a);
   }
 
   EXPECT_THROW(gf7->Log(0, gen), std::domain_error);

@@ -22,11 +22,11 @@ FieldRepresentation ConvertRepresentation(const std::string &rep) {
 template <typename ElementType>
 ElementType ParsePowerString(const std::string &pow_str,
                              const GaloisFieldBase<ElementType> &field) {
-  if (pow_str.find("^") == std::string::npos) {
+  if (pow_str.find('^') == std::string::npos) {
     throw std::invalid_argument("Invalid power format");
   }
 
-  size_t pos = pow_str.find("^");
+  size_t pos = pow_str.find('^');
   std::string exp_str = pow_str.substr(pos + 1);
 
   // Handle negative exponents

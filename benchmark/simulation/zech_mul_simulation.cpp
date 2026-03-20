@@ -14,7 +14,7 @@ int main() {
   constexpr uint8_t m = 20;
 
   std::cout << "Creating GF(2^" << static_cast<int>(m)
-            << ") using Zech Log Tables..." << std::endl;
+            << ") using Zech Log Tables..." << '\n';
 
   // Create the field using Zech Log Tables implementation
   auto field = std::make_shared<GFBEZechLogTables>(m);
@@ -31,14 +31,14 @@ int main() {
   log_elements.reserve(num_elements);
 
   std::cout << "Generating " << num_elements << " random field elements..."
-            << std::endl;
+            << '\n';
   for (size_t i = 0; i < num_elements; ++i) {
     log_elements.push_back(static_cast<uint32_t>(dis(gen)));
   }
 
   // Measure multiplication performance
   std::cout << "Measuring multiplication of " << num_elements
-            << " random pairs..." << std::endl;
+            << " random pairs..." << '\n';
 
   auto start_time = std::chrono::high_resolution_clock::now();
 
@@ -59,16 +59,16 @@ int main() {
   double operations_per_second = 1e9 / avg_time_ns;
 
   // Display results
-  std::cout << "\n=== Multiplication Performance Results ===" << std::endl;
-  std::cout << "Total operations: " << (log_elements.size()) << std::endl;
-  std::cout << "Total time: " << total_time_ms << " ms" << std::endl;
+  std::cout << "\n=== Multiplication Performance Results ===" << '\n';
+  std::cout << "Total operations: " << (log_elements.size()) << '\n';
+  std::cout << "Total time: " << total_time_ms << " ms" << '\n';
   std::cout << "Average time per multiplication: " << avg_time_ns << " ns"
-            << std::endl;
+            << '\n';
   std::cout << "Operations per second: "
-            << static_cast<uint64_t>(operations_per_second) << std::endl;
+            << static_cast<uint64_t>(operations_per_second) << '\n';
 
   // Additional test: measure a batch of multiplications with the same operands
-  std::cout << "\n=== Batch Multiplication Test ===" << std::endl;
+  std::cout << "\n=== Batch Multiplication Test ===" << '\n';
   // Pick two random elements for repeated multiplication
   std::uniform_int_distribution<size_t> index_dis(0, log_elements.size() - 1);
   uint32_t a = log_elements[index_dis(gen)];
@@ -91,16 +91,15 @@ int main() {
   avg_time_ns = static_cast<double>(duration.count()) / batch_size;
   operations_per_second = 1e9 / avg_time_ns;
 
-  std::cout << "Batch operations: " << batch_size << std::endl;
-  std::cout << "Total time: " << total_time_ms << " ms" << std::endl;
+  std::cout << "Batch operations: " << batch_size << '\n';
+  std::cout << "Total time: " << total_time_ms << " ms" << '\n';
   std::cout << "Average time per multiplication: " << avg_time_ns << " ns"
-            << std::endl;
+            << '\n';
   std::cout << "Operations per second: "
-            << static_cast<uint64_t>(operations_per_second) << std::endl;
+            << static_cast<uint64_t>(operations_per_second) << '\n';
 
   // Test with different field sizes
-  std::cout << "\n=== Performance Comparison Across Field Sizes ==="
-            << std::endl;
+  std::cout << "\n=== Performance Comparison Across Field Sizes ===" << '\n';
 
   for (uint8_t test_m : {4, 6, 8, 10, 12}) {
     auto test_field = std::make_shared<GFBEZechLogTables>(test_m);
@@ -133,6 +132,6 @@ int main() {
               << " ops/sec" << std::endl;
   }
 
-  std::cout << "\nSimulation completed successfully!" << std::endl;
+  std::cout << "\nSimulation completed successfully!" << '\n';
   return 0;
 }

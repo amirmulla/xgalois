@@ -723,12 +723,12 @@ auto cross(const xt::xarray<GaloisFieldElement<GaloisField>> &a,
   auto field = a(0).Field();  // Assuming a is not empty
   ElementType zero(field->AdditiveIdentity(), field);
 
-  ElementType a0 = a(0);
-  ElementType a1 = a(1);
+  const ElementType &a0 = a(0);
+  const ElementType &a1 = a(1);
   ElementType a2 = (a.shape(0) == 3) ? a(2) : zero;
 
-  ElementType b0 = b(0);
-  ElementType b1 = b(1);
+  const ElementType &b0 = b(0);
+  const ElementType &b1 = b(1);
   ElementType b2 = (b.shape(0) == 3) ? b(2) : zero;
 
   xt::xarray<ElementType> result({3});
@@ -751,7 +751,7 @@ auto cross(const xt::xarray<GaloisFieldElement<GaloisField>> &a,
  * @return Identity matrix of size n x n
  */
 template <typename GaloisField>
-auto eye(std::size_t n, std::shared_ptr<GaloisField> field) {
+auto eye(std::size_t n, const std::shared_ptr<GaloisField> &field) {
   using ElementType = GaloisFieldElement<GaloisField>;
 
   xt::xarray<ElementType> result({n, n});
@@ -777,7 +777,7 @@ auto eye(std::size_t n, std::shared_ptr<GaloisField> field) {
  */
 template <typename GaloisField>
 auto zeros(const std::vector<std::size_t> &shape,
-           std::shared_ptr<GaloisField> field) {
+           const std::shared_ptr<GaloisField> &field) {
   using ElementType = GaloisFieldElement<GaloisField>;
 
   xt::xarray<ElementType> result(shape);

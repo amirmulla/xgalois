@@ -299,7 +299,7 @@ class PolynomialDense {
 
   // Evaluates the polynomial at a given field element `x` using Horner's
   // method.
-  ElementType operator()(ElementType x) const {
+  ElementType operator()(const ElementType &x) const {
     ElementType result = kGfZero;
     for (int i = coefficients_.size() - 1; i >= 0; --i) {
       result = result * x + coefficients_[i];

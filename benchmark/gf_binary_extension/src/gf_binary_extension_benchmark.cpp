@@ -77,7 +77,7 @@ const std::vector<uint8_t> LARGE_FIELD_DEGREES = {17, 18, 19, 20};
 
 template <typename FieldType>
 std::vector<typename FieldType::element_type> GenerateRandomElements(
-    std::shared_ptr<FieldType> field, size_t count, uint32_t seed = 42) {
+    const std::shared_ptr<FieldType>& field, size_t count, uint32_t seed = 42) {
   std::mt19937 gen(seed);
   std::vector<typename FieldType::element_type> elements;
   elements.reserve(count);

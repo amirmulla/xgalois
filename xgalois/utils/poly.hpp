@@ -33,10 +33,11 @@ PolynomialDenseExtendedGcd(const PolynomialDense<GaloisField> &a,
   // For simplicity, assume a.Field() is valid and b uses the same.
   std::shared_ptr<GaloisField> field = a.Field();
   if (!field) {  // Should not happen if 'a' is valid
-    if (b.Field())
+    if (b.Field()) {
       field = b.Field();
-    else
+    } else {
       throw std::invalid_argument("Cannot determine field for GCD.");
+    }
   }
 
   const std::string var_name = a.GetVariable();  // Use variable from 'a'
@@ -256,7 +257,8 @@ static int ExtractDegree(const std::string &term) {
  */
 template <typename GaloisField>
 PolynomialDense<GaloisField> ParsePolynomial(
-    std::shared_ptr<GaloisField> base_field, const std::string &poly_str) {
+    const std::shared_ptr<GaloisField> &base_field,
+    const std::string &poly_str) {
   using FieldType = GaloisField;
   using ElementType = typename GaloisField::element_type;
   using FieldElementType = GaloisFieldElementBase<FieldType>;
@@ -364,7 +366,7 @@ PolynomialDense<GaloisField> ParsePolynomial(
  */
 template <typename GaloisField>
 PolynomialDense<GaloisField> ParsePolynomial(
-    std::shared_ptr<GaloisField> base_field, const std::string &poly_str,
+    const std::shared_ptr<GaloisField> &base_field, const std::string &poly_str,
     const std::string &variable_name) {
   // If variable name is 'x', just call the standard version
   if (variable_name == "x") {
@@ -528,7 +530,7 @@ uint64_t BinaryPolynomialToUint(const PolynomialDense<GaloisField> &poly) {
   // Convert polynomial coefficients to binary representation
   uint64_t result = 0;
   for (int i = 0; i <= poly.Degree(); ++i) {
-    auto coeff = poly[i];
+    const auto &coeff = poly[i];
     if (coeff.Value() == 1) {
       result |= (static_cast<uint64_t>(1) << i);
     } else if (coeff.Value() != 0) {

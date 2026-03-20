@@ -103,7 +103,7 @@ class PrimeFactorsDatabase : public DatabaseInterface {
       try {
         current_n = std::stoll(segments[0]);
       } catch (const std::invalid_argument& ia) {
-        std::cerr << "Skipping malformed line (number): " << line << std::endl;
+        std::cerr << "Skipping malformed line (number): " << line << '\n';
         continue;
       }
 
@@ -111,7 +111,7 @@ class PrimeFactorsDatabase : public DatabaseInterface {
         PrimeFactorsResult result;
         if (segments.size() < 3) {
           std::cerr << "Skipping malformed line (segment count): " << line
-                    << std::endl;
+                    << '\n';
           continue;
         }
 
@@ -129,7 +129,7 @@ class PrimeFactorsDatabase : public DatabaseInterface {
               result.multiplicities.push_back(std::stoi(mult_str));
             } catch (const std::invalid_argument& ia) {
               std::cerr << "Skipping malformed factor/multiplicity: "
-                        << factor_pair_str << std::endl;
+                        << factor_pair_str << '\n';
               result.factors.clear();
               result.multiplicities.clear();
               break;
@@ -141,7 +141,7 @@ class PrimeFactorsDatabase : public DatabaseInterface {
           result.composite = std::stoi(segments[2]);
         } catch (const std::invalid_argument& ia) {
           std::cerr << "Skipping malformed line (composite flag): " << line
-                    << std::endl;
+                    << '\n';
           result.composite = -1;
         }
         return result;
@@ -197,8 +197,7 @@ class IrreduciblePolyDatabase : public DatabaseInterface {
         current_char = std::stoi(segments[0]);
         current_deg = std::stoi(segments[1]);
       } catch (const std::invalid_argument& ia) {
-        std::cerr << "Skipping malformed line (char/deg): " << line
-                  << std::endl;
+        std::cerr << "Skipping malformed line (char/deg): " << line << '\n';
         continue;
       }
 
@@ -211,7 +210,7 @@ class IrreduciblePolyDatabase : public DatabaseInterface {
           try {
             result.nonzero_degrees.push_back(std::stoi(deg_str));
           } catch (const std::invalid_argument& ia) {
-            std::cerr << "Skipping malformed degree: " << deg_str << std::endl;
+            std::cerr << "Skipping malformed degree: " << deg_str << '\n';
             result.nonzero_degrees.clear();
             break;
           }
@@ -226,7 +225,7 @@ class IrreduciblePolyDatabase : public DatabaseInterface {
             result.nonzero_coeffs.push_back(std::stoi(coeff_str));
           } catch (const std::invalid_argument& ia) {
             std::cerr << "Skipping malformed coefficient: " << coeff_str
-                      << std::endl;
+                      << '\n';
             result.nonzero_coeffs.clear();
             break;
           }
@@ -235,7 +234,7 @@ class IrreduciblePolyDatabase : public DatabaseInterface {
 
         if (result.nonzero_degrees.size() != result.nonzero_coeffs.size()) {
           std::cerr << "Mismatch between degree and coefficient counts: "
-                    << line << std::endl;
+                    << line << '\n';
           continue;
         }
         return result;
@@ -290,8 +289,7 @@ class ConwayPolyDatabase : public DatabaseInterface {
         current_char = std::stoi(segments[0]);
         current_deg = std::stoi(segments[1]);
       } catch (const std::invalid_argument& ia) {
-        std::cerr << "Skipping malformed line (char/deg): " << line
-                  << std::endl;
+        std::cerr << "Skipping malformed line (char/deg): " << line << '\n';
         continue;
       }
 
@@ -304,7 +302,7 @@ class ConwayPolyDatabase : public DatabaseInterface {
           try {
             result.nonzero_degrees.push_back(std::stoi(deg_str));
           } catch (const std::invalid_argument& ia) {
-            std::cerr << "Skipping malformed degree: " << deg_str << std::endl;
+            std::cerr << "Skipping malformed degree: " << deg_str << '\n';
             result.nonzero_degrees.clear();
             break;
           }
@@ -319,7 +317,7 @@ class ConwayPolyDatabase : public DatabaseInterface {
             result.nonzero_coeffs.push_back(std::stoi(coeff_str));
           } catch (const std::invalid_argument& ia) {
             std::cerr << "Skipping malformed coefficient: " << coeff_str
-                      << std::endl;
+                      << '\n';
             result.nonzero_coeffs.clear();
             break;
           }
@@ -328,7 +326,7 @@ class ConwayPolyDatabase : public DatabaseInterface {
 
         if (result.nonzero_degrees.size() != result.nonzero_coeffs.size()) {
           std::cerr << "Mismatch between degree and coefficient counts: "
-                    << line << std::endl;
+                    << line << '\n';
           continue;
         }
         return result;
@@ -374,6 +372,7 @@ static std::string ConvertPolyResultToString(const std::vector<int>& degrees,
   // Process terms in descending degree order for conventional polynomial
   // format
   std::vector<std::pair<int, int>> degree_coeff_pairs;
+  degree_coeff_pairs.reserve(degrees.size());
   for (size_t i = 0; i < degrees.size(); ++i) {
     degree_coeff_pairs.emplace_back(degrees[i], coeffs[i]);
   }

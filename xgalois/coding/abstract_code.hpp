@@ -36,9 +36,10 @@ class AbstractCode {
           const AbstractCode<ElementType>*)>;
 
   // Constructor
-  AbstractCode(size_t length, const std::string& default_encoder_name = "",
-               const std::string& default_decoder_name = "",
-               Metric metric = Metric::HAMMING)
+  explicit AbstractCode(size_t length,
+                        const std::string& default_encoder_name = "",
+                        const std::string& default_decoder_name = "",
+                        Metric metric = Metric::HAMMING)
       : length_(length),
         default_encoder_name_(default_encoder_name),
         default_decoder_name_(default_decoder_name),

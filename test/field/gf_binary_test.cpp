@@ -185,7 +185,8 @@ TEST_F(GaloisFieldBinaryExtensionTest, MultiplicativeStructure) {
   for (uint8_t a = 1; a < 8; ++a) {
     uint8_t inv_a = gf8->Inv(a);
     EXPECT_EQ(gf8->Mul(a, inv_a), 1)
-        << "Element " << (int)a << " * " << (int)inv_a << " != 1";
+        << "Element " << static_cast<int>(a) << " * " << static_cast<int>(inv_a)
+        << " != 1";
   }
 
   // Test division
@@ -193,8 +194,8 @@ TEST_F(GaloisFieldBinaryExtensionTest, MultiplicativeStructure) {
     for (uint8_t b = 1; b < 8; ++b) {
       uint8_t div_result = gf8->Div(a, b);
       EXPECT_EQ(gf8->Mul(div_result, b), a)
-          << "(" << (int)a << " / " << (int)b << ") * " << (int)b
-          << " != " << (int)a;
+          << "(" << static_cast<int>(a) << " / " << static_cast<int>(b)
+          << ") * " << static_cast<int>(b) << " != " << static_cast<int>(a);
     }
   }
 }

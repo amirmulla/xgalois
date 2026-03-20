@@ -77,7 +77,7 @@ const std::vector<uint32_t> LARGE_PRIMES = {131, 179, 241, 307, 389, 463,
 
 template <typename FieldType>
 std::vector<typename FieldType::element_type> GenerateRandomElements(
-    std::shared_ptr<FieldType> field, size_t count, uint32_t seed = 42) {
+    const std::shared_ptr<FieldType>& field, size_t count, uint32_t seed = 42) {
   std::mt19937 gen(seed);
   std::vector<typename FieldType::element_type> elements;
   elements.reserve(count);

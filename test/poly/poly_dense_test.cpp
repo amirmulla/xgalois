@@ -517,7 +517,7 @@ TEST_F(PolynomialDenseTest, PrintPolynomial) {
   std::string result = ss.str();
 
   // Should contain x terms and coefficients
-  EXPECT_TRUE(result.find("x") != std::string::npos);
+  EXPECT_TRUE(result.find('x') != std::string::npos);
   EXPECT_TRUE(result.length() > 0);
 }
 
@@ -635,6 +635,7 @@ TEST_F(PolynomialDenseTest, EmptyCoefficientsAssert) {
 TEST_F(PolynomialDenseTest, LargePolynomials) {
   // Test with a larger polynomial
   std::vector<GaloisFieldElementBase<GaloisFieldPrime<uint8_t>>> coeffs;
+  coeffs.reserve(10);
   for (int i = 0; i < 10; ++i) {
     coeffs.push_back(
         GaloisFieldElementBase<GaloisFieldPrime<uint8_t>>(i % 7, gf7));

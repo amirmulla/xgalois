@@ -16,17 +16,17 @@
 using namespace xg;
 
 int main() {
-  std::cout << "XGalois Channel Examples" << std::endl;
-  std::cout << "=======================" << std::endl;
+  std::cout << "XGalois Channel Examples" << '\n';
+  std::cout << "=======================" << '\n';
 
   // Example 1: Binary field channels
-  std::cout << "\n=== Binary Field Channel Examples ===" << std::endl;
+  std::cout << "\n=== Binary Field Channel Examples ===" << '\n';
 
   // Create GF(2^4) field
   auto gf16 = std::make_shared<GF2X<uint8_t>>(4);
   std::cout << "Created ";
   gf16->Print(std::cout);
-  std::cout << std::endl;
+  std::cout << '\n';
 
   // Create a test message using field elements
   const size_t message_length = 8;
@@ -43,13 +43,13 @@ int main() {
     std::cout << static_cast<int>(message[i].Value());
     if (i < message.size() - 1) std::cout << ", ";
   }
-  std::cout << "]" << std::endl;
+  std::cout << "]" << '\n';
 
   // Example 1a: Static Error Rate Channel
-  std::cout << "\n--- Static Error Rate Channel ---" << std::endl;
+  std::cout << "\n--- Static Error Rate Channel ---" << '\n';
   auto static_channel =
       channels::CreateStaticErrorRateChannel(gf16, message_length, 2);
-  std::cout << "Channel: " << *static_channel << std::endl;
+  std::cout << "Channel: " << *static_channel << '\n';
 
   auto transmitted1 = static_channel->transmit(message);
   std::cout << "transmitted: [";
@@ -57,20 +57,20 @@ int main() {
     std::cout << static_cast<int>(transmitted1[i].Value());
     if (i < transmitted1.size() - 1) std::cout << ", ";
   }
-  std::cout << "]" << std::endl;
+  std::cout << "]" << '\n';
 
   // Count errors
   size_t error_count = 0;
   for (size_t i = 0; i < message_length; ++i) {
     if (message[i] != transmitted1[i]) error_count++;
   }
-  std::cout << "Number of errors introduced: " << error_count << std::endl;
+  std::cout << "Number of errors introduced: " << error_count << '\n';
 
   // Example 1b: Variable Error Rate Channel
-  std::cout << "\n--- Variable Error Rate Channel ---" << std::endl;
+  std::cout << "\n--- Variable Error Rate Channel ---" << '\n';
   auto var_channel =
       channels::CreateStaticErrorRateChannel(gf16, message_length, 1, 3);
-  std::cout << "Channel: " << *var_channel << std::endl;
+  std::cout << "Channel: " << *var_channel << '\n';
 
   for (int trial = 0; trial < 3; ++trial) {
     auto transmitted = var_channel->transmit(message);
@@ -78,15 +78,14 @@ int main() {
     for (size_t i = 0; i < message_length; ++i) {
       if (message[i] != transmitted[i]) errors++;
     }
-    std::cout << "Trial " << (trial + 1) << " - Errors: " << errors
-              << std::endl;
+    std::cout << "Trial " << (trial + 1) << " - Errors: " << errors << '\n';
   }
 
   // Example 1c: Error-Erasure Channel
-  std::cout << "\n--- Error-Erasure Channel ---" << std::endl;
+  std::cout << "\n--- Error-Erasure Channel ---" << '\n';
   auto ee_channel =
       channels::CreateErrorErasureChannel(gf16, message_length, 2, 1);
-  std::cout << "Channel: " << *ee_channel << std::endl;
+  std::cout << "Channel: " << *ee_channel << '\n';
 
   auto transmitted_pair = ee_channel->transmit_unsafe_with_erasures(message);
   auto& transmitted2 = transmitted_pair.first;
@@ -97,22 +96,22 @@ int main() {
     std::cout << static_cast<int>(transmitted2[i].Value());
     if (i < transmitted2.size() - 1) std::cout << ", ";
   }
-  std::cout << "]" << std::endl;
+  std::cout << "]" << '\n';
   std::cout << "erasures: [";
   for (size_t i = 0; i < erasures.size(); ++i) {
     std::cout << (erasures[i] ? "1" : "0");
     if (i < erasures.size() - 1) std::cout << ", ";
   }
-  std::cout << "]" << std::endl;
+  std::cout << "]" << '\n';
 
   // Example 2: Prime field channels
-  std::cout << "\n=== Prime Field Channel Examples ===" << std::endl;
+  std::cout << "\n=== Prime Field Channel Examples ===" << '\n';
 
   // Create GF(31) field
   auto gf31 = std::make_shared<GFP<uint32_t>>(31);
   std::cout << "Created ";
   gf31->Print(std::cout);
-  std::cout << std::endl;
+  std::cout << '\n';
 
   // Create a test message using field elements
   using PrimeElementType = GaloisFieldElementBase<GFP<uint32_t>>;
@@ -129,14 +128,14 @@ int main() {
     std::cout << prime_message[i].Value();
     if (i < prime_message.size() - 1) std::cout << ", ";
   }
-  std::cout << "]" << std::endl;
+  std::cout << "]" << '\n';
 
   // Example 2a: q-ary Symmetric Channel
-  std::cout << "\n--- q-ary Symmetric Channel ---" << std::endl;
+  std::cout << "\n--- q-ary Symmetric Channel ---" << '\n';
   double error_prob = 0.1;
   auto qsc =
       channels::CreateQarySymmetricChannel(gf31, message_length, error_prob);
-  std::cout << "Channel: " << *qsc << std::endl;
+  std::cout << "Channel: " << *qsc << '\n';
 
   auto transmitted3 = qsc->transmit(prime_message);
   std::cout << "transmitted: [";
@@ -144,14 +143,14 @@ int main() {
     std::cout << transmitted3[i].Value();
     if (i < transmitted3.size() - 1) std::cout << ", ";
   }
-  std::cout << "]" << std::endl;
+  std::cout << "]" << '\n';
 
   // Count errors
   error_count = 0;
   for (size_t i = 0; i < message_length; ++i) {
     if (prime_message[i] != transmitted3[i]) error_count++;
   }
-  std::cout << "Number of errors introduced: " << error_count << std::endl;
+  std::cout << "Number of errors introduced: " << error_count << '\n';
 
   return 0;
 }

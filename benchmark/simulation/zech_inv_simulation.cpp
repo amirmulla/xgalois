@@ -14,7 +14,7 @@ int main() {
   constexpr uint8_t m = 20;
 
   std::cout << "Creating GF(2^" << static_cast<int>(m)
-            << ") using Zech Log Tables..." << std::endl;
+            << ") using Zech Log Tables..." << '\n';
 
   // Create the field using Zech Log Tables implementation
   auto field = std::make_shared<GFBEZechLogTables>(m);
@@ -31,7 +31,7 @@ int main() {
   log_elements.reserve(num_elements);
 
   std::cout << "Generating " << num_elements << " random field elements..."
-            << std::endl;
+            << '\n';
   for (size_t i = 0; i < num_elements; ++i) {
     // Generate a random element in the field, avoiding zero (ZECH_INFINITY)
     uint32_t elm = static_cast<uint32_t>(dis(gen));
@@ -43,7 +43,7 @@ int main() {
 
   // Measure inversion performance
   std::cout << "Measuring inversion of " << num_elements << " random pairs..."
-            << std::endl;
+            << '\n';
 
   auto start_time = std::chrono::high_resolution_clock::now();
 
@@ -64,16 +64,15 @@ int main() {
   double operations_per_second = 1e9 / avg_time_ns;
 
   // Display results
-  std::cout << "\n=== inversion Performance Results ===" << std::endl;
-  std::cout << "Total operations: " << (log_elements.size() - 1) << std::endl;
-  std::cout << "Total time: " << total_time_ms << " ms" << std::endl;
-  std::cout << "Average time per inversion: " << avg_time_ns << " ns"
-            << std::endl;
+  std::cout << "\n=== inversion Performance Results ===" << '\n';
+  std::cout << "Total operations: " << (log_elements.size() - 1) << '\n';
+  std::cout << "Total time: " << total_time_ms << " ms" << '\n';
+  std::cout << "Average time per inversion: " << avg_time_ns << " ns" << '\n';
   std::cout << "Operations per second: "
-            << static_cast<uint64_t>(operations_per_second) << std::endl;
+            << static_cast<uint64_t>(operations_per_second) << '\n';
 
   // Additional test: measure a batch of inversions with the same operands
-  std::cout << "\n=== Batch inversion Test ===" << std::endl;
+  std::cout << "\n=== Batch inversion Test ===" << '\n';
   // Pick two random elements for repeated inversion
   std::uniform_int_distribution<size_t> index_dis(0, log_elements.size() - 1);
 
@@ -97,16 +96,14 @@ int main() {
   avg_time_ns = static_cast<double>(duration.count()) / batch_size;
   operations_per_second = 1e9 / avg_time_ns;
 
-  std::cout << "Batch operations: " << batch_size << std::endl;
-  std::cout << "Total time: " << total_time_ms << " ms" << std::endl;
-  std::cout << "Average time per inversion: " << avg_time_ns << " ns"
-            << std::endl;
+  std::cout << "Batch operations: " << batch_size << '\n';
+  std::cout << "Total time: " << total_time_ms << " ms" << '\n';
+  std::cout << "Average time per inversion: " << avg_time_ns << " ns" << '\n';
   std::cout << "Operations per second: "
-            << static_cast<uint64_t>(operations_per_second) << std::endl;
+            << static_cast<uint64_t>(operations_per_second) << '\n';
 
   // Test with different field sizes
-  std::cout << "\n=== Performance Comparison Across Field Sizes ==="
-            << std::endl;
+  std::cout << "\n=== Performance Comparison Across Field Sizes ===" << '\n';
 
   for (uint8_t test_m : {4, 6, 8, 10, 12}) {
     auto test_field = std::make_shared<GFBEZechLogTables>(test_m);
@@ -138,6 +135,6 @@ int main() {
               << " ops/sec" << std::endl;
   }
 
-  std::cout << "\ninversion simulation completed successfully!" << std::endl;
+  std::cout << "\ninversion simulation completed successfully!" << '\n';
   return 0;
 }

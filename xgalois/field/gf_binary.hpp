@@ -27,7 +27,7 @@ namespace xg {
 //------------------------------------------------------------------------------
 class GaloisFieldBinary : public GaloisFieldBase<uint8_t> {
  public:
-  GaloisFieldBinary(const std::string &rep = "int")
+  explicit GaloisFieldBinary(const std::string &rep = "int")
       : representation_(utils::ConvertRepresentation(rep)) {
     // Ensure the representation is valid for GF(2)
     if (representation_ != FieldRepresentation::INT &&
@@ -77,8 +77,9 @@ class GaloisFieldBinary : public GaloisFieldBase<uint8_t> {
   }
 
   uint32_t Log(const uint8_t &a, const uint8_t &generator) const override {
-    if (generator != 1)
+    if (generator != 1) {
       throw std::invalid_argument("Generator in GF(2) must be 1");
+    }
     return Log(a);  // Delegate to single-argument Log
   }
 
@@ -152,11 +153,11 @@ class GaloisFieldBinaryExtension : public GaloisFieldBase<ElementType> {
                 "ElementType must be an unsigned integral type");
 
   // Constructor with string parameters
-  GaloisFieldBinaryExtension(uint8_t m, const std::string &rep = "int",
-                             const std::string &irreducible_poly = "",
-                             const std::string &variable_name = "α",
-                             bool check_irreducible = false,
-                             const std::string &generator_name = "g")
+  explicit GaloisFieldBinaryExtension(uint8_t m, const std::string &rep = "int",
+                                      const std::string &irreducible_poly = "",
+                                      const std::string &variable_name = "α",
+                                      bool check_irreducible = false,
+                                      const std::string &generator_name = "g")
       : m_(m),
         representation_(utils::ConvertRepresentation(rep)),
         variable_name_(variable_name),
@@ -387,9 +388,9 @@ class GaloisFieldBinaryExtension : public GaloisFieldBase<ElementType> {
     // Try polynomial format using the configured variable name (e.g., "α^2 + α
     // + 1")
     if (value_str.find(variable_name_) != std::string::npos ||
-        value_str.find("x") != std::string::npos ||
-        value_str.find("+") != std::string::npos ||
-        value_str.find("-") != std::string::npos) {
+        value_str.find('x') != std::string::npos ||
+        value_str.find('+') != std::string::npos ||
+        value_str.find('-') != std::string::npos) {
       return ParsePolynomialString(value_str);
     }
 
@@ -631,11 +632,11 @@ template <typename ElementType = uint32_t>
 class GFBELogTables : public GaloisFieldBinaryExtension<ElementType> {
  public:
   // Constructor
-  GFBELogTables(uint8_t m, const std::string &rep = "int",
-                const std::string &irreducible_poly = "",
-                const std::string &variable_name = "α",
-                bool check_irreducible = false,
-                const std::string &generator_name = "g")
+  explicit GFBELogTables(uint8_t m, const std::string &rep = "int",
+                         const std::string &irreducible_poly = "",
+                         const std::string &variable_name = "α",
+                         bool check_irreducible = false,
+                         const std::string &generator_name = "g")
       : GaloisFieldBinaryExtension<ElementType>(
             m, rep, irreducible_poly, variable_name, check_irreducible,
             generator_name),
@@ -646,8 +647,9 @@ class GFBELogTables : public GaloisFieldBinaryExtension<ElementType> {
   // Override arithmetic operations to use log tables
   inline ElementType Mul(const ElementType &a,
                          const ElementType &b) const override {
-    if (a == 0 || b == 0)  // Handle zero multiplication
+    if (a == 0 || b == 0) {  // Handle zero multiplication
       return 0;
+    }
 
     ElementType log_sum = (log_table_[a] + log_table_[b]);
     if (log_sum >= this->group_order_) {
@@ -658,10 +660,12 @@ class GFBELogTables : public GaloisFieldBinaryExtension<ElementType> {
 
   inline ElementType Div(const ElementType &a,
                          const ElementType &b) const override {
-    if (b == 0)  // Handle division by zero
+    if (b == 0) {  // Handle division by zero
       throw std::domain_error("Division by zero");
-    if (a == 0)  // Handle zero division
+    }
+    if (a == 0) {  // Handle zero division
       return 0;
+    }
 
     ElementType log_diff =
         (log_table_[a] > log_table_[b])
@@ -672,8 +676,9 @@ class GFBELogTables : public GaloisFieldBinaryExtension<ElementType> {
   }
 
   inline ElementType Inv(const ElementType &a) const override {
-    if (a == 0)  // Handle inverse of zero
+    if (a == 0) {  // Handle inverse of zero
       throw std::domain_error("Inverse of zero is undefined");
+    }
 
     return exp_table_[(this->group_order_ - log_table_[a])];
   }
@@ -687,19 +692,22 @@ class GFBELogTables : public GaloisFieldBinaryExtension<ElementType> {
 
   // Logarithm using precomputed table
   uint32_t Log(const ElementType &a) const override {
-    if (a == 0)  // Handle log of zero
+    if (a == 0) {  // Handle log of zero
       throw std::domain_error("Log of zero is undefined");
+    }
 
     return log_table_[a];
   }
 
   uint32_t Log(const ElementType &a,
                const ElementType &generator) const override {
-    if (a == 0)  // Handle log of zero
+    if (a == 0) {  // Handle log of zero
       throw std::domain_error("Log of zero is undefined");
+    }
 
-    if (generator == this->MultiplicativeGenerator())  // Use cached generator
+    if (generator == this->MultiplicativeGenerator()) {  // Use cached generator
       return log_table_[a];
+    }
 
     return GaloisFieldBinaryExtension<ElementType>::Log(a, generator);
   }
@@ -760,11 +768,11 @@ template <typename ElementType = uint32_t>
 class GFBELogTablesOpt : public GFBELogTables<ElementType> {
  public:
   // Constructor
-  GFBELogTablesOpt(uint8_t m, const std::string &rep = "int",
-                   const std::string &irreducible_poly = "",
-                   const std::string &variable_name = "α",
-                   bool check_irreducible = false,
-                   const std::string &generator_name = "g")
+  explicit GFBELogTablesOpt(uint8_t m, const std::string &rep = "int",
+                            const std::string &irreducible_poly = "",
+                            const std::string &variable_name = "α",
+                            bool check_irreducible = false,
+                            const std::string &generator_name = "g")
       : GFBELogTables<ElementType>(m, rep, irreducible_poly, variable_name,
                                    check_irreducible, generator_name) {}
 
@@ -777,16 +785,18 @@ class GFBELogTablesOpt : public GFBELogTables<ElementType> {
   // Division with zero checks, with modulo handling
   inline ElementType Div(const ElementType &a,
                          const ElementType &b) const override {
-    if (b == 0)  // Handle division by zero
+    if (b == 0) {  // Handle division by zero
       throw std::domain_error("Division by zero");
+    }
 
     return this->exp_table_[this->group_order_ + this->log_table_[a] -
                             this->log_table_[b]];
   }
 
   inline ElementType Inv(const ElementType &a) const override {
-    if (a == 0)  // Handle inverse of zero
+    if (a == 0) {  // Handle inverse of zero
       throw std::domain_error("Inverse of zero is undefined");
+    }
 
     return this->exp_table_[this->group_order_ - this->log_table_[a]];
   }
@@ -823,11 +833,11 @@ template <typename ElementType = uint32_t>
 class GFBEZechLogTables : public GaloisFieldBinaryExtension<ElementType> {
  public:
   // Constructor
-  GFBEZechLogTables(uint8_t m, const std::string &rep = "log",
-                    const std::string &irreducible_poly = "",
-                    const std::string &variable_name = "α",
-                    bool check_irreducible = false,
-                    const std::string &generator_name = "g")
+  explicit GFBEZechLogTables(uint8_t m, const std::string &rep = "log",
+                             const std::string &irreducible_poly = "",
+                             const std::string &variable_name = "α",
+                             bool check_irreducible = false,
+                             const std::string &generator_name = "g")
       : GaloisFieldBinaryExtension<ElementType>(
             m, rep, irreducible_poly, variable_name, check_irreducible,
             generator_name) {
@@ -875,8 +885,9 @@ class GFBEZechLogTables : public GaloisFieldBinaryExtension<ElementType> {
   }
 
   inline ElementType Inv(const ElementType &log_a) const override {
-    if (log_a == LOG_ZERO)
+    if (log_a == LOG_ZERO) {
       throw std::domain_error("Inverse of zero is undefined");
+    }
 
     return ((log_a == 0) ? 0 : (this->group_order_ - log_a));
   }
@@ -955,10 +966,11 @@ class GFBEZechLogTables : public GaloisFieldBinaryExtension<ElementType> {
       // Compute 1 + g^i
       ElementType one_plus_element =
           GaloisFieldBinaryExtension<ElementType>::Add(1, element);
-      if (one_plus_element == 0)  // if (1 + g^i) == 0 -> log(0) = infinity
+      if (one_plus_element == 0) {  // if (1 + g^i) == 0 -> log(0) = infinity
         zech_table_[i] = LOG_ZERO;
-      else  // Otherwise, store the log value
+      } else {  // Otherwise, store the log value
         zech_table_[i] = log_table[one_plus_element];
+      }
       // Compute next element, g^(i+1) = g^i * g
       element =
           GaloisFieldBinaryExtension<ElementType>::Mul(element, generator);

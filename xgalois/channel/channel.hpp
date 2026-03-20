@@ -9,6 +9,7 @@
 #include <sstream>
 #include <stdexcept>
 #include <tuple>
+#include <utility>
 #include <vector>
 
 #include "xgalois/field/gf_base.hpp"
@@ -41,7 +42,7 @@ class Channel {
    */
   Channel(std::shared_ptr<GaloisField> field, size_t input_size,
           size_t output_size = 0)
-      : field_(field),
+      : field_(std::move(field)),
         input_size_(input_size),
         output_size_(output_size == 0 ? input_size : output_size) {}
 
@@ -204,7 +205,7 @@ class StaticErrorRateChannel : public Channel<GaloisField> {
    */
   StaticErrorRateChannel(std::shared_ptr<GaloisField> field, size_t input_size,
                          size_t num_errors)
-      : Channel<GaloisField>(field, input_size),
+      : Channel<GaloisField>(std::move(field), input_size),
         min_errors_(num_errors),
         max_errors_(num_errors) {}
 
@@ -217,7 +218,7 @@ class StaticErrorRateChannel : public Channel<GaloisField> {
    */
   StaticErrorRateChannel(std::shared_ptr<GaloisField> field, size_t input_size,
                          size_t min_errors, size_t max_errors)
-      : Channel<GaloisField>(field, input_size),
+      : Channel<GaloisField>(std::move(field), input_size),
         min_errors_(min_errors),
         max_errors_(max_errors) {
     if (min_errors > max_errors) {
@@ -297,7 +298,7 @@ class ErrorErasureChannel : public Channel<GaloisField> {
    */
   ErrorErasureChannel(std::shared_ptr<GaloisField> field, size_t input_size,
                       size_t num_errors, size_t num_erasures)
-      : Channel<GaloisField>(field, input_size),
+      : Channel<GaloisField>(std::move(field), input_size),
         min_errors_(num_errors),
         max_errors_(num_errors),
         min_erasures_(num_erasures),
@@ -315,7 +316,7 @@ class ErrorErasureChannel : public Channel<GaloisField> {
   ErrorErasureChannel(std::shared_ptr<GaloisField> field, size_t input_size,
                       size_t min_errors, size_t max_errors, size_t min_erasures,
                       size_t max_erasures)
-      : Channel<GaloisField>(field, input_size),
+      : Channel<GaloisField>(std::move(field), input_size),
         min_errors_(min_errors),
         max_errors_(max_errors),
         min_erasures_(min_erasures),
@@ -446,7 +447,7 @@ class QarySymmetricChannel : public Channel<GaloisField> {
    */
   QarySymmetricChannel(std::shared_ptr<GaloisField> field, size_t input_size,
                        double epsilon)
-      : Channel<GaloisField>(field, input_size), epsilon_(epsilon) {
+      : Channel<GaloisField>(std::move(field), input_size), epsilon_(epsilon) {
     if (epsilon < 0.0 || epsilon > 1.0) {
       throw std::invalid_argument("Error probability must be between 0 and 1");
     }
@@ -536,7 +537,7 @@ std::ostream &operator<<(std::ostream &os,
  */
 template <typename GaloisField>
 std::shared_ptr<StaticErrorRateChannel<GaloisField>>
-CreateStaticErrorRateChannel(std::shared_ptr<GaloisField> field,
+CreateStaticErrorRateChannel(const std::shared_ptr<GaloisField> &field,
                              size_t input_size, size_t num_errors) {
   return std::make_shared<StaticErrorRateChannel<GaloisField>>(
       field, input_size, num_errors);
@@ -552,7 +553,7 @@ CreateStaticErrorRateChannel(std::shared_ptr<GaloisField> field,
  */
 template <typename GaloisField>
 std::shared_ptr<StaticErrorRateChannel<GaloisField>>
-CreateStaticErrorRateChannel(std::shared_ptr<GaloisField> field,
+CreateStaticErrorRateChannel(const std::shared_ptr<GaloisField> &field,
                              size_t input_size, size_t min_errors,
                              size_t max_errors) {
   return std::make_shared<StaticErrorRateChannel<GaloisField>>(
@@ -569,8 +570,8 @@ CreateStaticErrorRateChannel(std::shared_ptr<GaloisField> field,
  */
 template <typename GaloisField>
 std::shared_ptr<ErrorErasureChannel<GaloisField>> CreateErrorErasureChannel(
-    std::shared_ptr<GaloisField> field, size_t input_size, size_t num_errors,
-    size_t num_erasures) {
+    const std::shared_ptr<GaloisField> &field, size_t input_size,
+    size_t num_errors, size_t num_erasures) {
   return std::make_shared<ErrorErasureChannel<GaloisField>>(
       field, input_size, num_errors, num_erasures);
 }
@@ -587,8 +588,9 @@ std::shared_ptr<ErrorErasureChannel<GaloisField>> CreateErrorErasureChannel(
  */
 template <typename GaloisField>
 std::shared_ptr<ErrorErasureChannel<GaloisField>> CreateErrorErasureChannel(
-    std::shared_ptr<GaloisField> field, size_t input_size, size_t min_errors,
-    size_t max_errors, size_t min_erasures, size_t max_erasures) {
+    const std::shared_ptr<GaloisField> &field, size_t input_size,
+    size_t min_errors, size_t max_errors, size_t min_erasures,
+    size_t max_erasures) {
   return std::make_shared<ErrorErasureChannel<GaloisField>>(
       field, input_size, min_errors, max_errors, min_erasures, max_erasures);
 }
@@ -602,7 +604,8 @@ std::shared_ptr<ErrorErasureChannel<GaloisField>> CreateErrorErasureChannel(
  */
 template <typename GaloisField>
 std::shared_ptr<QarySymmetricChannel<GaloisField>> CreateQarySymmetricChannel(
-    std::shared_ptr<GaloisField> field, size_t input_size, double epsilon) {
+    const std::shared_ptr<GaloisField> &field, size_t input_size,
+    double epsilon) {
   return std::make_shared<QarySymmetricChannel<GaloisField>>(field, input_size,
                                                              epsilon);
 }
