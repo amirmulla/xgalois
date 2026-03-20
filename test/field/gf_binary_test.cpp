@@ -1,5 +1,7 @@
 #include "xgalois/field/gf_binary.hpp"
+
 #include <gtest/gtest.h>
+
 #include <sstream>
 
 using namespace xg;
@@ -9,7 +11,7 @@ using namespace xg;
 //===----------------------------------------------------------------------===//
 
 class GaloisFieldBinaryTest : public ::testing::Test {
-protected:
+ protected:
   void SetUp() override {
     gf2 = std::make_unique<GaloisFieldBinary>();
     gf2_hex = std::make_unique<GaloisFieldBinary>("hex");
@@ -106,7 +108,8 @@ TEST_F(GaloisFieldBinaryTest, Representation) {
   gf2->SetRepresentation(FieldRepresentation::HEX);
   EXPECT_EQ(gf2->GetRepresentation(), FieldRepresentation::HEX);
 
-  EXPECT_THROW(gf2->SetRepresentation(FieldRepresentation::POLY), std::invalid_argument);
+  EXPECT_THROW(gf2->SetRepresentation(FieldRepresentation::POLY),
+               std::invalid_argument);
 }
 
 TEST_F(GaloisFieldBinaryTest, ToString) {
@@ -135,7 +138,7 @@ TEST_F(GaloisFieldBinaryTest, Print) {
 //===----------------------------------------------------------------------===//
 
 class GaloisFieldBinaryExtensionTest : public ::testing::Test {
-protected:
+ protected:
   void SetUp() override {
     // GF(2^3) = GF(8) with irreducible polynomial x^3 + x + 1
     gf8 = std::make_unique<GaloisFieldBinaryExtension<uint8_t>>(3);
@@ -181,14 +184,17 @@ TEST_F(GaloisFieldBinaryExtensionTest, MultiplicativeStructure) {
   // Test that all non-zero elements have inverses
   for (uint8_t a = 1; a < 8; ++a) {
     uint8_t inv_a = gf8->Inv(a);
-    EXPECT_EQ(gf8->Mul(a, inv_a), 1) << "Element " << (int)a << " * " << (int)inv_a << " != 1";
+    EXPECT_EQ(gf8->Mul(a, inv_a), 1)
+        << "Element " << (int)a << " * " << (int)inv_a << " != 1";
   }
 
   // Test division
   for (uint8_t a = 0; a < 8; ++a) {
     for (uint8_t b = 1; b < 8; ++b) {
       uint8_t div_result = gf8->Div(a, b);
-      EXPECT_EQ(gf8->Mul(div_result, b), a) << "(" << (int)a << " / " << (int)b << ") * " << (int)b << " != " << (int)a;
+      EXPECT_EQ(gf8->Mul(div_result, b), a)
+          << "(" << (int)a << " / " << (int)b << ") * " << (int)b
+          << " != " << (int)a;
     }
   }
 }
@@ -212,11 +218,13 @@ TEST_F(GaloisFieldBinaryExtensionTest, InvalidOperations) {
 TEST_F(GaloisFieldBinaryExtensionTest, Constructor) {
   // Test invalid degree
   EXPECT_THROW(GaloisFieldBinaryExtension<uint8_t>(0), std::invalid_argument);
-  EXPECT_THROW(GaloisFieldBinaryExtension<uint8_t>(10), std::invalid_argument);  // Too large for uint8_t
+  EXPECT_THROW(GaloisFieldBinaryExtension<uint8_t>(10),
+               std::invalid_argument);  // Too large for uint8_t
 
   // Test custom irreducible polynomial
   EXPECT_NO_THROW(GaloisFieldBinaryExtension<uint8_t>(3, "int", "x^3 + x + 1"));
-  EXPECT_THROW(GaloisFieldBinaryExtension<uint8_t>(3, "int", "x^2 + 1"), std::invalid_argument);  // Wrong degree
+  EXPECT_THROW(GaloisFieldBinaryExtension<uint8_t>(3, "int", "x^2 + 1"),
+               std::invalid_argument);  // Wrong degree
 }
 
 //===----------------------------------------------------------------------===//
@@ -224,7 +232,7 @@ TEST_F(GaloisFieldBinaryExtensionTest, Constructor) {
 //===----------------------------------------------------------------------===//
 
 class GaloisFieldBinaryElementTest : public ::testing::Test {
-protected:
+ protected:
   void SetUp() override {
     gf2 = std::make_shared<GaloisFieldBinary>();
     gf2_hex = std::make_shared<GaloisFieldBinary>("hex");
@@ -247,10 +255,14 @@ TEST_F(GaloisFieldBinaryElementTest, ElementConstruction) {
 
 TEST_F(GaloisFieldBinaryElementTest, StringConstructorNotSupported) {
   // GF(2) doesn't support string representation for elements
-  EXPECT_THROW(GaloisFieldElementBase<GaloisFieldBinary>("0", gf2), std::invalid_argument);
-  EXPECT_THROW(GaloisFieldElementBase<GaloisFieldBinary>("1", gf2), std::invalid_argument);
-  EXPECT_THROW(GaloisFieldElementBase<GaloisFieldBinary>("α", gf2), std::invalid_argument);
-  EXPECT_THROW(GaloisFieldElementBase<GaloisFieldBinary>("g^1", gf2), std::invalid_argument);
+  EXPECT_THROW(GaloisFieldElementBase<GaloisFieldBinary>("0", gf2),
+               std::invalid_argument);
+  EXPECT_THROW(GaloisFieldElementBase<GaloisFieldBinary>("1", gf2),
+               std::invalid_argument);
+  EXPECT_THROW(GaloisFieldElementBase<GaloisFieldBinary>("α", gf2),
+               std::invalid_argument);
+  EXPECT_THROW(GaloisFieldElementBase<GaloisFieldBinary>("g^1", gf2),
+               std::invalid_argument);
 }
 
 TEST_F(GaloisFieldBinaryElementTest, NumericAssignmentOperator) {
@@ -263,18 +275,21 @@ TEST_F(GaloisFieldBinaryElementTest, NumericAssignmentOperator) {
   elem = static_cast<uint8_t>(0);
   EXPECT_EQ(elem.Value(), 0);
 
-  // Test assignment with values outside GF(2) - behavior depends on implementation
-  // In a strict implementation, only 0 and 1 should be valid for GF(2)
+  // Test assignment with values outside GF(2) - behavior depends on
+  // implementation In a strict implementation, only 0 and 1 should be valid for
+  // GF(2)
   elem = static_cast<uint8_t>(2);
   // The field's SetElementValue should handle this appropriately
   EXPECT_GE(elem.Value(), 0);
-  EXPECT_LT(elem.Value(), 8);  // Assuming it's at least valid within a reasonable range
+  EXPECT_LT(elem.Value(),
+            8);  // Assuming it's at least valid within a reasonable range
 }
 
 TEST_F(GaloisFieldBinaryElementTest, StringAssignmentNotSupported) {
   GaloisFieldElementBase<GaloisFieldBinary> elem(0, gf2);
 
-  // String assignment should throw since GF(2) doesn't support string representation
+  // String assignment should throw since GF(2) doesn't support string
+  // representation
   EXPECT_THROW(elem = "0", std::invalid_argument);
   EXPECT_THROW(elem = "1", std::invalid_argument);
   EXPECT_THROW(elem = "α", std::invalid_argument);
@@ -375,11 +390,13 @@ TEST_F(GaloisFieldBinaryElementTest, ElementPrinting) {
 
 TEST_F(GaloisFieldBinaryElementTest, NullFieldHandling) {
   // Test that null field pointer throws during construction
-  EXPECT_THROW(GaloisFieldElementBase<GaloisFieldBinary>(0, nullptr), std::invalid_argument);
+  EXPECT_THROW(GaloisFieldElementBase<GaloisFieldBinary>(0, nullptr),
+               std::invalid_argument);
 
   // Test that operations on elements with null field throw
   GaloisFieldElementBase<GaloisFieldBinary> elem;  // Default constructed
-  // Note: Default constructed elements may have null field, operations should handle this gracefully
+  // Note: Default constructed elements may have null field, operations should
+  // handle this gracefully
 }
 
 //===----------------------------------------------------------------------===//
@@ -387,12 +404,13 @@ TEST_F(GaloisFieldBinaryElementTest, NullFieldHandling) {
 //===----------------------------------------------------------------------===//
 
 class GaloisFieldBinaryExtensionElementTest : public ::testing::Test {
-protected:
+ protected:
   void SetUp() override {
     // GF(2^3) = GF(8) with default irreducible polynomial
     gf8 = std::make_shared<GaloisFieldBinaryExtension<uint8_t>>(3);
     // GF(2^4) = GF(16) with custom variable name
-    gf16 = std::make_shared<GaloisFieldBinaryExtension<uint16_t>>(4, "poly", "", "β");
+    gf16 = std::make_shared<GaloisFieldBinaryExtension<uint16_t>>(4, "poly", "",
+                                                                  "β");
   }
 
   std::shared_ptr<GaloisFieldBinaryExtension<uint8_t>> gf8;
@@ -412,71 +430,76 @@ TEST_F(GaloisFieldBinaryExtensionElementTest, ElementConstruction) {
 
 TEST_F(GaloisFieldBinaryExtensionElementTest, StringConstructorPolynomial) {
   // Test polynomial string construction using default variable name "α"
-  GaloisFieldElementBase<GaloisFieldBinaryExtension<uint8_t>> elem_poly("α^2 + α + 1", gf8);
+  GaloisFieldElementBase<GaloisFieldBinaryExtension<uint8_t>> elem_poly(
+      "α^2 + α + 1", gf8);
 
   // α^2 + α + 1 should correspond to binary 111 = 7 in GF(2^3)
   EXPECT_EQ(elem_poly.Value(), 7);
 
   // Test simple polynomial terms
-  GaloisFieldElementBase<GaloisFieldBinaryExtension<uint8_t>> elem_alpha("α", gf8);
+  GaloisFieldElementBase<GaloisFieldBinaryExtension<uint8_t>> elem_alpha("α",
+                                                                         gf8);
   EXPECT_EQ(elem_alpha.Value(), 2);  // α corresponds to binary 10 = 2
 
-  GaloisFieldElementBase<GaloisFieldBinaryExtension<uint8_t>> elem_alpha_sq("α^2", gf8);
+  GaloisFieldElementBase<GaloisFieldBinaryExtension<uint8_t>> elem_alpha_sq(
+      "α^2", gf8);
   EXPECT_EQ(elem_alpha_sq.Value(), 4);  // α^2 corresponds to binary 100 = 4
 
   // Test constant terms - use explicit polynomial format
-  GaloisFieldElementBase<GaloisFieldBinaryExtension<uint8_t>> elem_one("g^0", gf8);
+  GaloisFieldElementBase<GaloisFieldBinaryExtension<uint8_t>> elem_one("g^0",
+                                                                       gf8);
   EXPECT_EQ(elem_one.Value(), 1);
 
-  // Test zero using numeric constructor since "0" might not be supported as string
+  // Test zero using numeric constructor since "0" might not be supported as
+  // string
   GaloisFieldElementBase<GaloisFieldBinaryExtension<uint8_t>> elem_zero(0, gf8);
   EXPECT_EQ(elem_zero.Value(), 0);
 }
 
 TEST_F(GaloisFieldBinaryExtensionElementTest, StringConstructorCustomVariable) {
   // Test polynomial string construction with custom variable name "β"
-  GaloisFieldElementBase<GaloisFieldBinaryExtension<uint16_t>> elem_beta("β^2 + β", gf16);
+  GaloisFieldElementBase<GaloisFieldBinaryExtension<uint16_t>> elem_beta(
+      "β^2 + β", gf16);
 
   // β^2 + β should correspond to binary 110 = 6 in GF(2^4)
   EXPECT_EQ(elem_beta.Value(), 6);
 
   // Test that original variable name doesn't work
-  EXPECT_THROW(
-    GaloisFieldElementBase<GaloisFieldBinaryExtension<uint16_t>>("α^2 + α", gf16),
-    std::invalid_argument
-  );
+  EXPECT_THROW(GaloisFieldElementBase<GaloisFieldBinaryExtension<uint16_t>>(
+                   "α^2 + α", gf16),
+               std::invalid_argument);
 }
 
 TEST_F(GaloisFieldBinaryExtensionElementTest, StringConstructorGenerator) {
   // Test generator power string construction using default generator name "g"
-  GaloisFieldElementBase<GaloisFieldBinaryExtension<uint8_t>> elem_g0("g^0", gf8);
+  GaloisFieldElementBase<GaloisFieldBinaryExtension<uint8_t>> elem_g0("g^0",
+                                                                      gf8);
   EXPECT_EQ(elem_g0.Value(), 1);  // g^0 = 1
 
   // Test other generator powers
-  GaloisFieldElementBase<GaloisFieldBinaryExtension<uint8_t>> elem_g1("g^1", gf8);
+  GaloisFieldElementBase<GaloisFieldBinaryExtension<uint8_t>> elem_g1("g^1",
+                                                                      gf8);
   uint8_t generator = gf8->MultiplicativeGenerator();
   EXPECT_EQ(elem_g1.Value(), generator);
 
-  GaloisFieldElementBase<GaloisFieldBinaryExtension<uint8_t>> elem_g2("g^2", gf8);
+  GaloisFieldElementBase<GaloisFieldBinaryExtension<uint8_t>> elem_g2("g^2",
+                                                                      gf8);
   EXPECT_EQ(elem_g2.Value(), gf8->Mul(generator, generator));
 }
 
 TEST_F(GaloisFieldBinaryExtensionElementTest, StringConstructorInvalid) {
   // Test invalid string formats
-  EXPECT_THROW(
-    GaloisFieldElementBase<GaloisFieldBinaryExtension<uint8_t>>("invalid", gf8),
-    std::invalid_argument
-  );
+  EXPECT_THROW(GaloisFieldElementBase<GaloisFieldBinaryExtension<uint8_t>>(
+                   "invalid", gf8),
+               std::invalid_argument);
 
-  EXPECT_THROW(
-    GaloisFieldElementBase<GaloisFieldBinaryExtension<uint8_t>>("h^1", gf8),  // Wrong generator name
-    std::invalid_argument
-  );
+  EXPECT_THROW(GaloisFieldElementBase<GaloisFieldBinaryExtension<uint8_t>>(
+                   "h^1", gf8),  // Wrong generator name
+               std::invalid_argument);
 
-  EXPECT_THROW(
-    GaloisFieldElementBase<GaloisFieldBinaryExtension<uint8_t>>("α^8", gf8),  // Degree too high
-    std::invalid_argument
-  );
+  EXPECT_THROW(GaloisFieldElementBase<GaloisFieldBinaryExtension<uint8_t>>(
+                   "α^8", gf8),  // Degree too high
+               std::invalid_argument);
 }
 
 TEST_F(GaloisFieldBinaryExtensionElementTest, NumericAssignmentOperator) {
@@ -522,8 +545,10 @@ TEST_F(GaloisFieldBinaryExtensionElementTest, StringAssignmentOperator) {
 }
 
 TEST_F(GaloisFieldBinaryExtensionElementTest, CompoundAssignmentOperators) {
-  GaloisFieldElementBase<GaloisFieldBinaryExtension<uint8_t>> elem_a(3, gf8);  // 011
-  GaloisFieldElementBase<GaloisFieldBinaryExtension<uint8_t>> elem_b(5, gf8);  // 101
+  GaloisFieldElementBase<GaloisFieldBinaryExtension<uint8_t>> elem_a(
+      3, gf8);  // 011
+  GaloisFieldElementBase<GaloisFieldBinaryExtension<uint8_t>> elem_b(
+      5, gf8);  // 101
 
   // Test += operator (XOR in GF(2^m))
   elem_a += elem_b;
@@ -588,7 +613,8 @@ TEST_F(GaloisFieldBinaryExtensionElementTest, ElementArithmetic) {
   // Test square root
   auto sqrt_elem = elem_2.Sqrt();
   auto sqrt_squared = sqrt_elem * sqrt_elem;
-  // In GF(2^m), sqrt is well-defined, but the relationship might be more complex
+  // In GF(2^m), sqrt is well-defined, but the relationship might be more
+  // complex
   EXPECT_GE(sqrt_elem.Value(), 0);
   EXPECT_LT(sqrt_elem.Value(), 8);
 }
@@ -598,7 +624,8 @@ TEST_F(GaloisFieldBinaryExtensionElementTest, StrictElementValidation) {
   auto gf8_other = std::make_shared<GaloisFieldBinaryExtension<uint8_t>>(3);
 
   GaloisFieldElement<GaloisFieldBinaryExtension<uint8_t>> elem_gf8(2, gf8);
-  GaloisFieldElement<GaloisFieldBinaryExtension<uint8_t>> elem_other(3, gf8_other);
+  GaloisFieldElement<GaloisFieldBinaryExtension<uint8_t>> elem_other(3,
+                                                                     gf8_other);
 
   // Operations between elements of different field instances should throw
   EXPECT_THROW(elem_gf8 + elem_other, std::invalid_argument);
@@ -619,7 +646,8 @@ TEST_F(GaloisFieldBinaryExtensionElementTest, ElementPrinting) {
   std::ostringstream oss;
   elem_5.Print(oss);
   std::string result = oss.str();
-  EXPECT_EQ(result, field_result);  // Element printing should match field printing
+  EXPECT_EQ(result,
+            field_result);  // Element printing should match field printing
 
   // Test stream operator
   oss.str("");
@@ -647,6 +675,7 @@ TEST_F(GaloisFieldBinaryExtensionElementTest, ElementPrinting) {
   elem_5.Print(oss);
   result = oss.str();
   EXPECT_EQ(result, field_result);
-  // Should show polynomial representation - we'll just check it's not empty and reasonable
+  // Should show polynomial representation - we'll just check it's not empty and
+  // reasonable
   EXPECT_FALSE(result.empty());
 }

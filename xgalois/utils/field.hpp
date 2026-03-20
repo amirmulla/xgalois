@@ -10,16 +10,11 @@ namespace utils {
 
 // Convert string representation to enum
 FieldRepresentation ConvertRepresentation(const std::string &rep) {
-  if (rep == "int")
-    return FieldRepresentation::INT;
-  if (rep == "hex")
-    return FieldRepresentation::HEX;
-  if (rep == "pow")
-    return FieldRepresentation::POW;
-  if (rep == "log")
-    return FieldRepresentation::LOG;
-  if (rep == "poly")
-    return FieldRepresentation::POLY;
+  if (rep == "int") return FieldRepresentation::INT;
+  if (rep == "hex") return FieldRepresentation::HEX;
+  if (rep == "pow") return FieldRepresentation::POW;
+  if (rep == "log") return FieldRepresentation::LOG;
+  if (rep == "poly") return FieldRepresentation::POLY;
   throw std::invalid_argument("Unknown representation: " + rep);
 }
 
@@ -38,7 +33,7 @@ ElementType ParsePowerString(const std::string &pow_str,
   bool is_negative = false;
   if (!exp_str.empty() && exp_str[0] == '-') {
     is_negative = true;
-    exp_str = exp_str.substr(1); // Remove the minus sign
+    exp_str = exp_str.substr(1);  // Remove the minus sign
   }
 
   if (exp_str.empty()) {
@@ -54,7 +49,7 @@ ElementType ParsePowerString(const std::string &pow_str,
   if (is_negative) {
     exp = exp % group_order;
     if (exp == 0) {
-      exp = 0; // g^0 = 1, so g^(-0) = g^0 = 1
+      exp = 0;  // g^0 = 1, so g^(-0) = g^0 = 1
     } else {
       exp = group_order - exp;
     }
@@ -66,5 +61,5 @@ ElementType ParsePowerString(const std::string &pow_str,
   return field.Pow(generator, exp);
 }
 
-} // namespace utils
-} // namespace xg
+}  // namespace utils
+}  // namespace xg

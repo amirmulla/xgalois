@@ -1,4 +1,5 @@
 #include <benchmark/benchmark.h>
+
 #include <chrono>
 #include <iostream>
 #include <random>
@@ -22,7 +23,7 @@ int main() {
   std::cout << "Field characteristic: " << field->Characteristic() << std::endl;
 
   // Generate 1000000 random field elements (in log representation)
-  std::mt19937 gen(42); // Fixed seed for reproducibility
+  std::mt19937 gen(42);  // Fixed seed for reproducibility
   std::uniform_int_distribution<uint64_t> dis(0, field->Order() - 2);
 
   uint64_t num_elements = 1e6;
@@ -44,7 +45,7 @@ int main() {
   // Perform additions between adjacent pairs
   for (size_t i = 0; i < log_elements.size() - 1; ++i) {
     uint32_t result = field->Add(log_elements[i], log_elements[i + 1]);
-    benchmark::DoNotOptimize(result); // Prevent compiler optimization
+    benchmark::DoNotOptimize(result);  // Prevent compiler optimization
   }
 
   auto end_time = std::chrono::high_resolution_clock::now();
@@ -73,7 +74,7 @@ int main() {
   uint32_t a = log_elements[index_dis(gen)];
   uint32_t b = log_elements[index_dis(gen)];
 
-  constexpr uint64_t batch_size = 1000000; // 1 million operations
+  constexpr uint64_t batch_size = 1000000;  // 1 million operations
 
   start_time = std::chrono::high_resolution_clock::now();
 

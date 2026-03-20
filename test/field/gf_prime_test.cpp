@@ -1,7 +1,9 @@
 #include "xgalois/field/gf_prime.hpp"
+
 #include <gtest/gtest.h>
-#include <sstream>
+
 #include <set>
+#include <sstream>
 
 using namespace xg;
 
@@ -10,7 +12,7 @@ using namespace xg;
 //===----------------------------------------------------------------------===//
 
 class GaloisFieldPrimeTest : public ::testing::Test {
-protected:
+ protected:
   void SetUp() override {
     gf2 = std::make_unique<GaloisFieldPrime<uint8_t>>(2);
     gf3 = std::make_unique<GaloisFieldPrime<uint8_t>>(3);
@@ -85,7 +87,8 @@ TEST_F(GaloisFieldPrimeTest, Inverse) {
   // Test inverse for all non-zero elements
   for (uint8_t a = 1; a < 7; ++a) {
     uint8_t inv_a = gf7->Inv(a);
-    EXPECT_EQ(gf7->Mul(a, inv_a), 1) << "Element " << (int)a << " * " << (int)inv_a << " != 1";
+    EXPECT_EQ(gf7->Mul(a, inv_a), 1)
+        << "Element " << (int)a << " * " << (int)inv_a << " != 1";
   }
 
   EXPECT_THROW(gf7->Inv(0), std::domain_error);
@@ -114,7 +117,8 @@ TEST_F(GaloisFieldPrimeTest, Logarithm) {
   // Test log base generator for a few elements
   for (uint8_t a = 1; a <= 3; ++a) {  // Test only first 3 elements for speed
     uint32_t log_a = gf7->Log(a, gen);
-    EXPECT_EQ(gf7->Pow(gen, log_a), a) << "gen^log(" << (int)a << ") != " << (int)a;
+    EXPECT_EQ(gf7->Pow(gen, log_a), a)
+        << "gen^log(" << (int)a << ") != " << (int)a;
   }
 
   EXPECT_THROW(gf7->Log(0, gen), std::domain_error);
@@ -165,7 +169,8 @@ TEST_F(GaloisFieldPrimeTest, Constructor) {
   EXPECT_THROW(GaloisFieldPrime<uint8_t>(1), std::invalid_argument);
 
   // Test prime checking (when enabled)
-  EXPECT_THROW(GaloisFieldPrime<uint8_t>(4, "int", true), std::invalid_argument);  // 4 is not prime
+  EXPECT_THROW(GaloisFieldPrime<uint8_t>(4, "int", true),
+               std::invalid_argument);                         // 4 is not prime
   EXPECT_NO_THROW(GaloisFieldPrime<uint8_t>(7, "int", true));  // 7 is prime
 }
 
@@ -187,7 +192,7 @@ TEST_F(GaloisFieldPrimeTest, LargerFields) {
 
   // Test basic arithmetic
   EXPECT_EQ(gf257->Add(200, 100), 43);  // 200 + 100 = 300 ≡ 43 (mod 257)
-  EXPECT_EQ(gf257->Mul(2, 129), 1);    // 2 * 129 = 258 ≡ 1 (mod 257)
+  EXPECT_EQ(gf257->Mul(2, 129), 1);     // 2 * 129 = 258 ≡ 1 (mod 257)
 
   // Test that a few elements have inverses
   for (uint16_t a = 1; a <= 3; ++a) {  // Test only first 3 elements for speed
@@ -235,17 +240,19 @@ TEST_F(GaloisFieldPrimeTest, SetElementValueStringInvalid) {
   EXPECT_THROW(gf7->SetElementValue("invalid"), std::invalid_argument);
   EXPECT_THROW(gf7->SetElementValue("g^"), std::invalid_argument);
   EXPECT_THROW(gf7->SetElementValue("g^abc"), std::invalid_argument);
-  EXPECT_THROW(gf7->SetElementValue("h^1"), std::invalid_argument);  // Wrong generator name
-  EXPECT_THROW(gf7->SetElementValue("5"), std::invalid_argument);    // Plain number not supported
+  EXPECT_THROW(gf7->SetElementValue("h^1"),
+               std::invalid_argument);  // Wrong generator name
+  EXPECT_THROW(gf7->SetElementValue("5"),
+               std::invalid_argument);  // Plain number not supported
 }
 
 TEST_F(GaloisFieldPrimeTest, SetElementValueNumeric) {
   // Test numeric SetElementValue for reduction
   EXPECT_EQ(gf7->SetElementValue(0), 0);
   EXPECT_EQ(gf7->SetElementValue(6), 6);
-  EXPECT_EQ(gf7->SetElementValue(7), 0);  // 7 ≡ 0 (mod 7)
-  EXPECT_EQ(gf7->SetElementValue(8), 1);  // 8 ≡ 1 (mod 7)
-  EXPECT_EQ(gf7->SetElementValue(14), 0); // 14 ≡ 0 (mod 7)
+  EXPECT_EQ(gf7->SetElementValue(7), 0);   // 7 ≡ 0 (mod 7)
+  EXPECT_EQ(gf7->SetElementValue(8), 1);   // 8 ≡ 1 (mod 7)
+  EXPECT_EQ(gf7->SetElementValue(14), 0);  // 14 ≡ 0 (mod 7)
 }
 
 TEST_F(GaloisFieldPrimeTest, GetElementValue) {

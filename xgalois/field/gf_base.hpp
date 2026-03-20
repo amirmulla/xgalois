@@ -2,7 +2,7 @@
 #define XGALOIS_FIELD_GF_BASE_HPP
 
 #include <cstdint>
-#include <iostream> // Added for std::ostream
+#include <iostream>  // Added for std::ostream
 #include <memory>
 #include <type_traits>
 #include <vector>
@@ -10,15 +10,16 @@
 namespace xg {
 
 enum class FieldRepresentation {
-  INT, // E.g., 5 (default for prime fields)
-  HEX, // E.g., 0x5
-  POW, // E.g., g^k (useful for fields with known generator)
-  LOG, // E.g., log_g(x) (useful for fields with known generator)
-  POLY // E.g., x+1 (default for extension fields)
+  INT,  // E.g., 5 (default for prime fields)
+  HEX,  // E.g., 0x5
+  POW,  // E.g., g^k (useful for fields with known generator)
+  LOG,  // E.g., log_g(x) (useful for fields with known generator)
+  POLY  // E.g., x+1 (default for extension fields)
 };
 
-template <typename ElementType> class GaloisFieldBase {
-public:
+template <typename ElementType>
+class GaloisFieldBase {
+ public:
   using element_type = ElementType;
 
   virtual ~GaloisFieldBase() = default;
@@ -73,6 +74,6 @@ inline std::ostream &operator<<(std::ostream &os,
   return os;
 };
 
-} // namespace xg
+}  // namespace xg
 
-#endif // XGALOIS_FIELD_GF_BASE_HPP
+#endif  // XGALOIS_FIELD_GF_BASE_HPP

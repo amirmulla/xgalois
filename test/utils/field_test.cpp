@@ -7,7 +7,9 @@
 //===----------------------------------------------------------------------===//
 
 #include "xgalois/utils/field.hpp"
+
 #include <gtest/gtest.h>
+
 #include <stdexcept>
 
 using namespace xg::utils;
@@ -17,7 +19,7 @@ using namespace xg::utils;
 //===----------------------------------------------------------------------===//
 
 class FieldUtilsTest : public ::testing::Test {
-protected:
+ protected:
   void SetUp() override {
     // No special setup needed for field utilities
   }
@@ -75,7 +77,7 @@ TEST_F(FieldUtilsTest, ConvertRepresentationSpecialCharacters) {
   // Test with special characters
   EXPECT_THROW(ConvertRepresentation("int\n"), std::invalid_argument);
   EXPECT_THROW(ConvertRepresentation("int\t"), std::invalid_argument);
-  // Note: Testing with null character is tricky as it would terminate the string
-  // Instead test with other invalid variations
+  // Note: Testing with null character is tricky as it would terminate the
+  // string Instead test with other invalid variations
   EXPECT_THROW(ConvertRepresentation("int\r"), std::invalid_argument);
 }

@@ -1,4 +1,5 @@
 #include <gtest/gtest.h>
+
 #include <memory>
 #include <xtensor/containers/xarray.hpp>
 
@@ -9,7 +10,7 @@
 using namespace xg;
 
 class LinalgBinaryExtensionTest : public ::testing::Test {
-protected:
+ protected:
   // Using GF(2^4) with irreducible polynomial x^4 + x + 1
   // Elements are represented by uint8_t
   using FieldType = GaloisFieldBinaryExtension<uint8_t>;
@@ -24,21 +25,19 @@ protected:
 };
 
 // Add a simple test to verify the framework is working
-TEST_F(LinalgBinaryExtensionTest, BasicTest) {
-  EXPECT_TRUE(field != nullptr);
-}
+TEST_F(LinalgBinaryExtensionTest, BasicTest) { EXPECT_TRUE(field != nullptr); }
 
 TEST_F(LinalgBinaryExtensionTest, VectorDotProduct) {
   xt::xarray<FieldElement> v1({2});
   xt::xarray<FieldElement> v2({2});
 
   // v1 = [x, x+1] (values [2, 3])
-  v1(0) = FieldElement(2, field); // x
-  v1(1) = FieldElement(3, field); // x+1
+  v1(0) = FieldElement(2, field);  // x
+  v1(1) = FieldElement(3, field);  // x+1
 
   // v2 = [x^2+1, x] (values [5, 2])
-  v2(0) = FieldElement(5, field); // x^2+1
-  v2(1) = FieldElement(2, field); // x
+  v2(0) = FieldElement(5, field);  // x^2+1
+  v2(1) = FieldElement(2, field);  // x
 
   auto result = linalg::dot(v1, v2);
 
@@ -55,16 +54,16 @@ TEST_F(LinalgBinaryExtensionTest, MatrixMultiplication) {
   xt::xarray<FieldElement> B({2, 2});
 
   // A = [[x, x+1], [1, x^2]] (values [[2,3],[1,4]])
-  A(0, 0) = FieldElement(2, field); // x
-  A(0, 1) = FieldElement(3, field); // x+1
-  A(1, 0) = FieldElement(1, field); // 1
-  A(1, 1) = FieldElement(4, field); // x^2
+  A(0, 0) = FieldElement(2, field);  // x
+  A(0, 1) = FieldElement(3, field);  // x+1
+  A(1, 0) = FieldElement(1, field);  // 1
+  A(1, 1) = FieldElement(4, field);  // x^2
 
   // B = [[x^2+1, x], [x^3, x+1]] (values [[5,2],[8,3]])
-  B(0, 0) = FieldElement(5, field); // x^2+1
-  B(0, 1) = FieldElement(2, field); // x
-  B(1, 0) = FieldElement(8, field); // x^3
-  B(1, 1) = FieldElement(3, field); // x+1
+  B(0, 0) = FieldElement(5, field);  // x^2+1
+  B(0, 1) = FieldElement(2, field);  // x
+  B(1, 0) = FieldElement(8, field);  // x^3
+  B(1, 1) = FieldElement(3, field);  // x+1
 
   auto result = linalg::dot(A, B);
 
@@ -93,12 +92,12 @@ TEST_F(LinalgBinaryExtensionTest, OuterProduct) {
   xt::xarray<FieldElement> v2({2});
 
   // v1 = [x, x+1] (values [2, 3])
-  v1(0) = FieldElement(2, field); // x
-  v1(1) = FieldElement(3, field); // x+1
+  v1(0) = FieldElement(2, field);  // x
+  v1(1) = FieldElement(3, field);  // x+1
 
   // v2 = [x^2, 1] (values [4, 1])
-  v2(0) = FieldElement(4, field); // x^2
-  v2(1) = FieldElement(1, field); // 1
+  v2(0) = FieldElement(4, field);  // x^2
+  v2(1) = FieldElement(1, field);  // 1
 
   auto result = linalg::outer(v1, v2);
 
@@ -108,20 +107,20 @@ TEST_F(LinalgBinaryExtensionTest, OuterProduct) {
   EXPECT_EQ(result.shape(0), 2);
   EXPECT_EQ(result.shape(1), 2);
 
-  EXPECT_EQ(result(0, 0).Value(), 8);  // x^3
-  EXPECT_EQ(result(0, 1).Value(), 2);  // x
-  EXPECT_EQ(result(1, 0).Value(), 12); // x^3+x^2
-  EXPECT_EQ(result(1, 1).Value(), 3);  // x+1
+  EXPECT_EQ(result(0, 0).Value(), 8);   // x^3
+  EXPECT_EQ(result(0, 1).Value(), 2);   // x
+  EXPECT_EQ(result(1, 0).Value(), 12);  // x^3+x^2
+  EXPECT_EQ(result(1, 1).Value(), 3);   // x+1
 }
 
 TEST_F(LinalgBinaryExtensionTest, Trace) {
   xt::xarray<FieldElement> A({2, 2});
 
   // A = [[x, x+1], [1, x^2]] (values [[2,3],[1,4]])
-  A(0, 0) = FieldElement(2, field); // x
-  A(0, 1) = FieldElement(3, field); // x+1
-  A(1, 0) = FieldElement(1, field); // 1
-  A(1, 1) = FieldElement(4, field); // x^2
+  A(0, 0) = FieldElement(2, field);  // x
+  A(0, 1) = FieldElement(3, field);  // x+1
+  A(1, 0) = FieldElement(1, field);  // 1
+  A(1, 1) = FieldElement(4, field);  // x^2
 
   auto result = linalg::trace(A);
 
@@ -133,10 +132,10 @@ TEST_F(LinalgBinaryExtensionTest, Determinant2x2) {
   xt::xarray<FieldElement> A({2, 2});
 
   // A = [[x, x+1], [1, x^2]] (values [[2,3],[1,4]])
-  A(0, 0) = FieldElement(2, field); // x
-  A(0, 1) = FieldElement(3, field); // x+1
-  A(1, 0) = FieldElement(1, field); // 1
-  A(1, 1) = FieldElement(4, field); // x^2
+  A(0, 0) = FieldElement(2, field);  // x
+  A(0, 1) = FieldElement(3, field);  // x+1
+  A(1, 0) = FieldElement(1, field);  // 1
+  A(1, 1) = FieldElement(4, field);  // x^2
 
   auto result = linalg::det(A);
 
@@ -161,10 +160,10 @@ TEST_F(LinalgBinaryExtensionTest, MatrixPower) {
   xt::xarray<FieldElement> A({2, 2});
 
   // A = [[x, 1], [0, x+1]] (values [[2,1],[0,3]])
-  A(0, 0) = FieldElement(2, field); // x
-  A(0, 1) = FieldElement(1, field); // 1
-  A(1, 0) = FieldElement(0, field); // 0
-  A(1, 1) = FieldElement(3, field); // x+1
+  A(0, 0) = FieldElement(2, field);  // x
+  A(0, 1) = FieldElement(1, field);  // 1
+  A(1, 0) = FieldElement(0, field);  // 0
+  A(1, 1) = FieldElement(3, field);  // x+1
 
   // Test A^0 (Identity)
   auto A0 = linalg::matrix_power(A, 0);
@@ -190,10 +189,10 @@ TEST_F(LinalgBinaryExtensionTest, MatrixPower) {
   //        [0,       x^2+1]]
   // Values: [[4, 1], [0, 5]]
   auto A2 = linalg::matrix_power(A, 2);
-  EXPECT_EQ(A2(0, 0).Value(), 4); // x^2
-  EXPECT_EQ(A2(0, 1).Value(), 1); // 1
-  EXPECT_EQ(A2(1, 0).Value(), 0); // 0
-  EXPECT_EQ(A2(1, 1).Value(), 5); // x^2+1
+  EXPECT_EQ(A2(0, 0).Value(), 4);  // x^2
+  EXPECT_EQ(A2(0, 1).Value(), 1);  // 1
+  EXPECT_EQ(A2(1, 0).Value(), 0);  // 0
+  EXPECT_EQ(A2(1, 1).Value(), 5);  // x^2+1
 }
 
 TEST_F(LinalgBinaryExtensionTest, VdotProduct) {
@@ -239,14 +238,14 @@ TEST_F(LinalgBinaryExtensionTest, LinearSystemSolve) {
 
   // A = [[x, 1], [x+1, x^2]] (values [[2,1],[3,4]])
   // det(A) = x*x^2 + 1*(x+1) = x^3 + x+1 = 1011 (11) != 0, so invertible
-  A(0, 0) = FieldElement(2, field); // x
-  A(0, 1) = FieldElement(1, field); // 1
-  A(1, 0) = FieldElement(3, field); // x+1
-  A(1, 1) = FieldElement(4, field); // x^2
+  A(0, 0) = FieldElement(2, field);  // x
+  A(0, 1) = FieldElement(1, field);  // 1
+  A(1, 0) = FieldElement(3, field);  // x+1
+  A(1, 1) = FieldElement(4, field);  // x^2
 
   // b = [x^2+x, x^3+1] (values [6, 9])
-  b(0) = FieldElement(6, field); // x^2+x
-  b(1) = FieldElement(9, field); // x^3+1
+  b(0) = FieldElement(6, field);  // x^2+x
+  b(1) = FieldElement(9, field);  // x^3+1
 
   auto x_sol = linalg::solve(A, b);
 
@@ -263,10 +262,10 @@ TEST_F(LinalgBinaryExtensionTest, LinearSystemSolve) {
 TEST_F(LinalgBinaryExtensionTest, MatrixInversion) {
   xt::xarray<FieldElement> A({2, 2});
   // A = [[x, 1], [x+1, x^2]] (values [[2,1],[3,4]])
-  A(0, 0) = FieldElement(2, field); // x
-  A(0, 1) = FieldElement(1, field); // 1
-  A(1, 0) = FieldElement(3, field); // x+1
-  A(1, 1) = FieldElement(4, field); // x^2
+  A(0, 0) = FieldElement(2, field);  // x
+  A(0, 1) = FieldElement(1, field);  // 1
+  A(1, 0) = FieldElement(3, field);  // x+1
+  A(1, 1) = FieldElement(4, field);  // x^2
 
   auto A_inv = linalg::inv(A);
 

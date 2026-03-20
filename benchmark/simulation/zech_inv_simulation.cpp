@@ -1,4 +1,5 @@
 #include <benchmark/benchmark.h>
+
 #include <chrono>
 #include <iostream>
 #include <random>
@@ -22,7 +23,7 @@ int main() {
   std::cout << "Field characteristic: " << field->Characteristic() << std::endl;
 
   // Generate 1000000 random field elements (in log representation)
-  std::mt19937 gen(42); // Fixed seed for reproducibility
+  std::mt19937 gen(42);  // Fixed seed for reproducibility
   std::uniform_int_distribution<uint64_t> dis(0, field->Order() - 2);
 
   uint64_t num_elements = 1e6;
@@ -34,7 +35,7 @@ int main() {
   for (size_t i = 0; i < num_elements; ++i) {
     // Generate a random element in the field, avoiding zero (ZECH_INFINITY)
     uint32_t elm = static_cast<uint32_t>(dis(gen));
-    while (elm == static_cast<uint32_t>(-1)) { // -1 represents ZECH_INFINITY
+    while (elm == static_cast<uint32_t>(-1)) {  // -1 represents ZECH_INFINITY
       elm = static_cast<uint32_t>(dis(gen));
     }
     log_elements.push_back(elm);
@@ -49,7 +50,7 @@ int main() {
   // Perform inversions between adjacent pairs (avoiding inversion by zero)
   for (size_t i = 0; i < log_elements.size() - 1; ++i) {
     uint32_t result = field->Inv(log_elements[i]);
-    benchmark::DoNotOptimize(result); // Prevent compiler optimization
+    benchmark::DoNotOptimize(result);  // Prevent compiler optimization
   }
 
   auto end_time = std::chrono::high_resolution_clock::now();
@@ -79,7 +80,7 @@ int main() {
   // Ensure b is not zero (ZECH_INFINITY)
   auto elm = log_elements[index_dis(gen)];
 
-  constexpr uint64_t batch_size = 1000000; // 1 million operations
+  constexpr uint64_t batch_size = 1000000;  // 1 million operations
 
   start_time = std::chrono::high_resolution_clock::now();
 

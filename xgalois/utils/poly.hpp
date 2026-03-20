@@ -32,26 +32,26 @@ PolynomialDenseExtendedGcd(const PolynomialDense<GaloisField> &a,
   // Ensure polynomials share the same field, or handle error.
   // For simplicity, assume a.Field() is valid and b uses the same.
   std::shared_ptr<GaloisField> field = a.Field();
-  if (!field) { // Should not happen if 'a' is valid
+  if (!field) {  // Should not happen if 'a' is valid
     if (b.Field())
       field = b.Field();
     else
       throw std::invalid_argument("Cannot determine field for GCD.");
   }
 
-  const std::string var_name = a.GetVariable(); // Use variable from 'a'
+  const std::string var_name = a.GetVariable();  // Use variable from 'a'
 
   ElementType kGfZeroElem(field->AdditiveIdentity(), field);
   ElementType kGfOneElem(field->MultiplicativeIdentity(), field);
   PolynomialType kGfZeroPoly(std::vector<ElementType>{kGfZeroElem}, var_name);
   PolynomialType kGfOnePoly(std::vector<ElementType>{kGfOneElem}, var_name);
 
-  if (b.Degree() == -1) { // If b is the zero polynomial
+  if (b.Degree() == -1) {  // If b is the zero polynomial
     // gcd(a, 0) = a. To make it monic, divide by leading coefficient.
-    PolynomialType monic_a = a; // Copies variable_
+    PolynomialType monic_a = a;  // Copies variable_
     if (a.Degree() != -1 && a[a.Degree()] != kGfOneElem) {
       ElementType inv_lc = a[a.Degree()].Inv();
-      monic_a = a * inv_lc; // s will be inv_lc, t will be 0
+      monic_a = a * inv_lc;  // s will be inv_lc, t will be 0
       return {std::move(monic_a),
               {PolynomialType(std::vector<ElementType>{inv_lc}, var_name),
                kGfZeroPoly}};
@@ -59,34 +59,34 @@ PolynomialDenseExtendedGcd(const PolynomialDense<GaloisField> &a,
     return {std::move(monic_a), {kGfOnePoly, kGfZeroPoly}};
   }
 
-  if (a.Degree() == -1) { // If a is the zero polynomial
+  if (a.Degree() == -1) {  // If a is the zero polynomial
     // gcd(0, b) = b. To make it monic.
-    PolynomialType monic_b = b; // Copies variable_
+    PolynomialType monic_b = b;  // Copies variable_
     if (b.Degree() != -1 && b[b.Degree()] != kGfOneElem) {
       ElementType inv_lc = b[b.Degree()].Inv();
-      monic_b = b * inv_lc; // s will be 0, t will be inv_lc
+      monic_b = b * inv_lc;  // s will be 0, t will be inv_lc
       return {std::move(monic_b),
               {kGfZeroPoly,
                PolynomialType(std::vector<ElementType>{inv_lc},
-                              b.GetVariable())}}; // Use b's variable here
+                              b.GetVariable())}};  // Use b's variable here
     }
     return {
         std::move(monic_b),
         {kGfZeroPoly,
-         kGfOnePoly}}; // kGfOnePoly already uses a's var, but b's would be more
-                       // consistent if a is zero Let's ensure kGfOnePoly uses
-                       // b.GetVariable() if a is zero. However, kGfOnePoly is
-                       // already defined with a.GetVariable(). For gcd(0,b) ->
-                       // s=0, t=inv_lc_b or 1. t should use b's variable. This
-                       // is a subtle point. For now, the impact is minor. A
-                       // simple fix: if a is zero, re-init kGfOnePoly with
-                       // b.GetVariable() for t. Or, the PolynomialType
-                       // constructor for {inv_lc} should use b.GetVariable().
-                       // The current return for a=0, inv_lc case is correct.
-                       // For a=0, b non-zero, t=1 case:
-                       // return {std::move(monic_b), {kGfZeroPoly,
-                       // PolynomialType(std::vector<ElementType>{kGfOneElem},
-                       // b.GetVariable())}}; This is safer.
+         kGfOnePoly}};  // kGfOnePoly already uses a's var, but b's would be
+                        // more consistent if a is zero Let's ensure kGfOnePoly
+                        // uses b.GetVariable() if a is zero. However,
+                        // kGfOnePoly is already defined with a.GetVariable().
+                        // For gcd(0,b) -> s=0, t=inv_lc_b or 1. t should use
+                        // b's variable. This is a subtle point. For now, the
+                        // impact is minor. A simple fix: if a is zero, re-init
+                        // kGfOnePoly with b.GetVariable() for t. Or, the
+                        // PolynomialType constructor for {inv_lc} should use
+                        // b.GetVariable(). The current return for a=0, inv_lc
+                        // case is correct. For a=0, b non-zero, t=1 case:
+                        // return {std::move(monic_b), {kGfZeroPoly,
+                        // PolynomialType(std::vector<ElementType>{kGfOneElem},
+                        // b.GetVariable())}}; This is safer.
     PolynomialType one_poly_for_b(std::vector<ElementType>{kGfOneElem},
                                   b.GetVariable());
     return {std::move(monic_b), {kGfZeroPoly, one_poly_for_b}};
@@ -99,8 +99,8 @@ PolynomialDenseExtendedGcd(const PolynomialDense<GaloisField> &a,
   PolynomialType t0 = kGfZeroPoly;
   PolynomialType t1 = kGfOnePoly;
 
-  while (r1.Degree() != -1) { // While remainder r1 is not the zero polynomial
-    auto division_result = r0.DivRem(r1); // DivRem returns trimmed results
+  while (r1.Degree() != -1) {  // While remainder r1 is not the zero polynomial
+    auto division_result = r0.DivRem(r1);  // DivRem returns trimmed results
     PolynomialType q = std::move(division_result.first);
     PolynomialType r_next = std::move(division_result.second);
 
@@ -118,7 +118,7 @@ PolynomialDenseExtendedGcd(const PolynomialDense<GaloisField> &a,
   }
 
   // r0 is the GCD. Make it monic.
-  if (r0.Degree() != -1) { // If GCD is not zero polynomial
+  if (r0.Degree() != -1) {  // If GCD is not zero polynomial
     const ElementType &leading_coeff = r0[r0.Degree()];
     if (leading_coeff != kGfOneElem) {
       ElementType inv_leading_coeff = leading_coeff.Inv();
@@ -154,8 +154,8 @@ PolynomialDenseExtendedGcd(const PolynomialDense<GaloisField> &a,
  * @return The coefficient of the term
  */
 template <typename GaloisField>
-static typename GaloisField::element_type
-ExtractCoefficient(const std::string &term) {
+static typename GaloisField::element_type ExtractCoefficient(
+    const std::string &term) {
   using ElementType = typename GaloisField::element_type;
   if (term.find('x') == std::string::npos &&
       term.find('X') == std::string::npos) {
@@ -207,7 +207,7 @@ static int ExtractDegree(const std::string &term) {
   if (x_pos == std::string::npos) {
     x_pos = term.find('X');
     if (x_pos == std::string::npos) {
-      return 0; // Constant term
+      return 0;  // Constant term
     }
   }
 
@@ -255,9 +255,8 @@ static int ExtractDegree(const std::string &term) {
  * @return PolynomialDense object representing the parsed polynomial
  */
 template <typename GaloisField>
-PolynomialDense<GaloisField>
-ParsePolynomial(std::shared_ptr<GaloisField> base_field,
-                const std::string &poly_str) {
+PolynomialDense<GaloisField> ParsePolynomial(
+    std::shared_ptr<GaloisField> base_field, const std::string &poly_str) {
   using FieldType = GaloisField;
   using ElementType = typename GaloisField::element_type;
   using FieldElementType = GaloisFieldElementBase<FieldType>;
@@ -364,10 +363,9 @@ ParsePolynomial(std::shared_ptr<GaloisField> base_field,
  * @return PolynomialDense object representing the parsed polynomial
  */
 template <typename GaloisField>
-PolynomialDense<GaloisField>
-ParsePolynomial(std::shared_ptr<GaloisField> base_field,
-                const std::string &poly_str,
-                const std::string &variable_name) {
+PolynomialDense<GaloisField> ParsePolynomial(
+    std::shared_ptr<GaloisField> base_field, const std::string &poly_str,
+    const std::string &variable_name) {
   // If variable name is 'x', just call the standard version
   if (variable_name == "x") {
     return ParsePolynomial(base_field, poly_str);
@@ -377,9 +375,10 @@ ParsePolynomial(std::shared_ptr<GaloisField> base_field,
   std::string normalized_str = poly_str;
   if (!variable_name.empty() && variable_name != "x") {
     size_t pos = 0;
-    while ((pos = normalized_str.find(variable_name, pos)) != std::string::npos) {
+    while ((pos = normalized_str.find(variable_name, pos)) !=
+           std::string::npos) {
       normalized_str.replace(pos, variable_name.length(), "x");
-      pos += 1; // "x" is shorter than most variable names
+      pos += 1;  // "x" is shorter than most variable names
     }
   }
 
@@ -424,11 +423,11 @@ bool IsIrreducible(const PolynomialDense<GaloisField> &poly) {
 
   // Handle special cases
   if (n <= 0) {
-    return false; // Constants and zero polynomial are not irreducible
+    return false;  // Constants and zero polynomial are not irreducible
   }
 
   if (n == 1) {
-    return true; // Linear polynomials are always irreducible
+    return true;  // Linear polynomials are always irreducible
   }
 
   const std::string var_name = poly.GetVariable();
@@ -437,7 +436,7 @@ bool IsIrreducible(const PolynomialDense<GaloisField> &poly) {
 
   // Check if leading coefficient is non-zero
   if (poly[n] == kGfZeroElem) {
-    return false; // Not a valid polynomial of degree n
+    return false;  // Not a valid polynomial of degree n
   }
 
   uint64_t q = field->Characteristic();
@@ -467,7 +466,7 @@ bool IsIrreducible(const PolynomialDense<GaloisField> &poly) {
       }
 
       if (result == kGfZeroElem) {
-        return false; // Found a root, so not irreducible
+        return false;  // Found a root, so not irreducible
       }
     }
     return true;
@@ -475,7 +474,7 @@ bool IsIrreducible(const PolynomialDense<GaloisField> &poly) {
 
   // Rabin's irreducibility test for general case
   // Test: gcd(f(x), x^(q^i) - x) = 1 for i = 1, 2, ..., floor(n/2)
-  PolynomialType current_poly = x_poly; // Start with x
+  PolynomialType current_poly = x_poly;  // Start with x
 
   for (int i = 1; i <= n / 2; ++i) {
     // Compute x^(q^i) mod poly using repeated squaring
@@ -497,7 +496,7 @@ bool IsIrreducible(const PolynomialDense<GaloisField> &poly) {
     }
   }
 
-  return true; // Passed all tests
+  return true;  // Passed all tests
 }
 
 //------------------------------------------------------------------------------
@@ -541,7 +540,7 @@ uint64_t BinaryPolynomialToUint(const PolynomialDense<GaloisField> &poly) {
   return result;
 }
 
-} // namespace utils
-} // namespace xg
+}  // namespace utils
+}  // namespace xg
 
-#endif // XG_UTILS_POLY_HPP_
+#endif  // XG_UTILS_POLY_HPP_

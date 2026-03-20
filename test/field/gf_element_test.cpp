@@ -1,8 +1,11 @@
 #include "xgalois/field/gf_element.hpp"
-#include "xgalois/field/gf_prime.hpp"
-#include "xgalois/field/gf_binary.hpp"
+
 #include <gtest/gtest.h>
+
 #include <memory>
+
+#include "xgalois/field/gf_binary.hpp"
+#include "xgalois/field/gf_prime.hpp"
 
 using namespace xg;
 
@@ -11,7 +14,7 @@ using namespace xg;
 //===----------------------------------------------------------------------===//
 
 class GaloisFieldElementTest : public ::testing::Test {
-protected:
+ protected:
   void SetUp() override {
     gf7 = std::make_shared<GaloisFieldPrime<uint8_t>>(7);
     gf2 = std::make_shared<GaloisFieldBinary>();
@@ -30,7 +33,8 @@ protected:
   std::shared_ptr<GaloisFieldPrime<uint8_t>> gf7;
   std::shared_ptr<GaloisFieldBinary> gf2;
 
-  GaloisFieldElementBase<GaloisFieldPrime<uint8_t>> elem_3, elem_5, elem_0, elem_1;
+  GaloisFieldElementBase<GaloisFieldPrime<uint8_t>> elem_3, elem_5, elem_0,
+      elem_1;
   GaloisFieldElementBase<GaloisFieldBinary> bin_0, bin_1;
 };
 
@@ -48,7 +52,8 @@ TEST_F(GaloisFieldElementTest, Addition) {
   EXPECT_EQ(result.Value(), 1);  // 3 + 5 = 8 ≡ 1 (mod 7)
   EXPECT_EQ(result.Field(), gf7);
 
-  auto zero_sum = elem_3 + GaloisFieldElementBase<GaloisFieldPrime<uint8_t>>(4, gf7);
+  auto zero_sum =
+      elem_3 + GaloisFieldElementBase<GaloisFieldPrime<uint8_t>>(4, gf7);
   EXPECT_EQ(zero_sum.Value(), 0);  // 3 + 4 = 7 ≡ 0 (mod 7)
 }
 
@@ -204,7 +209,7 @@ TEST_F(GaloisFieldElementTest, LogarithmOperations) {
 //===----------------------------------------------------------------------===//
 
 class GaloisFieldElementStrictTest : public ::testing::Test {
-protected:
+ protected:
   void SetUp() override {
     gf7 = std::make_shared<GaloisFieldPrime<uint8_t>>(7);
     gf5 = std::make_shared<GaloisFieldPrime<uint8_t>>(5);

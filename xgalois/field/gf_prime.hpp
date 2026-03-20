@@ -35,7 +35,7 @@ class GaloisFieldPrime : public GaloisFieldBase<ElementType> {
       sizeof(ElementType) <= sizeof(uint32_t),
       "ElementType must be at most 32 bits to prevent overflow issues.");
 
-public:
+ public:
   // Constructs a prime field with characteristic p.
   // Initializes the prime characteristic, representation, and finds a
   // multiplicative generator.
@@ -52,7 +52,7 @@ public:
       throw std::invalid_argument("Provided value is not prime.");
     }
 
-    generator_ = 0; // Will be set by MultiplicativeGenerator().
+    generator_ = 0;  // Will be set by MultiplicativeGenerator().
 
     assert(p_ > 0 && "Prime must be positive.");
     assert((representation_ == FieldRepresentation::INT ||
@@ -180,11 +180,11 @@ public:
     }
 
     while (current_exp > 0) {
-      if (current_exp & 1) { // If exp is odd.
+      if (current_exp & 1) {  // If exp is odd.
         result = (result * current_base) % current_modulus;
       }
       current_base = (current_base * current_base) % current_modulus;
-      current_exp >>= 1; // exp = exp / 2.
+      current_exp >>= 1;  // exp = exp / 2.
     }
     return static_cast<ElementType>(result);
   }
@@ -213,14 +213,13 @@ public:
       throw std::invalid_argument("Generator for Log must be 1 for GF(2).");
     }
 
-    if (a == this->MultiplicativeIdentity()) { // log_g(1) is always 0.
+    if (a == this->MultiplicativeIdentity()) {  // log_g(1) is always 0.
       return 0;
     }
 
-    uint64_t phi = this->Order() - 1; // Order of the multiplicative group.
-    if (phi == 0) {                   // Only for p=2 (phi=1) or invalid p=1.
-      if (this->p_ == 2 && a == 1 && generator == 1)
-        return 0;
+    uint64_t phi = this->Order() - 1;  // Order of the multiplicative group.
+    if (phi == 0) {                    // Only for p=2 (phi=1) or invalid p=1.
+      if (this->p_ == 2 && a == 1 && generator == 1) return 0;
       throw std::domain_error(
           "Logarithm undefined for this field configuration.");
     }
@@ -265,12 +264,13 @@ public:
     if (this->generator_ != 0 && this->p_ > 2) {
       return this->generator_;
     }
-    if (this->p_ == 2) { // Generator for GF(2) is 1.
+    if (this->p_ == 2) {  // Generator for GF(2) is 1.
       return static_cast<ElementType>(1);
     }
-    if (this->p_ < 2) { // Should be caught by constructor.
-      throw std::runtime_error("Multiplicative generator not applicable for "
-                               "fields smaller than GF(2).");
+    if (this->p_ < 2) {  // Should be caught by constructor.
+      throw std::runtime_error(
+          "Multiplicative generator not applicable for "
+          "fields smaller than GF(2).");
     }
 
     uint64_t phi = static_cast<uint64_t>(this->p_) - 1;
@@ -297,8 +297,9 @@ public:
   // Finds all multiplicative generators of the field.
   std::vector<ElementType> MultiplicativeGenerators() const override {
     if (this->p_ < 2) {
-      throw std::runtime_error("Multiplicative generators not applicable for "
-                               "fields smaller than GF(2).");
+      throw std::runtime_error(
+          "Multiplicative generators not applicable for "
+          "fields smaller than GF(2).");
     }
     if (this->p_ == 2) {
       return {static_cast<ElementType>(1)};
@@ -334,61 +335,61 @@ public:
   void Print(std::ostream &os) const override {
     os << "Galois Prime Field GF(" << this->p_ << ")";
     switch (this->representation_) {
-    case FieldRepresentation::INT:
-      os << " [Rep: INT]";
-      break;
-    case FieldRepresentation::HEX:
-      os << " [Rep: HEX]";
-      break;
-    case FieldRepresentation::POW:
-      os << " [Rep: POW]";
-      break;
-    case FieldRepresentation::LOG:
-      os << " [Rep: LOG]";
-      break;
-    default:
-      os << " [Rep: UNKNOWN]";
-      break;
+      case FieldRepresentation::INT:
+        os << " [Rep: INT]";
+        break;
+      case FieldRepresentation::HEX:
+        os << " [Rep: HEX]";
+        break;
+      case FieldRepresentation::POW:
+        os << " [Rep: POW]";
+        break;
+      case FieldRepresentation::LOG:
+        os << " [Rep: LOG]";
+        break;
+      default:
+        os << " [Rep: UNKNOWN]";
+        break;
     }
   }
 
   // Prints a field element according to the current representation.
   void Print(const ElementType &a, std::ostream &os) const override {
     switch (this->representation_) {
-    case FieldRepresentation::HEX:
-      os << "0x" << std::hex << static_cast<uint64_t>(a) << std::dec;
-      break;
-    case FieldRepresentation::POW:
-      if (a == 0) {
-        os << "0";
-      } else if (a == 1) {
-        os << "g^0"; // Or 1, depending on convention for g^0.
-      } else {
-        try {
-          uint64_t power = Log(a, this->generator_);
-          os << "g^" << power;
-        } catch (const std::domain_error &) {
-          // Fallback if log fails (e.g. generator not primitive for 'a').
-          os << static_cast<uint64_t>(a);
+      case FieldRepresentation::HEX:
+        os << "0x" << std::hex << static_cast<uint64_t>(a) << std::dec;
+        break;
+      case FieldRepresentation::POW:
+        if (a == 0) {
+          os << "0";
+        } else if (a == 1) {
+          os << "g^0";  // Or 1, depending on convention for g^0.
+        } else {
+          try {
+            uint64_t power = Log(a, this->generator_);
+            os << "g^" << power;
+          } catch (const std::domain_error &) {
+            // Fallback if log fails (e.g. generator not primitive for 'a').
+            os << static_cast<uint64_t>(a);
+          }
         }
-      }
-      break;
-    case FieldRepresentation::LOG:
-      if (a == 0) {
-        os << "undefined"; // Log of 0 is undefined.
-      } else {
-        try {
-          uint32_t log_val = Log(a, this->generator_);
-          os << log_val;
-        } catch (const std::domain_error &) {
-          os << static_cast<uint64_t>(a); // Fallback.
+        break;
+      case FieldRepresentation::LOG:
+        if (a == 0) {
+          os << "undefined";  // Log of 0 is undefined.
+        } else {
+          try {
+            uint32_t log_val = Log(a, this->generator_);
+            os << log_val;
+          } catch (const std::domain_error &) {
+            os << static_cast<uint64_t>(a);  // Fallback.
+          }
         }
-      }
-      break;
-    case FieldRepresentation::INT:
-    default:
-      os << static_cast<uint64_t>(a);
-      break;
+        break;
+      case FieldRepresentation::INT:
+      default:
+        os << static_cast<uint64_t>(a);
+        break;
     }
   }
 
@@ -399,12 +400,12 @@ public:
     return oss.str();
   }
 
-protected:
-  ElementType p_;                      // Prime characteristic of the field.
-  FieldRepresentation representation_; // Representation for printing elements.
-  ElementType generator_; // Default multiplicative generator (primitive root).
+ protected:
+  ElementType p_;                       // Prime characteristic of the field.
+  FieldRepresentation representation_;  // Representation for printing elements.
+  ElementType generator_;  // Default multiplicative generator (primitive root).
 
-}; // class GaloisFieldPrime
+};  // class GaloisFieldPrime
 
 //------------------------------------------------------------------------------
 // GaloisFieldPrimeTable Class
@@ -418,7 +419,7 @@ class GaloisFieldPrimeTable : public GaloisFieldPrime<ElementType> {
       sizeof(ElementType) <= sizeof(uint32_t),
       "ElementType must be at most 32 bits to prevent overflow issues.");
 
-public:
+ public:
   // Constructs a table-based prime field.
   // Initializes tables for log and anti-log.
   explicit GaloisFieldPrimeTable(ElementType prime,
@@ -428,7 +429,7 @@ public:
     InitializeTables();
   }
 
-private:
+ private:
   // Precomputes logarithm (log_alpha_) and anti-logarithm (alpha_pow_) tables.
   // generator_^i = alpha_pow_[i]
   // log_alpha_[alpha_pow_[i]] = i
@@ -436,16 +437,15 @@ private:
     // For p=2, tables are trivial and might not offer performance benefits.
     // The base class operations are simple enough for GF(2).
     if (this->p_ == 2) {
-      alpha_pow_.resize(this->p_); // Size 2
-      log_alpha_.resize(this->p_); // Size 2
+      alpha_pow_.resize(this->p_);  // Size 2
+      log_alpha_.resize(this->p_);  // Size 2
       // this->generator_ is already 1 from base constructor.
-      alpha_pow_[0] = static_cast<ElementType>(1); // g^0 = 1
+      alpha_pow_[0] = static_cast<ElementType>(1);  // g^0 = 1
       // log_alpha_[0] is undefined, often set to a special value like p-1.
       // log_alpha_[1] = 0 since g^0 = 1.
       if (this->p_ > 0)
-        log_alpha_[0] = this->p_ - 1; // Special value for log(0)
-      if (this->p_ > 1)
-        log_alpha_[1] = static_cast<ElementType>(0);
+        log_alpha_[0] = this->p_ - 1;  // Special value for log(0)
+      if (this->p_ > 1) log_alpha_[1] = static_cast<ElementType>(0);
       return;
     }
 
@@ -458,7 +458,7 @@ private:
     alpha_pow_.resize(this->p_);
     log_alpha_.resize(this->p_);
 
-    alpha_pow_[0] = static_cast<ElementType>(1); // generator^0 = 1.
+    alpha_pow_[0] = static_cast<ElementType>(1);  // generator^0 = 1.
     for (uint64_t i = 1; i < static_cast<uint64_t>(this->p_); ++i) {
       // Use base class Mul for table construction to avoid dependency on
       // potentially uninitialized tables of this class.
@@ -469,8 +469,8 @@ private:
     // log_alpha_[0] is undefined; use p-1 as a placeholder.
     std::fill(log_alpha_.begin(), log_alpha_.end(), this->p_ - 1);
     for (uint64_t i = 0; i < static_cast<uint64_t>(this->p_) - 1;
-         ++i) {                       // Powers from g^0 to g^(p-2).
-      if (alpha_pow_[i] < this->p_) { // Sanity check.
+         ++i) {                        // Powers from g^0 to g^(p-2).
+      if (alpha_pow_[i] < this->p_) {  // Sanity check.
         log_alpha_[alpha_pow_[i]] = static_cast<ElementType>(i);
       } else {
         throw std::runtime_error(
@@ -479,7 +479,7 @@ private:
     }
   }
 
-public:
+ public:
   // (a * b) mod p using lookup tables.
   // a * b = g^(log(a) + log(b)).
   inline ElementType Mul(const ElementType &a,
@@ -488,7 +488,7 @@ public:
       return 0;
     }
     if (this->p_ == 2)
-      return GaloisFieldPrime<ElementType>::Mul(a, b); // Base for GF(2).
+      return GaloisFieldPrime<ElementType>::Mul(a, b);  // Base for GF(2).
     // Check bounds for table access.
     if (a >= this->p_ || b >= this->p_) {
       throw std::out_of_range("Operands out of field range in table Mul.");
@@ -512,7 +512,7 @@ public:
       return 0;
     }
     if (this->p_ == 2)
-      return GaloisFieldPrime<ElementType>::Div(a, b); // Base for GF(2).
+      return GaloisFieldPrime<ElementType>::Div(a, b);  // Base for GF(2).
     if (a >= this->p_ || b >= this->p_) {
       throw std::out_of_range("Operands out of field range in table Div.");
     }
@@ -531,7 +531,7 @@ public:
       throw std::domain_error("Element has no inverse (is zero).");
     }
     if (this->p_ == 2)
-      return GaloisFieldPrime<ElementType>::Inv(a); // Base for GF(2).
+      return GaloisFieldPrime<ElementType>::Inv(a);  // Base for GF(2).
     if (a >= this->p_) {
       throw std::out_of_range("Operand out of field range in table Inv.");
     }
@@ -613,7 +613,7 @@ public:
       // called externally for p_ == 2, base class would return 1. This override
       // is for p_ > 2 context during table init.
       if (this->p_ == 2)
-        return static_cast<ElementType>(1); // Should be consistent.
+        return static_cast<ElementType>(1);  // Should be consistent.
       throw std::runtime_error(
           "Multiplicative generator context error for p <= 2 in table class.");
     }
@@ -645,8 +645,9 @@ public:
   // Must use base class Pow.
   std::vector<ElementType> MultiplicativeGenerators() const override {
     if (this->p_ < 2) {
-      throw std::runtime_error("Multiplicative generators not applicable for "
-                               "fields smaller than GF(2).");
+      throw std::runtime_error(
+          "Multiplicative generators not applicable for "
+          "fields smaller than GF(2).");
     }
     if (this->p_ == 2) {
       return {static_cast<ElementType>(1)};
@@ -682,28 +683,28 @@ public:
   void Print(std::ostream &os) const override {
     os << "Galois Prime Field GF(" << this->p_ << ") [Table-Based]";
     switch (this->representation_) {
-    case FieldRepresentation::INT:
-      os << " [Rep: INT]";
-      break;
-    case FieldRepresentation::HEX:
-      os << " [Rep: HEX]";
-      break;
-    case FieldRepresentation::POW:
-      os << " [Rep: POW]";
-      break;
-    case FieldRepresentation::LOG:
-      os << " [Rep: LOG]";
-      break;
-    default:
-      os << " [Rep: UNKNOWN]";
-      break;
+      case FieldRepresentation::INT:
+        os << " [Rep: INT]";
+        break;
+      case FieldRepresentation::HEX:
+        os << " [Rep: HEX]";
+        break;
+      case FieldRepresentation::POW:
+        os << " [Rep: POW]";
+        break;
+      case FieldRepresentation::LOG:
+        os << " [Rep: LOG]";
+        break;
+      default:
+        os << " [Rep: UNKNOWN]";
+        break;
     }
   }
 
-private:
-  std::vector<ElementType> alpha_pow_; // alpha_pow_[i] = g^i.
-  std::vector<ElementType> log_alpha_; // log_alpha_[val] = i where g^i = val.
-}; // class GaloisFieldPrimeTable
+ private:
+  std::vector<ElementType> alpha_pow_;  // alpha_pow_[i] = g^i.
+  std::vector<ElementType> log_alpha_;  // log_alpha_[val] = i where g^i = val.
+};  // class GaloisFieldPrimeTable
 
 //------------------------------------------------------------------------------
 // Type aliases for convenience
@@ -713,6 +714,6 @@ template <typename ElementType = uint32_t>
 using GFPLOG = GaloisFieldPrimeTable<ElementType>;
 //------------------------------------------------------------------------------
 
-} // namespace xg
+}  // namespace xg
 
-#endif // XGALOIS_FIELD_GF_PRIME_HPP_
+#endif  // XGALOIS_FIELD_GF_PRIME_HPP_

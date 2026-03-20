@@ -1,5 +1,7 @@
 #include "xgalois/utils/math.hpp"
+
 #include <gtest/gtest.h>
+
 #include <algorithm>
 #include <vector>
 
@@ -10,7 +12,7 @@ using namespace xg::utils;
 //===----------------------------------------------------------------------===//
 
 class MathUtilsTest : public ::testing::Test {
-protected:
+ protected:
   void SetUp() override {
     // No special setup needed for math utilities
   }
@@ -23,7 +25,7 @@ protected:
 TEST_F(MathUtilsTest, GcdBasicCases) {
   EXPECT_EQ(Gcd(12, 8), 4);
   EXPECT_EQ(Gcd(21, 14), 7);
-  EXPECT_EQ(Gcd(17, 13), 1); // Coprime numbers
+  EXPECT_EQ(Gcd(17, 13), 1);  // Coprime numbers
   EXPECT_EQ(Gcd(0, 5), 5);
   EXPECT_EQ(Gcd(5, 0), 5);
   EXPECT_EQ(Gcd(0, 0), 0);
@@ -38,13 +40,13 @@ TEST_F(MathUtilsTest, GcdLargeNumbers) {
 TEST_F(MathUtilsTest, LcmBasicCases) {
   EXPECT_EQ(Lcm(4, 6), 12);
   EXPECT_EQ(Lcm(21, 14), 42);
-  EXPECT_EQ(Lcm(17, 13), 221); // Coprime numbers
+  EXPECT_EQ(Lcm(17, 13), 221);  // Coprime numbers
   EXPECT_EQ(Lcm(12, 8), 24);
 }
 
 TEST_F(MathUtilsTest, ExtendedGcdBasicCases) {
   auto result = ExtendedGcd(240, 46);
-  EXPECT_EQ(result.first, 2); // GCD(240, 46) = 2
+  EXPECT_EQ(result.first, 2);  // GCD(240, 46) = 2
 
   // Verify Bézout's identity: 240 * x + 46 * y = gcd
   long long x = result.second.first;
@@ -54,7 +56,7 @@ TEST_F(MathUtilsTest, ExtendedGcdBasicCases) {
 
 TEST_F(MathUtilsTest, ExtendedGcdCoprimeNumbers) {
   auto result = ExtendedGcd(17, 13);
-  EXPECT_EQ(result.first, 1); // GCD(17, 13) = 1
+  EXPECT_EQ(result.first, 1);  // GCD(17, 13) = 1
 
   // Verify Bézout's identity
   long long x = result.second.first;
@@ -97,11 +99,11 @@ TEST_F(MathUtilsTest, IsPrimeMediumNumbers) {
   EXPECT_TRUE(IsPrime(113));
 
   // Test some composite numbers
-  EXPECT_FALSE(IsPrime(99));  // 9 * 11
-  EXPECT_FALSE(IsPrime(100)); // 10 * 10
-  EXPECT_FALSE(IsPrime(102)); // 2 * 51
-  EXPECT_FALSE(IsPrime(104)); // 8 * 13
-  EXPECT_FALSE(IsPrime(105)); // 3 * 5 * 7
+  EXPECT_FALSE(IsPrime(99));   // 9 * 11
+  EXPECT_FALSE(IsPrime(100));  // 10 * 10
+  EXPECT_FALSE(IsPrime(102));  // 2 * 51
+  EXPECT_FALSE(IsPrime(104));  // 8 * 13
+  EXPECT_FALSE(IsPrime(105));  // 3 * 5 * 7
 }
 
 TEST_F(MathUtilsTest, IsPrimeLargerNumbers) {
@@ -112,22 +114,22 @@ TEST_F(MathUtilsTest, IsPrimeLargerNumbers) {
   EXPECT_TRUE(IsPrime(1019));
 
   // Test some larger composite numbers
-  EXPECT_FALSE(IsPrime(1001)); // 7 * 11 * 13
-  EXPECT_FALSE(IsPrime(1003)); // 17 * 59
-  EXPECT_FALSE(IsPrime(1005)); // 3 * 5 * 67
+  EXPECT_FALSE(IsPrime(1001));  // 7 * 11 * 13
+  EXPECT_FALSE(IsPrime(1003));  // 17 * 59
+  EXPECT_FALSE(IsPrime(1005));  // 3 * 5 * 67
 }
 
 TEST_F(MathUtilsTest, IsPrimePerfectSquares) {
   // Test perfect squares (should all be composite except for powers of primes)
-  EXPECT_FALSE(IsPrime(4));   // 2^2
-  EXPECT_FALSE(IsPrime(9));   // 3^2
-  EXPECT_FALSE(IsPrime(16));  // 4^2
-  EXPECT_FALSE(IsPrime(25));  // 5^2
-  EXPECT_FALSE(IsPrime(36));  // 6^2
-  EXPECT_FALSE(IsPrime(49));  // 7^2
-  EXPECT_FALSE(IsPrime(64));  // 8^2
-  EXPECT_FALSE(IsPrime(81));  // 9^2
-  EXPECT_FALSE(IsPrime(100)); // 10^2
+  EXPECT_FALSE(IsPrime(4));    // 2^2
+  EXPECT_FALSE(IsPrime(9));    // 3^2
+  EXPECT_FALSE(IsPrime(16));   // 4^2
+  EXPECT_FALSE(IsPrime(25));   // 5^2
+  EXPECT_FALSE(IsPrime(36));   // 6^2
+  EXPECT_FALSE(IsPrime(49));   // 7^2
+  EXPECT_FALSE(IsPrime(64));   // 8^2
+  EXPECT_FALSE(IsPrime(81));   // 9^2
+  EXPECT_FALSE(IsPrime(100));  // 10^2
 }
 
 //===----------------------------------------------------------------------===//
@@ -251,16 +253,16 @@ TEST_F(MathUtilsTest, DecomposePrimePowerNonPrimePowers) {
   auto result = DecomposePrimePower(6);  // 2 * 3
   EXPECT_EQ(result, std::make_pair(0ULL, 0ULL));
 
-  result = DecomposePrimePower(10); // 2 * 5
+  result = DecomposePrimePower(10);  // 2 * 5
   EXPECT_EQ(result, std::make_pair(0ULL, 0ULL));
 
-  result = DecomposePrimePower(12); // 2^2 * 3
+  result = DecomposePrimePower(12);  // 2^2 * 3
   EXPECT_EQ(result, std::make_pair(0ULL, 0ULL));
 
-  result = DecomposePrimePower(15); // 3 * 5
+  result = DecomposePrimePower(15);  // 3 * 5
   EXPECT_EQ(result, std::make_pair(0ULL, 0ULL));
 
-  result = DecomposePrimePower(30); // 2 * 3 * 5
+  result = DecomposePrimePower(30);  // 2 * 3 * 5
   EXPECT_EQ(result, std::make_pair(0ULL, 0ULL));
 }
 
@@ -271,10 +273,12 @@ TEST_F(MathUtilsTest, DecomposePrimePowerNonPrimePowers) {
 TEST_F(MathUtilsTest, PollardsRhoBasicCases) {
   // Test small composite numbers
   long long factor = PollardsRho(15);
-  EXPECT_TRUE(factor == 3 || factor == 5 || factor == 15);  // Allow for algorithm failure
+  EXPECT_TRUE(factor == 3 || factor == 5 ||
+              factor == 15);  // Allow for algorithm failure
 
   factor = PollardsRho(21);
-  EXPECT_TRUE(factor == 3 || factor == 7 || factor == 21);  // Allow for algorithm failure
+  EXPECT_TRUE(factor == 3 || factor == 7 ||
+              factor == 21);  // Allow for algorithm failure
 
   // Test even numbers (should return 2)
   factor = PollardsRho(14);
@@ -329,24 +333,30 @@ TEST_F(MathUtilsTest, PrimeFactorizeConsistency) {
       smart_product *= factor;
     }
 
-    EXPECT_EQ(trial_product, n) << "Trial division factors don't multiply to " << n;
-    EXPECT_EQ(smart_product, n) << "Smart factorization factors don't multiply to " << n;
+    EXPECT_EQ(trial_product, n)
+        << "Trial division factors don't multiply to " << n;
+    EXPECT_EQ(smart_product, n)
+        << "Smart factorization factors don't multiply to " << n;
 
     // Both should produce the same product (the original number)
-    EXPECT_EQ(trial_product, smart_product) << "Inconsistent factorization products for " << n;
+    EXPECT_EQ(trial_product, smart_product)
+        << "Inconsistent factorization products for " << n;
   }
 }
 
 TEST_F(MathUtilsTest, IsPrimeConsistencyWithFactorization) {
   // Test that IsPrime is consistent with prime factorization
-  std::vector<long long> test_numbers = {2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14, 15, 16, 17, 18, 19, 20, 97, 98, 99, 100, 101};
+  std::vector<long long> test_numbers = {2,  3,  4,  5,  6,  7,  8,   9,
+                                         10, 11, 12, 13, 14, 15, 16,  17,
+                                         18, 19, 20, 97, 98, 99, 100, 101};
 
   for (long long n : test_numbers) {
     bool is_prime_result = IsPrime(n);
     auto factors = PrimeFactorize(n);
     bool is_prime_from_factors = (factors.size() == 1 && factors[0] == n);
 
-    EXPECT_EQ(is_prime_result, is_prime_from_factors) << "Inconsistent prime test for " << n;
+    EXPECT_EQ(is_prime_result, is_prime_from_factors)
+        << "Inconsistent prime test for " << n;
   }
 }
 
@@ -356,15 +366,15 @@ TEST_F(MathUtilsTest, IsPrimeConsistencyWithFactorization) {
 
 TEST_F(MathUtilsTest, SafeIntegerPowerBasicCases) {
   // Test edge cases
-  EXPECT_EQ(SafeIntegerPower(0, 0), 1); // 0^0 = 1 by convention
-  EXPECT_EQ(SafeIntegerPower(0, 1), 0); // 0^n = 0 for n > 0
+  EXPECT_EQ(SafeIntegerPower(0, 0), 1);  // 0^0 = 1 by convention
+  EXPECT_EQ(SafeIntegerPower(0, 1), 0);  // 0^n = 0 for n > 0
   EXPECT_EQ(SafeIntegerPower(0, 100), 0);
 
-  EXPECT_EQ(SafeIntegerPower(1, 0), 1); // 1^0 = 1
-  EXPECT_EQ(SafeIntegerPower(1, 1), 1); // 1^n = 1 for any n
+  EXPECT_EQ(SafeIntegerPower(1, 0), 1);  // 1^0 = 1
+  EXPECT_EQ(SafeIntegerPower(1, 1), 1);  // 1^n = 1 for any n
   EXPECT_EQ(SafeIntegerPower(1, 1000), 1);
 
-  EXPECT_EQ(SafeIntegerPower(5, 0), 1); // n^0 = 1 for any n
+  EXPECT_EQ(SafeIntegerPower(5, 0), 1);  // n^0 = 1 for any n
   EXPECT_EQ(SafeIntegerPower(100, 0), 1);
 }
 
@@ -394,10 +404,10 @@ TEST_F(MathUtilsTest, SafeIntegerPowerLargerNumbers) {
   EXPECT_EQ(SafeIntegerPower(7, 8), 5764801ULL);
 
   // Test field order calculations similar to what we use in extensions
-  EXPECT_EQ(SafeIntegerPower(2, 8), 256ULL);    // GF(2^8)
-  EXPECT_EQ(SafeIntegerPower(2, 16), 65536ULL); // GF(2^16)
-  EXPECT_EQ(SafeIntegerPower(3, 5), 243ULL);    // GF(3^5)
-  EXPECT_EQ(SafeIntegerPower(5, 3), 125ULL);    // GF(5^3)
+  EXPECT_EQ(SafeIntegerPower(2, 8), 256ULL);     // GF(2^8)
+  EXPECT_EQ(SafeIntegerPower(2, 16), 65536ULL);  // GF(2^16)
+  EXPECT_EQ(SafeIntegerPower(3, 5), 243ULL);     // GF(3^5)
+  EXPECT_EQ(SafeIntegerPower(5, 3), 125ULL);     // GF(5^3)
 }
 
 TEST_F(MathUtilsTest, SafeIntegerPowerOverflowDetection) {
@@ -409,7 +419,7 @@ TEST_F(MathUtilsTest, SafeIntegerPowerOverflowDetection) {
   EXPECT_THROW(SafeIntegerPower(UINT64_MAX, 2), std::overflow_error);
 
   // Numbers that should be close to but not exceed the limit
-  EXPECT_NO_THROW(SafeIntegerPower(2, 63)); // 2^63 should be fine
+  EXPECT_NO_THROW(SafeIntegerPower(2, 63));  // 2^63 should be fine
 }
 
 TEST_F(MathUtilsTest, SafeIntegerPowerComparisonWithStdPow) {

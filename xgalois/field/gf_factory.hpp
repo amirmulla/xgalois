@@ -211,8 +211,8 @@ using GaloisFieldElementStrictVariant =
  *   auto elem2 = FetchElementStrict(gf7, 3); // Creates element with value 3 in
  * GF(7) with strict validation
  */
-GaloisFieldElementStrictVariant
-FetchElementStrict(const GaloisFieldVariant &field_variant, uint64_t value) {
+GaloisFieldElementStrictVariant FetchElementStrict(
+    const GaloisFieldVariant &field_variant, uint64_t value) {
   return std::visit(
       [value](const auto &field_ptr) -> GaloisFieldElementStrictVariant {
         if (!field_ptr) {
@@ -268,8 +268,8 @@ FetchElementStrict(const GaloisFieldVariant &field_variant, uint64_t value) {
  * element with value 3
  */
 template <typename FieldType>
-GaloisFieldElement<FieldType>
-FetchElement(const GaloisFieldVariant &field_variant, uint64_t value) {
+GaloisFieldElement<FieldType> FetchElement(
+    const GaloisFieldVariant &field_variant, uint64_t value) {
   auto field_ptr = std::get<std::shared_ptr<FieldType>>(field_variant);
   if (!field_ptr) {
     throw std::invalid_argument("Field pointer cannot be null");
@@ -279,7 +279,7 @@ FetchElement(const GaloisFieldVariant &field_variant, uint64_t value) {
   ElementType element_value = static_cast<ElementType>(value);
   return GaloisFieldElement<FieldType>(element_value, field_ptr);
 }
-#endif // DOXYGEN_SHOULD_SKIP_THIS
+#endif  // DOXYGEN_SHOULD_SKIP_THIS
 
 /**
  * @brief Advanced factory class for creating optimized finite field
@@ -305,7 +305,7 @@ FetchElement(const GaloisFieldVariant &field_variant, uint64_t value) {
  * and binary extension fields GF(2^m) with specialized optimizations.
  */
 class GaloisFieldFactory {
-public:
+ public:
   /**
    * @brief Primary factory method for creating finite fields using (prime,
    * exponent) specification
@@ -349,7 +349,6 @@ public:
                                    const std::string &impl = "auto",
                                    bool check_irreducible = false,
                                    bool prime_testing = false) {
-
     uint64_t prime = prime_exp.first;
     uint64_t exponent = prime_exp.second;
 
@@ -418,7 +417,6 @@ public:
                                    const std::string &impl = "auto",
                                    bool check_irreducible = false,
                                    bool prime_testing = false) {
-
     /* Validate field order constraints */
     if (order < 2) {
       throw std::invalid_argument("Order of finite field must be at least 2");
@@ -442,7 +440,7 @@ public:
                   variable_name, impl, check_irreducible, prime_testing);
   }
 
-private:
+ private:
   /**
    * @brief Factory method for prime fields with automatic element type
    * selection
@@ -457,9 +455,9 @@ private:
    *
    * @return GaloisFieldVariant containing optimally typed prime field
    */
-  static GaloisFieldVariant
-  CreatePrimeField(uint64_t prime, const std::string &representation = "int",
-                   bool prime_testing = false) {
+  static GaloisFieldVariant CreatePrimeField(
+      uint64_t prime, const std::string &representation = "int",
+      bool prime_testing = false) {
     if (prime <= std::numeric_limits<uint8_t>::max()) {
       return std::make_shared<GaloisFieldPrime<uint8_t>>(
           static_cast<uint8_t>(prime), representation, prime_testing);
@@ -508,7 +506,6 @@ private:
       const std::string &representation = "poly",
       const std::string &impl = "auto", bool check_irreducible = false,
       bool prime_testing = false) {
-
     if (exponent < 2) {
       throw std::invalid_argument("Prime extension degree must be at least 2");
     }
@@ -517,8 +514,9 @@ private:
 
     /* Validate field order is within supported range */
     if (order > std::numeric_limits<uint32_t>::max()) {
-      throw std::invalid_argument("Prime extension field order exceeds maximum "
-                                  "supported size (uint32_t)");
+      throw std::invalid_argument(
+          "Prime extension field order exceeds maximum "
+          "supported size (uint32_t)");
     }
 
     /* Automatic element type selection based on field order for optimal memory
@@ -544,7 +542,6 @@ private:
       uint64_t prime, uint64_t exponent, const std::string &modulus,
       const std::string &variable_name, const std::string &representation,
       const std::string &impl, bool check_irreducible, bool prime_testing) {
-
     if (exponent < 2) {
       throw std::invalid_argument("Extension degree must be at least 2");
     }
@@ -573,9 +570,9 @@ private:
    * @note The impl parameter is accepted for interface consistency but has no
    *       effect since GF(2) has only one possible implementation
    */
-  static GaloisFieldVariant
-  CreateBinaryField(const std::string &representation = "int",
-                    const std::string &impl = "auto") {
+  static GaloisFieldVariant CreateBinaryField(
+      const std::string &representation = "int",
+      const std::string &impl = "auto") {
     /* GF(2) has only one standard implementation regardless of impl parameter
      */
     auto field = std::make_shared<GaloisFieldBinary>();
@@ -639,8 +636,9 @@ private:
 
     /* Validate field order is within supported range */
     if (order > std::numeric_limits<uint32_t>::max()) {
-      throw std::invalid_argument("Binary extension field order exceeds "
-                                  "maximum supported size (uint32_t)");
+      throw std::invalid_argument(
+          "Binary extension field order exceeds "
+          "maximum supported size (uint32_t)");
     }
 
     /* Intelligent implementation selection for optimal performance */
@@ -711,8 +709,9 @@ private:
             m, representation, modulus, variable_name, check_irreducible);
         return field;
       } else {
-        throw std::invalid_argument("Zech logarithm implementation only "
-                                    "supports uint32_t element type");
+        throw std::invalid_argument(
+            "Zech logarithm implementation only "
+            "supports uint32_t element type");
       }
 
     } else {
@@ -721,7 +720,7 @@ private:
           ". Available options: standard, log, log_opt, zech");
     }
   }
-}; // class GaloisFieldFactory
+};  // class GaloisFieldFactory
 
 // -------------------------------------------------------------
 // Interface methods
@@ -794,12 +793,13 @@ private:
  * field auto gf8 = GF({2, 3}, "pow", "", "β");           // GF(2^3) with power
  * representation, database polynomial
  */
-GaloisFieldVariant
-GF(std::pair<uint64_t, uint64_t> prime_exp,
-   const std::string &representation = "int", const std::string &modulus = "",
-   const std::string &variable_name = "", const std::string &impl = "auto",
-   bool check_irreducible = false, bool prime_testing = false) {
-
+GaloisFieldVariant GF(std::pair<uint64_t, uint64_t> prime_exp,
+                      const std::string &representation = "int",
+                      const std::string &modulus = "",
+                      const std::string &variable_name = "",
+                      const std::string &impl = "auto",
+                      bool check_irreducible = false,
+                      bool prime_testing = false) {
   return GaloisFieldFactory::Create(prime_exp, representation, modulus,
                                     variable_name, impl, check_irreducible,
                                     prime_testing);
@@ -881,12 +881,11 @@ GaloisFieldVariant GF(uint64_t order, const std::string &representation = "int",
                       const std::string &impl = "auto",
                       bool check_irreducible = false,
                       bool prime_testing = false) {
-
   return GaloisFieldFactory::Create(order, representation, modulus,
                                     variable_name, impl, check_irreducible,
                                     prime_testing);
 }
 
-} // namespace xg
+}  // namespace xg
 
-#endif // XGALOIS_FIELD_GF_FACTORY_HPP_
+#endif  // XGALOIS_FIELD_GF_FACTORY_HPP_

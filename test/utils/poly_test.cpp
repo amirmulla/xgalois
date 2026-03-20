@@ -7,14 +7,17 @@
 //===----------------------------------------------------------------------===//
 
 #include "xgalois/utils/poly.hpp"
-#include "xgalois/field/gf_prime.hpp"
+
+#include <gtest/gtest.h>
+
+#include <memory>
+#include <stdexcept>
+#include <vector>
+
 #include "xgalois/field/gf_binary.hpp"
 #include "xgalois/field/gf_element.hpp"
+#include "xgalois/field/gf_prime.hpp"
 #include "xgalois/poly/poly_dense.hpp"
-#include <gtest/gtest.h>
-#include <memory>
-#include <vector>
-#include <stdexcept>
 
 using namespace xg;
 using namespace xg::utils;
@@ -24,7 +27,7 @@ using namespace xg::utils;
 //===----------------------------------------------------------------------===//
 
 class PolyUtilsTest : public ::testing::Test {
-protected:
+ protected:
   void SetUp() override {
     // Create GF(7) field for prime field tests
     gf7 = std::make_shared<GaloisFieldPrime<uint8_t>>(7);
@@ -45,7 +48,8 @@ protected:
   std::shared_ptr<GaloisFieldPrime<uint8_t>> gf7;
   std::shared_ptr<GaloisFieldBinary> gf2;
 
-  GaloisFieldElementBase<GaloisFieldPrime<uint8_t>> zero, one, two, three, four, five, six;
+  GaloisFieldElementBase<GaloisFieldPrime<uint8_t>> zero, one, two, three, four,
+      five, six;
   GaloisFieldElementBase<GaloisFieldBinary> gf2_zero, gf2_one;
 };
 
@@ -173,17 +177,17 @@ TEST_F(PolyUtilsTest, ParsePolynomialLinear) {
 TEST_F(PolyUtilsTest, ParsePolynomialQuadratic) {
   auto poly = ParsePolynomial(gf7, "2x^2 + 3x + 1");
   EXPECT_EQ(poly.Degree(), 2);
-  EXPECT_EQ(poly[0], one);   // constant term
-  EXPECT_EQ(poly[1], three); // coefficient of x
-  EXPECT_EQ(poly[2], two);   // coefficient of x^2
+  EXPECT_EQ(poly[0], one);    // constant term
+  EXPECT_EQ(poly[1], three);  // coefficient of x
+  EXPECT_EQ(poly[2], two);    // coefficient of x^2
 }
 
 TEST_F(PolyUtilsTest, ParsePolynomialWithSubtraction) {
   auto poly = ParsePolynomial(gf7, "x^2 - 3x + 2");
   EXPECT_EQ(poly.Degree(), 2);
-  EXPECT_EQ(poly[0], two);  // constant term
-  EXPECT_EQ(poly[1], four); // -3 = 4 in GF(7)
-  EXPECT_EQ(poly[2], one);  // coefficient of x^2
+  EXPECT_EQ(poly[0], two);   // constant term
+  EXPECT_EQ(poly[1], four);  // -3 = 4 in GF(7)
+  EXPECT_EQ(poly[2], one);   // coefficient of x^2
 }
 
 TEST_F(PolyUtilsTest, ParsePolynomialWithWhitespace) {
@@ -198,12 +202,12 @@ TEST_F(PolyUtilsTest, ParsePolynomialWithWhitespace) {
 TEST_F(PolyUtilsTest, ParsePolynomialSparseTerms) {
   auto poly = ParsePolynomial(gf7, "x^5 + 3x^2 + 1");
   EXPECT_EQ(poly.Degree(), 5);
-  EXPECT_EQ(poly[0], one);   // constant term
-  EXPECT_EQ(poly[1], zero);  // no x term
-  EXPECT_EQ(poly[2], three); // coefficient of x^2
-  EXPECT_EQ(poly[3], zero);  // no x^3 term
-  EXPECT_EQ(poly[4], zero);  // no x^4 term
-  EXPECT_EQ(poly[5], one);   // coefficient of x^5
+  EXPECT_EQ(poly[0], one);    // constant term
+  EXPECT_EQ(poly[1], zero);   // no x term
+  EXPECT_EQ(poly[2], three);  // coefficient of x^2
+  EXPECT_EQ(poly[3], zero);   // no x^3 term
+  EXPECT_EQ(poly[4], zero);   // no x^4 term
+  EXPECT_EQ(poly[5], one);    // coefficient of x^5
 }
 
 TEST_F(PolyUtilsTest, ParsePolynomialBinaryField) {
@@ -221,7 +225,7 @@ TEST_F(PolyUtilsTest, ParsePolynomialInvalidInput) {
   // Note: "3.5x" actually works by parsing the "3" part
   auto poly = ParsePolynomial(gf7, "3.5x + 2");
   EXPECT_EQ(poly.Degree(), 1);
-  EXPECT_EQ(poly[1], three); // Should extract "3" from "3.5"
+  EXPECT_EQ(poly[1], three);  // Should extract "3" from "3.5"
 }
 
 //===----------------------------------------------------------------------===//
@@ -231,8 +235,10 @@ TEST_F(PolyUtilsTest, ParsePolynomialInvalidInput) {
 TEST_F(PolyUtilsTest, PolynomialExtendedGcdBasicCase) {
   // Test with polynomials x^2 - 1 = (x-1)(x+1) and x - 1
   // GCD should be x - 1 (which is x + 6 in GF(7))
-  std::vector<GaloisFieldElementBase<GaloisFieldPrime<uint8_t>>> coeffs1 = {six, zero, one}; // x^2 - 1
-  std::vector<GaloisFieldElementBase<GaloisFieldPrime<uint8_t>>> coeffs2 = {six, one};       // x - 1
+  std::vector<GaloisFieldElementBase<GaloisFieldPrime<uint8_t>>> coeffs1 = {
+      six, zero, one};  // x^2 - 1
+  std::vector<GaloisFieldElementBase<GaloisFieldPrime<uint8_t>>> coeffs2 = {
+      six, one};  // x - 1
 
   PolynomialDense<GaloisFieldPrime<uint8_t>> poly1(coeffs1);
   PolynomialDense<GaloisFieldPrime<uint8_t>> poly2(coeffs2);
@@ -251,8 +257,10 @@ TEST_F(PolyUtilsTest, PolynomialExtendedGcdBasicCase) {
 }
 
 TEST_F(PolyUtilsTest, PolynomialExtendedGcdWithZero) {
-  std::vector<GaloisFieldElementBase<GaloisFieldPrime<uint8_t>>> coeffs1 = {two, three}; // 3x + 2
-  std::vector<GaloisFieldElementBase<GaloisFieldPrime<uint8_t>>> coeffs2 = {zero};       // 0
+  std::vector<GaloisFieldElementBase<GaloisFieldPrime<uint8_t>>> coeffs1 = {
+      two, three};  // 3x + 2
+  std::vector<GaloisFieldElementBase<GaloisFieldPrime<uint8_t>>> coeffs2 = {
+      zero};  // 0
 
   PolynomialDense<GaloisFieldPrime<uint8_t>> poly1(coeffs1);
   PolynomialDense<GaloisFieldPrime<uint8_t>> poly2(coeffs2);
@@ -262,7 +270,8 @@ TEST_F(PolyUtilsTest, PolynomialExtendedGcdWithZero) {
 
   // GCD(a, 0) = a (made monic)
   // Since poly1 = 3x + 2, and leading coefficient is 3
-  // Monic version should be x + 2*3^(-1) = x + 2*5 = x + 3 (since 3^(-1) = 5 in GF(7))
+  // Monic version should be x + 2*3^(-1) = x + 2*5 = x + 3 (since 3^(-1) = 5 in
+  // GF(7))
   EXPECT_EQ(gcd.Degree(), 1);
   EXPECT_EQ(gcd[1], one);
 
@@ -274,8 +283,10 @@ TEST_F(PolyUtilsTest, PolynomialExtendedGcdWithZero) {
 TEST_F(PolyUtilsTest, PolynomialExtendedGcdCoprimePolynomials) {
   // Test with x^2 + 1 and x + 1 over GF(7)
   // These should be coprime, so GCD = 1
-  std::vector<GaloisFieldElementBase<GaloisFieldPrime<uint8_t>>> coeffs1 = {one, zero, one}; // x^2 + 1
-  std::vector<GaloisFieldElementBase<GaloisFieldPrime<uint8_t>>> coeffs2 = {one, one};       // x + 1
+  std::vector<GaloisFieldElementBase<GaloisFieldPrime<uint8_t>>> coeffs1 = {
+      one, zero, one};  // x^2 + 1
+  std::vector<GaloisFieldElementBase<GaloisFieldPrime<uint8_t>>> coeffs2 = {
+      one, one};  // x + 1
 
   PolynomialDense<GaloisFieldPrime<uint8_t>> poly1(coeffs1);
   PolynomialDense<GaloisFieldPrime<uint8_t>> poly2(coeffs2);
@@ -297,9 +308,12 @@ TEST_F(PolyUtilsTest, PolynomialExtendedGcdCoprimePolynomials) {
 //===----------------------------------------------------------------------===//
 
 TEST_F(PolyUtilsTest, IsIrreducibleConstantPolynomials) {
-  std::vector<GaloisFieldElementBase<GaloisFieldPrime<uint8_t>>> coeffs_zero = {zero};
-  std::vector<GaloisFieldElementBase<GaloisFieldPrime<uint8_t>>> coeffs_one = {one};
-  std::vector<GaloisFieldElementBase<GaloisFieldPrime<uint8_t>>> coeffs_five = {five};
+  std::vector<GaloisFieldElementBase<GaloisFieldPrime<uint8_t>>> coeffs_zero = {
+      zero};
+  std::vector<GaloisFieldElementBase<GaloisFieldPrime<uint8_t>>> coeffs_one = {
+      one};
+  std::vector<GaloisFieldElementBase<GaloisFieldPrime<uint8_t>>> coeffs_five = {
+      five};
 
   PolynomialDense<GaloisFieldPrime<uint8_t>> poly_zero(coeffs_zero);
   PolynomialDense<GaloisFieldPrime<uint8_t>> poly_one(coeffs_one);
@@ -312,9 +326,12 @@ TEST_F(PolyUtilsTest, IsIrreducibleConstantPolynomials) {
 
 TEST_F(PolyUtilsTest, IsIrreducibleLinearPolynomials) {
   // All linear polynomials are irreducible
-  std::vector<GaloisFieldElementBase<GaloisFieldPrime<uint8_t>>> coeffs1 = {one, one};   // x + 1
-  std::vector<GaloisFieldElementBase<GaloisFieldPrime<uint8_t>>> coeffs2 = {two, three}; // 3x + 2
-  std::vector<GaloisFieldElementBase<GaloisFieldPrime<uint8_t>>> coeffs3 = {zero, one};  // x
+  std::vector<GaloisFieldElementBase<GaloisFieldPrime<uint8_t>>> coeffs1 = {
+      one, one};  // x + 1
+  std::vector<GaloisFieldElementBase<GaloisFieldPrime<uint8_t>>> coeffs2 = {
+      two, three};  // 3x + 2
+  std::vector<GaloisFieldElementBase<GaloisFieldPrime<uint8_t>>> coeffs3 = {
+      zero, one};  // x
 
   PolynomialDense<GaloisFieldPrime<uint8_t>> poly1(coeffs1);
   PolynomialDense<GaloisFieldPrime<uint8_t>> poly2(coeffs2);
@@ -329,12 +346,15 @@ TEST_F(PolyUtilsTest, IsIrreducibleQuadraticPolynomials) {
   // Test some quadratics over GF(7)
 
   // x^2 + 1 - this has no roots in GF(7), so should be irreducible
-  std::vector<GaloisFieldElementBase<GaloisFieldPrime<uint8_t>>> coeffs_irreducible = {one, zero, one};
-  PolynomialDense<GaloisFieldPrime<uint8_t>> poly_irreducible(coeffs_irreducible);
+  std::vector<GaloisFieldElementBase<GaloisFieldPrime<uint8_t>>>
+      coeffs_irreducible = {one, zero, one};
+  PolynomialDense<GaloisFieldPrime<uint8_t>> poly_irreducible(
+      coeffs_irreducible);
   EXPECT_TRUE(IsIrreducible(poly_irreducible));
 
   // x^2 - 1 = (x-1)(x+1) - this is reducible
-  std::vector<GaloisFieldElementBase<GaloisFieldPrime<uint8_t>>> coeffs_reducible = {six, zero, one}; // x^2 - 1
+  std::vector<GaloisFieldElementBase<GaloisFieldPrime<uint8_t>>>
+      coeffs_reducible = {six, zero, one};  // x^2 - 1
   PolynomialDense<GaloisFieldPrime<uint8_t>> poly_reducible(coeffs_reducible);
   EXPECT_FALSE(IsIrreducible(poly_reducible));
 }
@@ -343,19 +363,22 @@ TEST_F(PolyUtilsTest, IsIrreducibleBinaryField) {
   // Test over GF(2)
 
   // x^2 + x + 1 is irreducible over GF(2)
-  std::vector<GaloisFieldElementBase<GaloisFieldBinary>> coeffs_irreducible = {gf2_one, gf2_one, gf2_one};
+  std::vector<GaloisFieldElementBase<GaloisFieldBinary>> coeffs_irreducible = {
+      gf2_one, gf2_one, gf2_one};
   PolynomialDense<GaloisFieldBinary> poly_irreducible(coeffs_irreducible);
   EXPECT_TRUE(IsIrreducible(poly_irreducible));
 
   // x^2 + 1 = (x + 1)^2 over GF(2) - this is reducible
-  std::vector<GaloisFieldElementBase<GaloisFieldBinary>> coeffs_reducible = {gf2_one, gf2_zero, gf2_one};
+  std::vector<GaloisFieldElementBase<GaloisFieldBinary>> coeffs_reducible = {
+      gf2_one, gf2_zero, gf2_one};
   PolynomialDense<GaloisFieldBinary> poly_reducible(coeffs_reducible);
   EXPECT_FALSE(IsIrreducible(poly_reducible));
 }
 
 TEST_F(PolyUtilsTest, IsIrreducibleInvalidPolynomial) {
   // Test with polynomial having zero leading coefficient
-  std::vector<GaloisFieldElementBase<GaloisFieldPrime<uint8_t>>> coeffs = {one, two, zero};
+  std::vector<GaloisFieldElementBase<GaloisFieldPrime<uint8_t>>> coeffs = {
+      one, two, zero};
   PolynomialDense<GaloisFieldPrime<uint8_t>> poly(coeffs);
 
   // This should be trimmed to degree 1, which is irreducible

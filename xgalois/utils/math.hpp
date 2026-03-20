@@ -1,8 +1,6 @@
 #ifndef XGALOIS_INCLUDE_UTILS_MATH_HPP_
 #define XGALOIS_INCLUDE_UTILS_MATH_HPP_
 
-#include "xgalois/databases/interface.hpp"
-
 #include <algorithm>
 #include <chrono>
 #include <cmath>
@@ -12,6 +10,8 @@
 #include <utility>
 #include <vector>
 
+#include "xgalois/databases/interface.hpp"
+
 namespace xg {
 namespace utils {
 
@@ -20,10 +20,16 @@ namespace utils {
 //------------------------------------------------------------------------------
 
 // Returns greatest common divisor of a and b.
-template <typename T> inline T Gcd(T a, T b) { return std::gcd(a, b); }
+template <typename T>
+inline T Gcd(T a, T b) {
+  return std::gcd(a, b);
+}
 
 // Returns least common multiple of a and b.
-template <typename T> inline T Lcm(T a, T b) { return std::lcm(a, b); }
+template <typename T>
+inline T Lcm(T a, T b) {
+  return std::lcm(a, b);
+}
 
 // Returns the GCD of two numbers and Bézout's identity coefficients.
 //
@@ -34,7 +40,8 @@ template <typename T> inline T Lcm(T a, T b) { return std::lcm(a, b); }
 // @param a First number
 // @param b Second number
 // @return Pair containing GCD and Bézout's coefficients {x,y}
-template <typename T> std::pair<T, std::pair<T, T>> ExtendedGcd(T a, T b) {
+template <typename T>
+std::pair<T, std::pair<T, T>> ExtendedGcd(T a, T b) {
   // Initialize coefficients and remainders according to the Extended Euclidean
   // Algorithm setup.
   // Using standard variable names often seen in EGCD literature:
@@ -90,7 +97,7 @@ template <typename T> std::pair<T, std::pair<T, T>> ExtendedGcd(T a, T b) {
 std::vector<long long> TrialDivision(long long n) {
   std::vector<long long> factors;
   if (n <= 1) {
-    return factors; // Numbers less than or equal to 1 have no prime factors.
+    return factors;  // Numbers less than or equal to 1 have no prime factors.
   }
 
   // Handle factor 2: Check and divide by 2 until it's no longer possible.
@@ -162,7 +169,7 @@ std::vector<long long> FermatFactorization(long long n) {
   // Iterate to find a and b such that a^2 - b^2 = n.
   // We limit the iterations to avoid potential infinite loops for numbers where
   // Fermat's method is not efficient or applicable within a reasonable time.
-  const long long kMaxFermatIterations = 1000000; // Limit search range
+  const long long kMaxFermatIterations = 1000000;  // Limit search range
   long long iterations = 0;
 
   while (iterations < kMaxFermatIterations) {
@@ -196,7 +203,7 @@ std::vector<long long> FermatFactorization(long long n) {
   // If no factors found within the limited search range using Fermat's method,
   // we return the original number as a factor, indicating that this method
   // couldn't factor it efficiently within the limits.
-  factors.push_back(n); // Could not factor using Fermat in limited steps.
+  factors.push_back(n);  // Could not factor using Fermat in limited steps.
   return factors;
 }
 
@@ -225,7 +232,7 @@ long long PollardsRho(long long n) {
     return n;
   }
   if (n % 2 == 0) {
-    return 2; // Handle even numbers quickly.
+    return 2;  // Handle even numbers quickly.
   }
 
   // Use a random number generator for initial x (tortoise) and constant c.
@@ -235,10 +242,10 @@ long long PollardsRho(long long n) {
   // Ensure distribution range is valid for n > 1.
   std::uniform_int_distribution<long long> dist(1, n - 1 > 0 ? n - 1 : 1);
 
-  long long x = dist(rng); // Tortoise
-  long long y = x;         // Hare
-  long long c = dist(rng); // Constant for the function f(x)
-  long long d = 1;         // GCD, initialized to 1
+  long long x = dist(rng);  // Tortoise
+  long long y = x;          // Hare
+  long long c = dist(rng);  // Constant for the function f(x)
+  long long d = 1;          // GCD, initialized to 1
 
   // The function f(x) = (x^2 + c) mod n.
   // Use __int128 for intermediate calculation (val * val) to prevent overflow
@@ -250,12 +257,12 @@ long long PollardsRho(long long n) {
   // Floyd's cycle-finding algorithm.
   // We iterate until a non-trivial GCD is found or we reach an iteration limit
   // to prevent potential infinite loops for prime numbers or difficult cases.
-  const int kMaxRhoIterations = 1000000; // Limit iterations
+  const int kMaxRhoIterations = 1000000;  // Limit iterations
   int iterations = 0;
 
   while (d == 1 && iterations < kMaxRhoIterations) {
-    x = f(x);    // Tortoise moves one step
-    y = f(f(y)); // Hare moves two steps
+    x = f(x);     // Tortoise moves one step
+    y = f(f(y));  // Hare moves two steps
     // Calculate the GCD of the absolute difference and n.
     // std::gcd is available in C++17 and later.
     d = std::gcd(std::abs(x - y), n);
@@ -275,7 +282,7 @@ long long PollardsRho(long long n) {
     return n;
   }
 
-  return d; // Found a non-trivial factor.
+  return d;  // Found a non-trivial factor.
 }
 
 // Helper to get all factors using Pollard's Rho recursively.
@@ -344,7 +351,7 @@ std::vector<long long> FactorizePollardsRho(long long n) {
 // factorization function.
 std::vector<long long> PrimeFactorize(long long n) {
   if (n <= 1) {
-    return {}; // Return empty vector for numbers <= 1
+    return {};  // Return empty vector for numbers <= 1
   }
 
   // First, try to get factors from the database
@@ -374,7 +381,7 @@ std::vector<long long> PrimeFactorize(long long n) {
   // These thresholds are approximate and can be tuned based on performance
   // testing on your specific system and typical input range.
   const long long kTrialDivisionLimit =
-      10000000; // Use trial division up to this limit
+      10000000;  // Use trial division up to this limit
   // For numbers larger than this, Pollard's Rho is generally better.
 
   if (n < kTrialDivisionLimit) {
@@ -452,8 +459,7 @@ bool IsPrime(long long n) {
  *       maintaining correctness through algorithmic fallback.
  */
 std::pair<uint64_t, uint64_t> DecomposePrimePower(uint64_t n) {
-  if (n < 2)
-    return {0, 0};
+  if (n < 2) return {0, 0};
 
   // First attempt: Use prime factors database for fast lookup
   try {
@@ -468,7 +474,7 @@ std::pair<uint64_t, uint64_t> DecomposePrimePower(uint64_t n) {
       // Verify all factors are the same and sum multiplicities
       for (size_t i = 0; i < result.factors.size(); ++i) {
         if (result.factors[i] != prime) {
-          return {0, 0}; // Not a prime power
+          return {0, 0};  // Not a prime power
         }
         total_exponent += result.multiplicities[i];
       }
@@ -511,7 +517,8 @@ std::pair<uint64_t, uint64_t> DecomposePrimePower(uint64_t n) {
  *
  * Computes integer exponentiation using pure integer arithmetic to avoid
  * precision issues that can occur with std::pow when used with large integers.
- * Uses exponentiation by squaring for efficiency and includes overflow detection.
+ * Uses exponentiation by squaring for efficiency and includes overflow
+ * detection.
  *
  * @param base The base value
  * @param exponent The exponent value
@@ -528,15 +535,15 @@ std::pair<uint64_t, uint64_t> DecomposePrimePower(uint64_t n) {
 inline uint64_t SafeIntegerPower(uint64_t base, uint64_t exponent) {
   // Handle edge cases
   if (exponent == 0) {
-    return 1; // By convention: n^0 = 1 for any n (including 0^0 = 1)
+    return 1;  // By convention: n^0 = 1 for any n (including 0^0 = 1)
   }
 
   if (base == 0) {
-    return 0; // 0^n = 0 for n > 0
+    return 0;  // 0^n = 0 for n > 0
   }
 
   if (base == 1) {
-    return 1; // 1^n = 1 for any n
+    return 1;  // 1^n = 1 for any n
   }
 
   // Use exponentiation by squaring to compute base^exponent
@@ -574,7 +581,7 @@ inline uint64_t SafeIntegerPower(uint64_t base, uint64_t exponent) {
 
 //------------------------------------------------------------------------------
 
-} // namespace utils
-} // namespace xg
+}  // namespace utils
+}  // namespace xg
 
-#endif // XGALOIS_INCLUDE_UTILS_MATH_HPP_
+#endif  // XGALOIS_INCLUDE_UTILS_MATH_HPP_

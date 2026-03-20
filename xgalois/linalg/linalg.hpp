@@ -238,7 +238,7 @@ auto kron(const xt::xarray<GaloisFieldElement<GaloisField>> &a,
   std::size_t b_cols = b.shape(1);
 
   xt::xarray<ElementType> result({a_rows * b_rows, a_cols * b_cols});
-  auto field = a(0, 0).Field(); // Assuming a is not empty
+  auto field = a(0, 0).Field();  // Assuming a is not empty
   ElementType zero(field->AdditiveIdentity(), field);
 
   // Initialize result with zeros if needed, though direct assignment will
@@ -271,20 +271,20 @@ template <typename GaloisField>
 auto row_echelon(
     const xt::xarray<GaloisFieldElement<GaloisField>> &matrix_input) {
   using ElementType = GaloisFieldElement<GaloisField>;
-  auto R = matrix_input; // Make a copy to modify
+  auto R = matrix_input;  // Make a copy to modify
 
   if (R.dimension() != 2) {
     throw std::invalid_argument("row_echelon requires a 2-D array (matrix)");
   }
   if (R.shape(0) == 0 || R.shape(1) == 0) {
-    return R; // Return empty or original if no rows/cols
+    return R;  // Return empty or original if no rows/cols
   }
 
   auto field =
-      R(0, 0).Field(); // Assuming R is not empty and has at least one element
+      R(0, 0).Field();  // Assuming R is not empty and has at least one element
   std::size_t rows = R.shape(0);
   std::size_t cols = R.shape(1);
-  std::size_t lead = 0; // Current leading column for pivot search
+  std::size_t lead = 0;  // Current leading column for pivot search
 
   for (std::size_t r = 0; r < rows && lead < cols; ++r) {
     std::size_t i = r;
@@ -294,14 +294,15 @@ auto row_echelon(
       while (i < rows && R(i, lead).Value() == field->AdditiveIdentity()) {
         i++;
       }
-      if (i < rows) { // Found a non-zero pivot in this column at or below row r
+      if (i <
+          rows) {  // Found a non-zero pivot in this column at or below row r
         break;
       }
       // No pivot in this column at or below r, move to next column
       lead++;
     }
 
-    if (lead == cols) { // All remaining columns are zero for rows >= r
+    if (lead == cols) {  // All remaining columns are zero for rows >= r
       break;
     }
 
@@ -316,7 +317,7 @@ auto row_echelon(
     ElementType pivot_val = R(r, lead);
     // The loop structure ensures pivot_val is not zero here.
     if (pivot_val.Value() !=
-        field->MultiplicativeIdentity()) { // Only divide if not already 1
+        field->MultiplicativeIdentity()) {  // Only divide if not already 1
       for (std::size_t j = lead; j < cols; ++j) {
         R(r, j) = R(r, j) / pivot_val;
       }
@@ -325,14 +326,14 @@ auto row_echelon(
     // Eliminate elements below the pivot row r in the current lead column
     for (std::size_t k = r + 1; k < rows; ++k) {
       if (R(k, lead).Value() !=
-          field->AdditiveIdentity()) {   // If element below pivot is non-zero
-        ElementType factor = R(k, lead); // Since R(r, lead) is now 1
+          field->AdditiveIdentity()) {    // If element below pivot is non-zero
+        ElementType factor = R(k, lead);  // Since R(r, lead) is now 1
         for (std::size_t j = lead; j < cols; ++j) {
           R(k, j) = R(k, j) - factor * R(r, j);
         }
       }
     }
-    lead++; // Move to the next column for the next pivot
+    lead++;  // Move to the next column for the next pivot
   }
   return R;
 }
@@ -346,24 +347,24 @@ auto row_echelon(
 template <typename GaloisField>
 auto rref(const xt::xarray<GaloisFieldElement<GaloisField>> &matrix_input) {
   using ElementType = GaloisFieldElement<GaloisField>;
-  auto R = row_echelon(matrix_input); // Start with row echelon form
+  auto R = row_echelon(matrix_input);  // Start with row echelon form
 
   if (R.dimension() != 2) {
     throw std::invalid_argument("rref requires a 2-D array (matrix)");
   }
   if (R.shape(0) == 0 || R.shape(1) == 0) {
-    return R; // Return empty or original if no rows/cols
+    return R;  // Return empty or original if no rows/cols
   }
 
   auto field =
-      R(0, 0).Field(); // Assuming R is not empty and has at least one element
+      R(0, 0).Field();  // Assuming R is not empty and has at least one element
   std::size_t rows = R.shape(0);
   std::size_t cols = R.shape(1);
 
   // Backward elimination to get reduced row echelon form
   for (int r = static_cast<int>(rows) - 1; r >= 0; --r) {
     // Find the pivot (leading 1) in this row
-    std::size_t pivot_col = cols; // Initialize to an invalid column
+    std::size_t pivot_col = cols;  // Initialize to an invalid column
     for (std::size_t j = 0; j < cols; ++j) {
       if (R(r, j).Value() == field->MultiplicativeIdentity()) {
         pivot_col = j;
@@ -377,7 +378,7 @@ auto rref(const xt::xarray<GaloisFieldElement<GaloisField>> &matrix_input) {
       }
     }
 
-    if (pivot_col < cols) { // If a pivot was found in this row
+    if (pivot_col < cols) {  // If a pivot was found in this row
       // Eliminate elements above the pivot
       for (int i = r - 1; i >= 0; --i) {
         if (R(i, pivot_col).Value() != field->AdditiveIdentity()) {
@@ -498,7 +499,7 @@ std::size_t matrix_rank(const xt::xarray<GaloisFieldElement<GaloisField>> &a) {
     return 0;
   }
 
-  auto field = a(0, 0).Field(); // Assuming a is not empty
+  auto field = a(0, 0).Field();  // Assuming a is not empty
   xt::xarray<ElementType> R = row_echelon(a);
 
   std::size_t rank = 0;
@@ -719,7 +720,7 @@ auto cross(const xt::xarray<GaloisFieldElement<GaloisField>> &a,
         "cross product vectors must have 2 or 3 elements");
   }
 
-  auto field = a(0).Field(); // Assuming a is not empty
+  auto field = a(0).Field();  // Assuming a is not empty
   ElementType zero(field->AdditiveIdentity(), field);
 
   ElementType a0 = a(0);
@@ -788,7 +789,7 @@ auto zeros(const std::vector<std::size_t> &shape,
   return result;
 }
 
-} // namespace linalg
-} // namespace xg
+}  // namespace linalg
+}  // namespace xg
 
-#endif // XGALOIS_LINALG_LINALG_HPP
+#endif  // XGALOIS_LINALG_LINALG_HPP

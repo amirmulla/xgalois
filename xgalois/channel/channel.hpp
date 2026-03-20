@@ -27,8 +27,9 @@ namespace channels {
  * transmission over communication channels. All channel implementations
  * must inherit from this class and implement the transmit_unsafe method.
  */
-template <typename GaloisField> class Channel {
-public:
+template <typename GaloisField>
+class Channel {
+ public:
   using ElementType = GaloisFieldElementBase<GaloisField>;
   using VectorType = xt::xarray<ElementType>;
 
@@ -40,7 +41,8 @@ public:
    */
   Channel(std::shared_ptr<GaloisField> field, size_t input_size,
           size_t output_size = 0)
-      : field_(field), input_size_(input_size),
+      : field_(field),
+        input_size_(input_size),
         output_size_(output_size == 0 ? input_size : output_size) {}
 
   virtual ~Channel() = default;
@@ -112,7 +114,7 @@ public:
     return oss.str();
   }
 
-protected:
+ protected:
   std::shared_ptr<GaloisField> field_;
   size_t input_size_;
   size_t output_size_;
@@ -137,7 +139,7 @@ protected:
         ElementType error_value;
         do {
           error_value = ElementType(field_->Random(), field_);
-        } while (error_value == zero_element); // Ensure non-zero error
+        } while (error_value == zero_element);  // Ensure non-zero error
         error_vector[pos] = error_value;
       }
     }
@@ -190,7 +192,7 @@ protected:
  */
 template <typename GaloisField>
 class StaticErrorRateChannel : public Channel<GaloisField> {
-public:
+ public:
   using ElementType = GaloisFieldElementBase<GaloisField>;
   using VectorType = xt::xarray<ElementType>;
 
@@ -202,7 +204,8 @@ public:
    */
   StaticErrorRateChannel(std::shared_ptr<GaloisField> field, size_t input_size,
                          size_t num_errors)
-      : Channel<GaloisField>(field, input_size), min_errors_(num_errors),
+      : Channel<GaloisField>(field, input_size),
+        min_errors_(num_errors),
         max_errors_(num_errors) {}
 
   /**
@@ -214,7 +217,8 @@ public:
    */
   StaticErrorRateChannel(std::shared_ptr<GaloisField> field, size_t input_size,
                          size_t min_errors, size_t max_errors)
-      : Channel<GaloisField>(field, input_size), min_errors_(min_errors),
+      : Channel<GaloisField>(field, input_size),
+        min_errors_(min_errors),
         max_errors_(max_errors) {
     if (min_errors > max_errors) {
       throw std::invalid_argument(
@@ -266,7 +270,7 @@ public:
     this->field_->Print(os);
   }
 
-private:
+ private:
   size_t min_errors_;
   size_t max_errors_;
 };
@@ -280,7 +284,7 @@ private:
  */
 template <typename GaloisField>
 class ErrorErasureChannel : public Channel<GaloisField> {
-public:
+ public:
   using ElementType = GaloisFieldElementBase<GaloisField>;
   using VectorType = xt::xarray<ElementType>;
 
@@ -293,8 +297,10 @@ public:
    */
   ErrorErasureChannel(std::shared_ptr<GaloisField> field, size_t input_size,
                       size_t num_errors, size_t num_erasures)
-      : Channel<GaloisField>(field, input_size), min_errors_(num_errors),
-        max_errors_(num_errors), min_erasures_(num_erasures),
+      : Channel<GaloisField>(field, input_size),
+        min_errors_(num_errors),
+        max_errors_(num_errors),
+        min_erasures_(num_erasures),
         max_erasures_(num_erasures) {}
 
   /**
@@ -309,8 +315,10 @@ public:
   ErrorErasureChannel(std::shared_ptr<GaloisField> field, size_t input_size,
                       size_t min_errors, size_t max_errors, size_t min_erasures,
                       size_t max_erasures)
-      : Channel<GaloisField>(field, input_size), min_errors_(min_errors),
-        max_errors_(max_errors), min_erasures_(min_erasures),
+      : Channel<GaloisField>(field, input_size),
+        min_errors_(min_errors),
+        max_errors_(max_errors),
+        min_erasures_(min_erasures),
         max_erasures_(max_erasures) {
     if (min_errors > max_errors || min_erasures > max_erasures) {
       throw std::invalid_argument(
@@ -339,8 +347,8 @@ public:
    * @param message Input message vector
    * @return Pair of (transmitted_message, erasure_vector)
    */
-  std::pair<VectorType, xt::xarray<bool>>
-  transmit_unsafe_with_erasures(const VectorType &message) {
+  std::pair<VectorType, xt::xarray<bool>> transmit_unsafe_with_erasures(
+      const VectorType &message) {
     // Determine number of errors and erasures
     size_t num_errors =
         (min_errors_ == max_errors_)
@@ -371,7 +379,8 @@ public:
 
     // Create result vectors
     VectorType result = message;
-    xt::xarray<bool> erasure_vector = xt::xarray<bool>::from_shape({this->input_size_});
+    xt::xarray<bool> erasure_vector =
+        xt::xarray<bool>::from_shape({this->input_size_});
     std::fill(erasure_vector.begin(), erasure_vector.end(), false);
 
     // Apply errors
@@ -405,7 +414,7 @@ public:
     this->field_->Print(os);
   }
 
-private:
+ private:
   size_t min_errors_;
   size_t max_errors_;
   size_t min_erasures_;
@@ -425,7 +434,7 @@ private:
  */
 template <typename GaloisField>
 class QarySymmetricChannel : public Channel<GaloisField> {
-public:
+ public:
   using ElementType = GaloisFieldElementBase<GaloisField>;
   using VectorType = xt::xarray<ElementType>;
 
@@ -455,8 +464,7 @@ public:
    * @return Probability of exactly t errors
    */
   double probability_of_exactly_t_errors(size_t t) const {
-    if (t > this->input_size_)
-      return 0.0;
+    if (t > this->input_size_) return 0.0;
 
     // Binomial probability: C(n,t) * p^t * (1-p)^(n-t)
     double binomial_coeff = 1.0;
@@ -507,7 +515,7 @@ public:
     this->field_->Print(os);
   }
 
-private:
+ private:
   double epsilon_;
 };
 
@@ -560,9 +568,9 @@ CreateStaticErrorRateChannel(std::shared_ptr<GaloisField> field,
  * @return Shared pointer to ErrorErasureChannel
  */
 template <typename GaloisField>
-std::shared_ptr<ErrorErasureChannel<GaloisField>>
-CreateErrorErasureChannel(std::shared_ptr<GaloisField> field, size_t input_size,
-                          size_t num_errors, size_t num_erasures) {
+std::shared_ptr<ErrorErasureChannel<GaloisField>> CreateErrorErasureChannel(
+    std::shared_ptr<GaloisField> field, size_t input_size, size_t num_errors,
+    size_t num_erasures) {
   return std::make_shared<ErrorErasureChannel<GaloisField>>(
       field, input_size, num_errors, num_erasures);
 }
@@ -578,10 +586,9 @@ CreateErrorErasureChannel(std::shared_ptr<GaloisField> field, size_t input_size,
  * @return Shared pointer to ErrorErasureChannel
  */
 template <typename GaloisField>
-std::shared_ptr<ErrorErasureChannel<GaloisField>>
-CreateErrorErasureChannel(std::shared_ptr<GaloisField> field, size_t input_size,
-                          size_t min_errors, size_t max_errors,
-                          size_t min_erasures, size_t max_erasures) {
+std::shared_ptr<ErrorErasureChannel<GaloisField>> CreateErrorErasureChannel(
+    std::shared_ptr<GaloisField> field, size_t input_size, size_t min_errors,
+    size_t max_errors, size_t min_erasures, size_t max_erasures) {
   return std::make_shared<ErrorErasureChannel<GaloisField>>(
       field, input_size, min_errors, max_errors, min_erasures, max_erasures);
 }
@@ -594,14 +601,13 @@ CreateErrorErasureChannel(std::shared_ptr<GaloisField> field, size_t input_size,
  * @return Shared pointer to QarySymmetricChannel
  */
 template <typename GaloisField>
-std::shared_ptr<QarySymmetricChannel<GaloisField>>
-CreateQarySymmetricChannel(std::shared_ptr<GaloisField> field,
-                           size_t input_size, double epsilon) {
+std::shared_ptr<QarySymmetricChannel<GaloisField>> CreateQarySymmetricChannel(
+    std::shared_ptr<GaloisField> field, size_t input_size, double epsilon) {
   return std::make_shared<QarySymmetricChannel<GaloisField>>(field, input_size,
                                                              epsilon);
 }
 
-} // namespace channels
-} // namespace xg
+}  // namespace channels
+}  // namespace xg
 
-#endif // XGALOIS_CHANNEL_CHANNEL_HPP
+#endif  // XGALOIS_CHANNEL_CHANNEL_HPP

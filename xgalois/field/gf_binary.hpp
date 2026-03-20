@@ -26,7 +26,7 @@ namespace xg {
 // GaloisFieldBinary Class - Represents GF(2)
 //------------------------------------------------------------------------------
 class GaloisFieldBinary : public GaloisFieldBase<uint8_t> {
-public:
+ public:
   GaloisFieldBinary(const std::string &rep = "int")
       : representation_(utils::ConvertRepresentation(rep)) {
     // Ensure the representation is valid for GF(2)
@@ -51,32 +51,27 @@ public:
     return a & b;
   }
   inline uint8_t Div(const uint8_t &a, const uint8_t &b) const override {
-    if (b == 0)
-      throw std::domain_error("Division by zero in GF(2)");
-    return a; // a/1 = a
+    if (b == 0) throw std::domain_error("Division by zero in GF(2)");
+    return a;  // a/1 = a
   }
   inline uint8_t Neg(const uint8_t &a) const override {
     return a;
-  } // -a = a in GF(2)
+  }  // -a = a in GF(2)
   inline uint8_t Inv(const uint8_t &a) const override {
-    if (a == 0)
-      throw std::domain_error("Inverse of zero in GF(2)");
-    return 1; // 1^-1 = 1
+    if (a == 0) throw std::domain_error("Inverse of zero in GF(2)");
+    return 1;  // 1^-1 = 1
   }
   inline uint8_t Pow(const uint8_t &a, uint32_t exp) const override {
-    if (a == 0)
-      return (exp == 0) ? 1 : 0; // 0^0 = 1, 0^i = 0 for i > 0
-    return 1;                    // 1^exp = 1
+    if (a == 0) return (exp == 0) ? 1 : 0;  // 0^0 = 1, 0^i = 0 for i > 0
+    return 1;                               // 1^exp = 1
   }
   inline uint8_t Sqrt(const uint8_t &a) const override {
     return a;
-  } // sqrt(a) = a in GF(2)
+  }  // sqrt(a) = a in GF(2)
 
   uint32_t Log(const uint8_t &a) const override {
-    if (a == 0)
-      throw std::domain_error("Log of zero is undefined in GF(2)");
-    if (a == 1)
-      return 0; // GF(2)^* = {1}, generator is 1, log_1(1) = 0.
+    if (a == 0) throw std::domain_error("Log of zero is undefined in GF(2)");
+    if (a == 1) return 0;  // GF(2)^* = {1}, generator is 1, log_1(1) = 0.
     // Should not be reached if 'a' is a valid non-zero element (i.e., 1)
     throw std::invalid_argument("Log defined only for 1 in GF(2)");
   }
@@ -84,7 +79,7 @@ public:
   uint32_t Log(const uint8_t &a, const uint8_t &generator) const override {
     if (generator != 1)
       throw std::invalid_argument("Generator in GF(2) must be 1");
-    return Log(a); // Delegate to single-argument Log
+    return Log(a);  // Delegate to single-argument Log
   }
 
   uint8_t Random() const override {
@@ -141,16 +136,16 @@ public:
     representation_ = rep;
   }
 
-private:
+ private:
   FieldRepresentation representation_;
-}; // End of GaloisFieldBinary class
+};  // End of GaloisFieldBinary class
 
 //------------------------------------------------------------------------------
 // GaloisFieldBinaryExtension Class - Represents GF(2^m)
 //------------------------------------------------------------------------------
 template <typename ElementType = uint32_t>
 class GaloisFieldBinaryExtension : public GaloisFieldBase<ElementType> {
-public:
+ public:
   // Ensure ElementType is an unsigned integral type
   static_assert(std::is_unsigned<ElementType>::value &&
                     std::is_integral<ElementType>::value,
@@ -162,9 +157,10 @@ public:
                              const std::string &variable_name = "α",
                              bool check_irreducible = false,
                              const std::string &generator_name = "g")
-      : m_(m), representation_(utils::ConvertRepresentation(rep)),
-        variable_name_(variable_name), generator_name_(generator_name) {
-
+      : m_(m),
+        representation_(utils::ConvertRepresentation(rep)),
+        variable_name_(variable_name),
+        generator_name_(generator_name) {
     // Validate parameters
     // Degree must be between 1 and (sizeof(ElementType) * 8) - 1, to prevent
     // overflow and ensure we can represent the field elements.
@@ -247,8 +243,7 @@ public:
   // Multiplication using polynomial multiplication mod irreducible polynomial
   inline ElementType Mul(const ElementType &a,
                          const ElementType &b) const override {
-    if (a == 0 || b == 0)
-      return 0;
+    if (a == 0 || b == 0) return 0;
 
     // Step 1: Polynomial multiplication (carry-free)
     uint64_t product = 0;
@@ -311,8 +306,7 @@ public:
   // Square root - for binary fields, can be implemented via repeated squaring
   // because (a^2)^(2^(m-1)) = a in GF(2^m)
   inline ElementType Sqrt(const ElementType &a) const override {
-    if (a == 0)
-      return 0;
+    if (a == 0) return 0;
 
     // Calculate 2^(m-1) - 1 which is the exponent needed
     uint64_t exp = (1ULL << (m_ - 1)) - 1;
@@ -471,14 +465,14 @@ public:
     representation_ = rep;
   }
 
-protected:
-  uint8_t m_;                 // Extension degree
-  uint64_t irreducible_poly_; // Irreducible polynomial
-  uint32_t order_;            // Field order = 2^m
-  uint32_t group_order_;      // Multiplicative group order = 2^m - 1
+ protected:
+  uint8_t m_;                  // Extension degree
+  uint64_t irreducible_poly_;  // Irreducible polynomial
+  uint32_t order_;             // Field order = 2^m
+  uint32_t group_order_;       // Multiplicative group order = 2^m - 1
   FieldRepresentation representation_;
-  std::string variable_name_;  // Variable name for polynomial representation
-  std::string generator_name_; // Name for multiplicative generator
+  std::string variable_name_;   // Variable name for polynomial representation
+  std::string generator_name_;  // Name for multiplicative generator
 
   // Computes polynomial inverse using Extended Euclidean Algorithm
   ElementType ExtendedEuclideanAlgorithm(const ElementType &poly,
@@ -523,8 +517,7 @@ protected:
 
   // Helper method to find the highest bit position
   int HighestBit(ElementType n) const {
-    if (n == 0)
-      return -1;
+    if (n == 0) return -1;
 
     int position = 0;
     while (n != 0) {
@@ -536,8 +529,7 @@ protected:
 
   // Helper method to find the highest bit position for uint64_t
   int HighestBit64(uint64_t n) const {
-    if (n == 0)
-      return -1;
+    if (n == 0) return -1;
 
     int position = 0;
     while (n != 0) {
@@ -549,8 +541,7 @@ protected:
 
   // 64-bit multiplication for Extended Euclidean Algorithm
   uint64_t Mul64(uint64_t a, uint64_t b) const {
-    if (a == 0 || b == 0)
-      return 0;
+    if (a == 0 || b == 0) return 0;
 
     uint64_t product = 0;
     for (uint8_t i = 0; i < m_; i++) {
@@ -586,16 +577,14 @@ protected:
 
   // Convert polynomial representation to string
   std::string BinaryPolyToString(ElementType poly) const {
-    if (poly == 0)
-      return "0";
+    if (poly == 0) return "0";
 
     std::ostringstream oss;
     bool first = true;
 
     for (int i = m_ - 1; i >= 0; i--) {
       if (poly & (static_cast<ElementType>(1) << i)) {
-        if (!first)
-          oss << " + ";
+        if (!first) oss << " + ";
         first = false;
 
         if (i == 0) {
@@ -613,8 +602,7 @@ protected:
 
   // Parse polynomial string like "α^2 + α + 1" using utils::ParsePolynomial
   ElementType ParsePolynomialString(const std::string &poly_str) const {
-    if (poly_str == "0")
-      return 0;
+    if (poly_str == "0") return 0;
 
     // Create a GF(2) field for parsing
     auto gf2 = std::make_shared<GaloisFieldBinary>();
@@ -641,7 +629,7 @@ protected:
 //------------------------------------------------------------------------------
 template <typename ElementType = uint32_t>
 class GFBELogTables : public GaloisFieldBinaryExtension<ElementType> {
-public:
+ public:
   // Constructor
   GFBELogTables(uint8_t m, const std::string &rep = "int",
                 const std::string &irreducible_poly = "",
@@ -651,28 +639,28 @@ public:
       : GaloisFieldBinaryExtension<ElementType>(
             m, rep, irreducible_poly, variable_name, check_irreducible,
             generator_name),
-        is_generator_cached_(false) { // Initialize the flag
+        is_generator_cached_(false) {  // Initialize the flag
     PrecomputeTables();
   }
 
   // Override arithmetic operations to use log tables
   inline ElementType Mul(const ElementType &a,
                          const ElementType &b) const override {
-    if (a == 0 || b == 0) // Handle zero multiplication
+    if (a == 0 || b == 0)  // Handle zero multiplication
       return 0;
 
     ElementType log_sum = (log_table_[a] + log_table_[b]);
     if (log_sum >= this->group_order_) {
-      log_sum -= this->group_order_; // Handle wrap-around
+      log_sum -= this->group_order_;  // Handle wrap-around
     }
     return exp_table_[log_sum];
   }
 
   inline ElementType Div(const ElementType &a,
                          const ElementType &b) const override {
-    if (b == 0) // Handle division by zero
+    if (b == 0)  // Handle division by zero
       throw std::domain_error("Division by zero");
-    if (a == 0) // Handle zero division
+    if (a == 0)  // Handle zero division
       return 0;
 
     ElementType log_diff =
@@ -684,15 +672,14 @@ public:
   }
 
   inline ElementType Inv(const ElementType &a) const override {
-    if (a == 0) // Handle inverse of zero
+    if (a == 0)  // Handle inverse of zero
       throw std::domain_error("Inverse of zero is undefined");
 
     return exp_table_[(this->group_order_ - log_table_[a])];
   }
 
   inline ElementType Pow(const ElementType &a, uint32_t exp) const override {
-    if (a == 0)
-      return (exp == 0) ? 1 : 0; // 0^0 = 1, 0^k = 0 for k > 0
+    if (a == 0) return (exp == 0) ? 1 : 0;  // 0^0 = 1, 0^k = 0 for k > 0
 
     return exp_table_[(static_cast<uint64_t>(log_table_[a]) * exp) %
                       this->group_order_];
@@ -700,7 +687,7 @@ public:
 
   // Logarithm using precomputed table
   uint32_t Log(const ElementType &a) const override {
-    if (a == 0) // Handle log of zero
+    if (a == 0)  // Handle log of zero
       throw std::domain_error("Log of zero is undefined");
 
     return log_table_[a];
@@ -708,10 +695,10 @@ public:
 
   uint32_t Log(const ElementType &a,
                const ElementType &generator) const override {
-    if (a == 0) // Handle log of zero
+    if (a == 0)  // Handle log of zero
       throw std::domain_error("Log of zero is undefined");
 
-    if (generator == this->MultiplicativeGenerator()) // Use cached generator
+    if (generator == this->MultiplicativeGenerator())  // Use cached generator
       return log_table_[a];
 
     return GaloisFieldBinaryExtension<ElementType>::Log(a, generator);
@@ -730,11 +717,12 @@ public:
     return cached_generator_;
   }
 
-protected:
-  std::vector<uint32_t> log_table_;      // Maps field element to its log
-  std::vector<ElementType> exp_table_;   // Maps log value to field element
-  mutable ElementType cached_generator_; // Stores the generator used for tables
-  mutable bool is_generator_cached_;     // Flag to check if generator is cached
+ protected:
+  std::vector<uint32_t> log_table_;     // Maps field element to its log
+  std::vector<ElementType> exp_table_;  // Maps log value to field element
+  mutable ElementType
+      cached_generator_;              // Stores the generator used for tables
+  mutable bool is_generator_cached_;  // Flag to check if generator is cached
 
   static constexpr ElementType LOG_ZERO =
       std::numeric_limits<ElementType>::max();
@@ -752,10 +740,10 @@ protected:
     // is_generator_cached_ is true.
 
     // Compute exp table: g^i
-    ElementType element = 1; // g^0 = 1
+    ElementType element = 1;  // g^0 = 1
     for (uint32_t i = 0; i < this->group_order_; i++) {
-      exp_table_[i] = element; // g^i
-      log_table_[element] = i; // log_g(g^i) = i
+      exp_table_[i] = element;  // g^i
+      log_table_[element] = i;  // log_g(g^i) = i
       element =
           GaloisFieldBinaryExtension<ElementType>::Mul(element, generator);
     }
@@ -770,7 +758,7 @@ protected:
 //------------------------------------------------------------------------------
 template <typename ElementType = uint32_t>
 class GFBELogTablesOpt : public GFBELogTables<ElementType> {
-public:
+ public:
   // Constructor
   GFBELogTablesOpt(uint8_t m, const std::string &rep = "int",
                    const std::string &irreducible_poly = "",
@@ -789,7 +777,7 @@ public:
   // Division with zero checks, with modulo handling
   inline ElementType Div(const ElementType &a,
                          const ElementType &b) const override {
-    if (b == 0) // Handle division by zero
+    if (b == 0)  // Handle division by zero
       throw std::domain_error("Division by zero");
 
     return this->exp_table_[this->group_order_ + this->log_table_[a] -
@@ -797,13 +785,13 @@ public:
   }
 
   inline ElementType Inv(const ElementType &a) const override {
-    if (a == 0) // Handle inverse of zero
+    if (a == 0)  // Handle inverse of zero
       throw std::domain_error("Inverse of zero is undefined");
 
     return this->exp_table_[this->group_order_ - this->log_table_[a]];
   }
 
-protected:
+ protected:
   void PrecomputeTables() override {
     // Initialize optimized tables
     this->log_table_.resize(this->order_, 0);
@@ -813,17 +801,18 @@ protected:
     ElementType generator = this->MultiplicativeGenerator();
 
     // Compute exp table with extended wraparound
-    ElementType element = 1; // g^0 = 1
+    ElementType element = 1;  // g^0 = 1
     for (uint32_t i = 0; i < this->group_order_; i++) {
-      this->exp_table_[i] = element;                      // g^i
-      this->exp_table_[i + this->group_order_] = element; // wraparound copy
-      this->log_table_[element] = i;                      // log_g(g^i) = i
+      this->exp_table_[i] = element;                       // g^i
+      this->exp_table_[i + this->group_order_] = element;  // wraparound copy
+      this->log_table_[element] = i;                       // log_g(g^i) = i
       element =
           GaloisFieldBinaryExtension<ElementType>::Mul(element, generator);
     }
 
     // Set special values for zero handling
-    this->log_table_[0] = 2 * this->group_order_; // Set log(0) to 2*group_order
+    this->log_table_[0] =
+        2 * this->group_order_;  // Set log(0) to 2*group_order
   }
 };
 
@@ -832,7 +821,7 @@ protected:
 //------------------------------------------------------------------------------
 template <typename ElementType = uint32_t>
 class GFBEZechLogTables : public GaloisFieldBinaryExtension<ElementType> {
-public:
+ public:
   // Constructor
   GFBEZechLogTables(uint8_t m, const std::string &rep = "log",
                     const std::string &irreducible_poly = "",
@@ -848,18 +837,16 @@ public:
   // Override arithmetic operations assuming inputs are in log form
   inline ElementType Add(const ElementType &log_a,
                          const uint32_t &log_b) const override {
-    if (log_a == LOG_ZERO)
-      return log_b; // log(0) + log(b) = log(b)
-    if (log_b == LOG_ZERO)
-      return log_a; // log(a) + log(0) = log(a)
+    if (log_a == LOG_ZERO) return log_b;  // log(0) + log(b) = log(b)
+    if (log_b == LOG_ZERO) return log_a;  // log(a) + log(0) = log(a)
 
     uint32_t diff = (log_b >= log_a) ? (log_b - log_a)
                                      : (this->group_order_ - log_a + log_b);
 
-    return (zech_table_[diff] == LOG_ZERO) // Check for infinity
+    return (zech_table_[diff] == LOG_ZERO)  // Check for infinity
                ? LOG_ZERO
                : ((log_a + zech_table_[diff]) <
-                  this->group_order_) // Check for wrap
+                  this->group_order_)  // Check for wrap
                      ? (log_a + zech_table_[diff])
                      : (log_a + zech_table_[diff] - this->group_order_);
   }
@@ -871,8 +858,7 @@ public:
 
   inline ElementType Mul(const ElementType &log_a,
                          const ElementType &log_b) const override {
-    if (log_a == LOG_ZERO || log_b == LOG_ZERO)
-      return LOG_ZERO; // log(0)
+    if (log_a == LOG_ZERO || log_b == LOG_ZERO) return LOG_ZERO;  // log(0)
 
     return ((log_a + log_b) < this->group_order_)
                ? (log_a + log_b)
@@ -881,8 +867,7 @@ public:
 
   inline ElementType Div(const ElementType &log_a,
                          const ElementType &log_b) const override {
-    if (log_b == LOG_ZERO)
-      throw std::domain_error("Division by zero");
+    if (log_b == LOG_ZERO) throw std::domain_error("Division by zero");
 
     return (log_a < log_b)       ? (log_a + this->group_order_ - log_b)
            : (log_a == LOG_ZERO) ? LOG_ZERO
@@ -898,8 +883,7 @@ public:
 
   inline ElementType Pow(const ElementType &log_a,
                          uint32_t exp) const override {
-    if (log_a == LOG_ZERO)
-      return (exp == 0) ? 0 : LOG_ZERO; // log(1) : log(0)
+    if (log_a == LOG_ZERO) return (exp == 0) ? 0 : LOG_ZERO;  // log(1) : log(0)
 
     return (static_cast<uint64_t>(log_a) * exp) % this->group_order_;
   }
@@ -939,7 +923,7 @@ public:
     return log_table[value];
   }
 
-protected:
+ protected:
   std::vector<ElementType> zech_table_;
   std::vector<ElementType> exp_table_;
   std::vector<ElementType> log_table;
@@ -957,23 +941,23 @@ protected:
     ElementType element;
 
     // Build log table
-    element = 1; // Start with g^0 = 1
+    element = 1;  // Start with g^0 = 1
     for (uint32_t i = 0; i < this->group_order_; i++) {
-      exp_table_[i] = element; // g^i
-      log_table[element] = i;  // log_g(g^i) = i
+      exp_table_[i] = element;  // g^i
+      log_table[element] = i;   // log_g(g^i) = i
       element =
           GaloisFieldBinaryExtension<ElementType>::Mul(element, generator);
     }
 
     // Build Zech table
-    element = 1; // Start with g^0 = 1
+    element = 1;  // Start with g^0 = 1
     for (uint32_t i = 0; i < this->group_order_; i++) {
       // Compute 1 + g^i
       ElementType one_plus_element =
           GaloisFieldBinaryExtension<ElementType>::Add(1, element);
-      if (one_plus_element == 0) // if (1 + g^i) == 0 -> log(0) = infinity
+      if (one_plus_element == 0)  // if (1 + g^i) == 0 -> log(0) = infinity
         zech_table_[i] = LOG_ZERO;
-      else // Otherwise, store the log value
+      else  // Otherwise, store the log value
         zech_table_[i] = log_table[one_plus_element];
       // Compute next element, g^(i+1) = g^i * g
       element =
@@ -992,6 +976,6 @@ using GF2XLOG = GFBELogTablesOpt<ElementType>;
 using GF2XZECH = GFBEZechLogTables<uint32_t>;
 //------------------------------------------------------------------------------
 
-} // namespace xg
+}  // namespace xg
 
-#endif // XGALOIS_FIELD_GF_BINARY_HPP_
+#endif  // XGALOIS_FIELD_GF_BINARY_HPP_

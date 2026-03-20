@@ -26,23 +26,26 @@ namespace xg {
 
 // Represents a polynomial with coefficients from a Galois field,
 // stored using a dense vector.
-template <typename GaloisField> class PolynomialDense {
-public:
+template <typename GaloisField>
+class PolynomialDense {
+ public:
   using ElementType = GaloisFieldElementBase<GaloisField>;
 
   // Constructs a polynomial from a vector of coefficients.
   // Coefficients are ordered from lowest degree (index 0) to highest.
-  explicit PolynomialDense(const std::vector<ElementType> &coeffs, const std::string& var = "x")
-      : coefficients_(coeffs), field_(coeffs[0].Field()),
+  explicit PolynomialDense(const std::vector<ElementType> &coeffs,
+                           const std::string &var = "x")
+      : coefficients_(coeffs),
+        field_(coeffs[0].Field()),
         kGfZero(field_->AdditiveIdentity(), field_),
         kGfOne(field_->MultiplicativeIdentity(), field_),
-        variable_(var) { // Initialize variable_ with var
+        variable_(var) {  // Initialize variable_ with var
     assert(!coeffs.empty() && "Coefficient vector cannot be empty.");
     if (!field_) {
       throw std::invalid_argument(
           "Cannot determine Galois field from coefficients.");
     }
-    Trim(); // Ensures polynomial is in canonical form.
+    Trim();  // Ensures polynomial is in canonical form.
   }
 
   // Default copy constructor.
@@ -57,23 +60,21 @@ public:
   ~PolynomialDense() = default;
 
   // Sets the variable string for polynomial representation.
-  void SetVariable(const std::string& var) {
+  void SetVariable(const std::string &var) {
     if (var.empty()) {
-        throw std::invalid_argument("Variable string cannot be empty.");
+      throw std::invalid_argument("Variable string cannot be empty.");
     }
     variable_ = var;
   }
 
   // Returns the variable string used for polynomial representation.
-  std::string GetVariable() const {
-    return variable_;
-  }
+  std::string GetVariable() const { return variable_; }
 
   // Returns the degree of the polynomial.
   // Returns -1 for the zero polynomial.
   int Degree() const {
     if (coefficients_.size() == 1 && coefficients_[0] == kGfZero) {
-      return -1; // Zero polynomial case.
+      return -1;  // Zero polynomial case.
     }
     return coefficients_.size() - 1;
   }
@@ -104,8 +105,8 @@ public:
   }
 
   // Adds two polynomials.
-  PolynomialDense<GaloisField>
-  operator+(const PolynomialDense<GaloisField> &other) const {
+  PolynomialDense<GaloisField> operator+(
+      const PolynomialDense<GaloisField> &other) const {
     size_t result_size = std::max(Size(), other.Size());
     std::vector<ElementType> result_coeffs(result_size, kGfZero);
 
@@ -125,13 +126,13 @@ public:
     }
 
     PolynomialDense<GaloisField> result(result_coeffs, variable_);
-    result.Trim(); // Ensure canonical form.
+    result.Trim();  // Ensure canonical form.
     return result;
   }
 
   // Subtracts one polynomial from another.
-  PolynomialDense<GaloisField>
-  operator-(const PolynomialDense<GaloisField> &other) const {
+  PolynomialDense<GaloisField> operator-(
+      const PolynomialDense<GaloisField> &other) const {
     size_t result_size = std::max(Size(), other.Size());
     std::vector<ElementType> result_coeffs(result_size, kGfZero);
 
@@ -151,16 +152,17 @@ public:
     }
 
     PolynomialDense<GaloisField> result(result_coeffs, variable_);
-    result.Trim(); // Ensure canonical form.
+    result.Trim();  // Ensure canonical form.
     return result;
   }
 
   // Multiplies two polynomials (convolution).
-  PolynomialDense<GaloisField>
-  operator*(const PolynomialDense<GaloisField> &other) const {
+  PolynomialDense<GaloisField> operator*(
+      const PolynomialDense<GaloisField> &other) const {
     if ((Size() == 1 && coefficients_[0] == kGfZero) ||
         (other.Size() == 1 && other[0] == kGfZero)) {
-      return PolynomialDense<GaloisField>(std::vector<ElementType>{kGfZero}, variable_);
+      return PolynomialDense<GaloisField>(std::vector<ElementType>{kGfZero},
+                                          variable_);
     }
 
     size_t result_size = (Size() - 1) + (other.Size() - 1) + 1;
@@ -173,20 +175,20 @@ public:
     }
 
     PolynomialDense<GaloisField> result(result_coeffs, variable_);
-    result.Trim(); // Ensure canonical form.
+    result.Trim();  // Ensure canonical form.
     return result;
   }
 
   // Divides this polynomial by another, returning the quotient.
-  PolynomialDense<GaloisField>
-  operator/(const PolynomialDense<GaloisField> &other) const {
+  PolynomialDense<GaloisField> operator/(
+      const PolynomialDense<GaloisField> &other) const {
     auto result_pair = DivRem(other);
     return std::move(result_pair.first);
   }
 
   // Computes the remainder of this polynomial divided by another.
-  PolynomialDense<GaloisField>
-  operator%(const PolynomialDense<GaloisField> &other) const {
+  PolynomialDense<GaloisField> operator%(
+      const PolynomialDense<GaloisField> &other) const {
     auto result_pair = DivRem(other);
     return std::move(result_pair.second);
   }
@@ -198,7 +200,7 @@ public:
       result_coeffs[i] = coefficients_[i] * scalar;
     }
     PolynomialDense<GaloisField> result(result_coeffs, variable_);
-    result.Trim(); // Ensure canonical form.
+    result.Trim();  // Ensure canonical form.
     return result;
   }
 
@@ -209,7 +211,7 @@ public:
       result_coeffs[i] = kGfZero - coefficients_[i];
     }
     PolynomialDense<GaloisField> result(result_coeffs, variable_);
-    result.Trim(); // Ensure canonical form.
+    result.Trim();  // Ensure canonical form.
     return result;
   }
 
@@ -217,22 +219,24 @@ public:
   PolynomialDense<GaloisField> operator^(uint64_t exponent) const {
     if (exponent == 0) {
       // p(x)^0 = 1 (the constant polynomial).
-      return PolynomialDense<GaloisField>(std::vector<ElementType>{kGfOne}, variable_);
+      return PolynomialDense<GaloisField>(std::vector<ElementType>{kGfOne},
+                                          variable_);
     }
     if (exponent == 1) {
       return *this;
     }
 
     PolynomialDense<GaloisField> base = *this;
-    PolynomialDense<GaloisField> result(std::vector<ElementType>{kGfOne}, variable_);
+    PolynomialDense<GaloisField> result(std::vector<ElementType>{kGfOne},
+                                        variable_);
 
     uint64_t temp_exponent = exponent;
 
     while (temp_exponent > 0) {
       if (temp_exponent % 2 == 1) {
-        result = result * base; // Result is trimmed in operator*
+        result = result * base;  // Result is trimmed in operator*
       }
-      base = base * base; // Base is trimmed in operator*
+      base = base * base;  // Base is trimmed in operator*
       temp_exponent /= 2;
     }
     // Result is already trimmed by the final multiplication.
@@ -240,22 +244,22 @@ public:
   }
 
   // Compound assignment for addition.
-  PolynomialDense<GaloisField> &
-  operator+=(const PolynomialDense<GaloisField> &other) {
+  PolynomialDense<GaloisField> &operator+=(
+      const PolynomialDense<GaloisField> &other) {
     *this = *this + other;
     return *this;
   }
 
   // Compound assignment for subtraction.
-  PolynomialDense<GaloisField> &
-  operator-=(const PolynomialDense<GaloisField> &other) {
+  PolynomialDense<GaloisField> &operator-=(
+      const PolynomialDense<GaloisField> &other) {
     *this = *this - other;
     return *this;
   }
 
   // Compound assignment for multiplication.
-  PolynomialDense<GaloisField> &
-  operator*=(const PolynomialDense<GaloisField> &other) {
+  PolynomialDense<GaloisField> &operator*=(
+      const PolynomialDense<GaloisField> &other) {
     *this = *this * other;
     return *this;
   }
@@ -267,15 +271,15 @@ public:
   }
 
   // Compound assignment for division.
-  PolynomialDense<GaloisField> &
-  operator/=(const PolynomialDense<GaloisField> &other) {
+  PolynomialDense<GaloisField> &operator/=(
+      const PolynomialDense<GaloisField> &other) {
     *this = *this / other;
     return *this;
   }
 
   // Compound assignment for modulo.
-  PolynomialDense<GaloisField> &
-  operator%=(const PolynomialDense<GaloisField> &other) {
+  PolynomialDense<GaloisField> &operator%=(
+      const PolynomialDense<GaloisField> &other) {
     *this = *this % other;
     return *this;
   }
@@ -310,7 +314,7 @@ public:
   void Print(std::ostream &os) const {
     if (coefficients_.empty() ||
         (coefficients_.size() == 1 && coefficients_[0] == kGfZero)) {
-      os << "0"; // Zero polynomial.
+      os << "0";  // Zero polynomial.
       return;
     }
 
@@ -333,7 +337,7 @@ public:
       const ElementType &coeff = coefficients_[i];
 
       if (coeff == kGfZero && coefficients_.size() > 1) {
-        continue; // Skip zero terms unless it's the zero polynomial itself.
+        continue;  // Skip zero terms unless it's the zero polynomial itself.
       }
 
       if (!first_term) {
@@ -356,28 +360,30 @@ public:
       }
 
       if (i > 0) {
-        os << variable_; // Use the variable_ member
+        os << variable_;  // Use the variable_ member
         if (i > 1) {
           os << "^" << i;
         }
       }
       first_term = false;
     }
-    if (first_term) { // Handles case where all coefficients were zero but not
-                      // caught by initial check (e.g. [0,0,0] after some ops)
+    if (first_term) {  // Handles case where all coefficients were zero but not
+                       // caught by initial check (e.g. [0,0,0] after some ops)
       os << "0";
     }
   }
 
   // Performs polynomial long division, returning a pair {quotient, remainder}.
-  std::pair<PolynomialDense<GaloisField>, PolynomialDense<GaloisField>>
-  DivRem(const PolynomialDense<GaloisField> &divisor) const {
+  std::pair<PolynomialDense<GaloisField>, PolynomialDense<GaloisField>> DivRem(
+      const PolynomialDense<GaloisField> &divisor) const {
     if (divisor.Size() == 1 && divisor[0] == kGfZero) {
       throw std::invalid_argument("Division by zero polynomial.");
     }
 
-    PolynomialDense<GaloisField> quotient(std::vector<ElementType>{kGfZero}, variable_);
-    PolynomialDense<GaloisField> remainder = *this; // Inherits variable via copy
+    PolynomialDense<GaloisField> quotient(std::vector<ElementType>{kGfZero},
+                                          variable_);
+    PolynomialDense<GaloisField> remainder =
+        *this;  // Inherits variable via copy
 
     int divisor_degree = divisor.Degree();
 
@@ -397,8 +403,9 @@ public:
       const ElementType &divisor_leading_coeff = divisor[divisor_degree];
 
       if (divisor_leading_coeff == kGfZero) {
-        throw std::runtime_error("Internal error: Divisor leading coefficient "
-                                 "is zero during division.");
+        throw std::runtime_error(
+            "Internal error: Divisor leading coefficient "
+            "is zero during division.");
       }
 
       ElementType term_coeff = remainder_leading_coeff / divisor_leading_coeff;
@@ -430,7 +437,8 @@ public:
   PolynomialDense<GaloisField> Derivative() const {
     if (coefficients_.size() <= 1) {
       // Derivative of constant polynomial is zero
-      return PolynomialDense<GaloisField>(std::vector<ElementType>{kGfZero}, variable_);
+      return PolynomialDense<GaloisField>(std::vector<ElementType>{kGfZero},
+                                          variable_);
     }
 
     std::vector<ElementType> derivative_coeffs;
@@ -459,7 +467,7 @@ public:
     }
 
     PolynomialDense<GaloisField> result(derivative_coeffs, variable_);
-    result.Trim(); // Ensure canonical form
+    result.Trim();  // Ensure canonical form
     return result;
   }
   // Removes trailing zero coefficients to maintain a canonical representation.
@@ -477,7 +485,7 @@ public:
     }
   }
 
-private:
+ private:
   // Coefficients of the polynomial, coefficients_[i] is for x^i.
   std::vector<ElementType> coefficients_;
   // Shared pointer to the Galois field for coefficient arithmetic.
@@ -498,6 +506,6 @@ std::ostream &operator<<(std::ostream &os,
   return os;
 }
 
-} // namespace xg
+}  // namespace xg
 
-#endif // XG_POLYNOMIAL_DENSE_HPP_
+#endif  // XG_POLYNOMIAL_DENSE_HPP_
