@@ -357,6 +357,12 @@ class GaloisFieldElement : public GaloisFieldElementBase<GaloisField> {
     return !(*this == other);
   }
 
+  inline bool operator==(const Base &other) const {
+    return this->value_ == other.Value();
+  }
+
+  inline bool operator!=(const Base &other) const { return !(*this == other); }
+
   inline bool operator<(const GaloisFieldElement &other) const {
     ValidateField(other);
     return this->value_ < other.value_;

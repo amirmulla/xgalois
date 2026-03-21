@@ -8,27 +8,28 @@
 #include <xtensor/views/xview.hpp>
 
 #include "xgalois/coding/abstract_linear_code.hpp"
+#include "xgalois/field/gf_base.hpp"
 #include "xgalois/poly/poly_dense.hpp"
 
 namespace xg {
 namespace coding {
 
-template <typename ElementType>
-class GeneralizedReedSolomonCode : public AbstractLinearCode<ElementType> {
+template <typename GaloisField>
+class GeneralizedReedSolomonCode : public AbstractLinearCode<GaloisField> {
  public:
-  using element_type = ElementType;
-  using codeword_type = xt::xarray<ElementType>;
-  using message_type = xt::xarray<ElementType>;
-  using matrix_type = xt::xarray<ElementType>;
-  using vector_type = xt::xarray<ElementType>;
-  using polynomial_type = xg::PolynomialDense<ElementType>;
+  using element_type = xg::GaloisFieldElement<GaloisField>;
+  using codeword_type = xt::xarray<GaloisField>;
+  using message_type = xt::xarray<GaloisField>;
+  using matrix_type = xt::xarray<GaloisField>;
+  using vector_type = xt::xarray<GaloisField>;
+  using polynomial_type = xg::PolynomialDense<GaloisField>;
 
   // Constructor for GRS code
   GeneralizedReedSolomonCode(
-      std::shared_ptr<GaloisFieldBase<ElementType>> field,
-      const xt::xarray<ElementType>& evaluation_points,
-      const xt::xarray<ElementType>& column_multipliers, size_t dimension)
-      : AbstractLinearCode<ElementType>(evaluation_points.size(), dimension,
+      std::shared_ptr<GaloisFieldBase<GaloisField>> field,
+      const xt::xarray<GaloisField>& evaluation_points,
+      const xt::xarray<GaloisField>& column_multipliers, size_t dimension)
+      : AbstractLinearCode<GaloisField>(evaluation_points.size(), dimension,
                                         "GRSEncoder", "GRSDecoder",
                                         Metric::HAMMING),
         field_(field),
@@ -55,7 +56,7 @@ class GeneralizedReedSolomonCode : public AbstractLinearCode<ElementType> {
 
     // Check that column multipliers are non-zero
     for (size_t i = 0; i < column_multipliers.size(); ++i) {
-      if (column_multipliers(i) == ElementType{}) {
+      if (column_multipliers(i) == element_type{}) {
         throw std::invalid_argument("Column multipliers must be non-zero");
       }
     }
@@ -68,26 +69,26 @@ class GeneralizedReedSolomonCode : public AbstractLinearCode<ElementType> {
   }
 
   // Standard Reed-Solomon constructor (column multipliers all 1)
-  static std::unique_ptr<GeneralizedReedSolomonCode<ElementType>>
-  StandardReedSolomon(std::shared_ptr<GaloisFieldBase<ElementType>> field,
-                      const xt::xarray<ElementType>& evaluation_points,
+  static std::unique_ptr<GeneralizedReedSolomonCode<GaloisField>>
+  StandardReedSolomon(std::shared_ptr<GaloisFieldBase<GaloisField>> field,
+                      const xt::xarray<GaloisField>& evaluation_points,
                       size_t dimension) {
-    xt::xarray<ElementType> multipliers =
-        xt::ones<ElementType>({evaluation_points.size()});
+    xt::xarray<GaloisField> multipliers =
+        xt::ones<GaloisField>({evaluation_points.size()});
     return std::make_unique<GeneralizedReedSolomonCode>(
         field, evaluation_points, multipliers, dimension);
   }
 
   // Reed-Solomon constructor using consecutive powers
-  static std::unique_ptr<GeneralizedReedSolomonCode<ElementType>> ReedSolomon(
-      std::shared_ptr<GaloisFieldBase<ElementType>> field, size_t length,
-      size_t dimension, const ElementType& primitive_element) {
-    xt::xarray<ElementType> evaluation_points =
-        xt::zeros<ElementType>({length});
-    xt::xarray<ElementType> multipliers = xt::ones<ElementType>({length});
+  static std::unique_ptr<GeneralizedReedSolomonCode<GaloisField>> ReedSolomon(
+      std::shared_ptr<GaloisFieldBase<GaloisField>> field, size_t length,
+      size_t dimension, const element_type& primitive_element) {
+    xt::xarray<GaloisField> evaluation_points =
+        xt::zeros<GaloisField>({length});
+    xt::xarray<GaloisField> multipliers = xt::ones<GaloisField>({length});
 
     // Use consecutive powers of primitive element
-    ElementType power = ElementType(1);
+    element_type power = element_type(1);
     for (size_t i = 0; i < length; ++i) {
       evaluation_points(i) = power;
       power = field->Mul(power, primitive_element);
@@ -98,7 +99,7 @@ class GeneralizedReedSolomonCode : public AbstractLinearCode<ElementType> {
   }
 
   // Override methods from AbstractLinearCode
-  std::shared_ptr<GaloisFieldBase<ElementType>> Field() const override {
+  std::shared_ptr<GaloisFieldBase<GaloisField>> Field() const override {
     return field_;
   }
 
@@ -113,7 +114,7 @@ class GeneralizedReedSolomonCode : public AbstractLinearCode<ElementType> {
     return this->length_ - this->dimension_ + 1;
   }
 
-  std::unique_ptr<AbstractLinearCode<ElementType>> DualCode() const override {
+  std::unique_ptr<AbstractLinearCode<GaloisField>> DualCode() const override {
     // Dual of GRS code is also GRS
     return ComputeDualCode();
   }
@@ -126,11 +127,11 @@ class GeneralizedReedSolomonCode : public AbstractLinearCode<ElementType> {
   }
 
   // GRS-specific methods
-  const xt::xarray<ElementType>& EvaluationPoints() const {
+  const xt::xarray<GaloisField>& EvaluationPoints() const {
     return evaluation_points_;
   }
 
-  const xt::xarray<ElementType>& ColumnMultipliers() const {
+  const xt::xarray<GaloisField>& ColumnMultipliers() const {
     return column_multipliers_;
   }
 
@@ -141,9 +142,9 @@ class GeneralizedReedSolomonCode : public AbstractLinearCode<ElementType> {
           "Message polynomial degree must be less than dimension");
     }
 
-    codeword_type codeword = xt::zeros<ElementType>({this->length_});
+    codeword_type codeword = xt::zeros<GaloisField>({this->length_});
     for (size_t i = 0; i < this->length_; ++i) {
-      ElementType eval = message_poly.Evaluate(evaluation_points_(i));
+      element_type eval = message_poly.Evaluate(evaluation_points_(i));
       codeword(i) = field_->Mul(eval, column_multipliers_(i));
     }
 
@@ -175,9 +176,9 @@ class GeneralizedReedSolomonCode : public AbstractLinearCode<ElementType> {
   }
 
  private:
-  std::shared_ptr<GaloisFieldBase<ElementType>> field_;
-  xt::xarray<ElementType> evaluation_points_;
-  xt::xarray<ElementType> column_multipliers_;
+  std::shared_ptr<GaloisFieldBase<GaloisField>> field_;
+  xt::xarray<GaloisField> evaluation_points_;
+  xt::xarray<GaloisField> column_multipliers_;
   matrix_type generator_matrix_;
   matrix_type parity_check_matrix_;
 
@@ -196,8 +197,8 @@ class GeneralizedReedSolomonCode : public AbstractLinearCode<ElementType> {
     // where v_j is column multiplier and alpha_j is evaluation point
     for (size_t i = 0; i < k; ++i) {
       for (size_t j = 0; j < n; ++j) {
-        ElementType power = field_->Pow(evaluation_points_(j), i);
-        ElementType entry = field_->Mul(column_multipliers_(j), power);
+        element_type power = field_->Pow(evaluation_points_(j), i);
+        element_type entry = field_->Mul(column_multipliers_(j), power);
         generator_matrix_.Set(i, j, entry);
       }
     }
@@ -220,38 +221,38 @@ class GeneralizedReedSolomonCode : public AbstractLinearCode<ElementType> {
 
     for (size_t i = 0; i < r; ++i) {
       for (size_t j = 0; j < n; ++j) {
-        ElementType power = field_->Pow(evaluation_points_(j), i);
-        ElementType entry = field_->Mul(dual_multipliers(j), power);
+        element_type power = field_->Pow(evaluation_points_(j), i);
+        element_type entry = field_->Mul(dual_multipliers(j), power);
         parity_check_matrix_.Set(i, j, entry);
       }
     }
   }
 
-  xt::xarray<ElementType> ComputeDualMultipliers() const {
+  xt::xarray<GaloisField> ComputeDualMultipliers() const {
     // Compute dual multipliers for GRS dual code
-    xt::xarray<ElementType> dual_multipliers =
-        xt::zeros<ElementType>({this->length_});
+    xt::xarray<GaloisField> dual_multipliers =
+        xt::zeros<GaloisField>({this->length_});
 
     for (size_t j = 0; j < this->length_; ++j) {
       // Compute product of (alpha_j - alpha_i) for all i != j
-      ElementType product = ElementType(1);
+      element_type product = element_type(1);
       for (size_t i = 0; i < this->length_; ++i) {
         if (i != j) {
-          ElementType diff =
+          element_type diff =
               field_->Sub(evaluation_points_(j), evaluation_points_(i));
           product = field_->Mul(product, diff);
         }
       }
 
       // Dual multiplier is 1 / (v_j * product)
-      ElementType denominator = field_->Mul(column_multipliers_(j), product);
+      element_type denominator = field_->Mul(column_multipliers_(j), product);
       dual_multipliers(j) = field_->Inv(denominator);
     }
 
     return dual_multipliers;
   }
 
-  std::unique_ptr<AbstractLinearCode<ElementType>> ComputeDualCode() const {
+  std::unique_ptr<AbstractLinearCode<GaloisField>> ComputeDualCode() const {
     auto dual_multipliers = ComputeDualMultipliers();
     size_t dual_dimension = this->length_ - this->dimension_;
 
@@ -261,7 +262,7 @@ class GeneralizedReedSolomonCode : public AbstractLinearCode<ElementType> {
 
   polynomial_type InterpolateFromCodeword(const codeword_type& codeword) const {
     // Lagrange interpolation to recover polynomial
-    xt::xarray<ElementType> values = xt::zeros<ElementType>({this->length_});
+    xt::xarray<GaloisField> values = xt::zeros<GaloisField>({this->length_});
 
     // Remove column multipliers
     for (size_t i = 0; i < this->length_; ++i) {
@@ -269,8 +270,8 @@ class GeneralizedReedSolomonCode : public AbstractLinearCode<ElementType> {
     }
 
     // Use first k points for interpolation
-    xt::xarray<ElementType> points = xt::zeros<ElementType>({this->dimension_});
-    xt::xarray<ElementType> vals = xt::zeros<ElementType>({this->dimension_});
+    xt::xarray<GaloisField> points = xt::zeros<GaloisField>({this->dimension_});
+    xt::xarray<GaloisField> vals = xt::zeros<GaloisField>({this->dimension_});
 
     for (size_t i = 0; i < this->dimension_; ++i) {
       points(i) = evaluation_points_(i);
@@ -281,28 +282,28 @@ class GeneralizedReedSolomonCode : public AbstractLinearCode<ElementType> {
   }
 
   polynomial_type LagrangeInterpolation(
-      const xt::xarray<ElementType>& points,
-      const xt::xarray<ElementType>& values) const {
+      const xt::xarray<GaloisField>& points,
+      const xt::xarray<GaloisField>& values) const {
     if (points.size() != values.size()) {
       throw std::invalid_argument("Points and values must have same size");
     }
 
     size_t n = points.size();
-    xt::xarray<ElementType> result_coeffs = xt::zeros<ElementType>({n});
+    xt::xarray<GaloisField> result_coeffs = xt::zeros<GaloisField>({n});
 
     for (size_t i = 0; i < n; ++i) {
       // Compute Lagrange basis polynomial L_i(x)
-      xt::xarray<ElementType> basis_coeffs = xt::ones<ElementType>({1});
+      xt::xarray<GaloisField> basis_coeffs = xt::ones<GaloisField>({1});
 
       for (size_t j = 0; j < n; ++j) {
         if (i != j) {
           // Multiply by (x - points[j]) / (points[i] - points[j])
-          ElementType denominator = field_->Sub(points(i), points(j));
-          ElementType inv_denom = field_->Inv(denominator);
+          element_type denominator = field_->Sub(points(i), points(j));
+          element_type inv_denom = field_->Inv(denominator);
 
           // Multiply basis_coeffs by (x - points[j])
-          xt::xarray<ElementType> new_coeffs =
-              xt::zeros<ElementType>({basis_coeffs.size() + 1});
+          xt::xarray<GaloisField> new_coeffs =
+              xt::zeros<GaloisField>({basis_coeffs.size() + 1});
           for (size_t k = 0; k < basis_coeffs.size(); ++k) {
             new_coeffs(k) = field_->Add(
                 new_coeffs(k),
@@ -322,13 +323,13 @@ class GeneralizedReedSolomonCode : public AbstractLinearCode<ElementType> {
       // Add values[i] * L_i(x) to result
       for (size_t k = 0; k < basis_coeffs.size() && k < result_coeffs.size();
            ++k) {
-        ElementType term = field_->Mul(values(i), basis_coeffs(k));
+        element_type term = field_->Mul(values(i), basis_coeffs(k));
         result_coeffs(k) = field_->Add(result_coeffs(k), term);
       }
     }
 
     // Convert xtensor array to std::vector for polynomial constructor
-    std::vector<ElementType> coeffs_vec(result_coeffs.size());
+    std::vector<GaloisField> coeffs_vec(result_coeffs.size());
     for (size_t i = 0; i < result_coeffs.size(); ++i) {
       coeffs_vec[i] = result_coeffs(i);
     }
@@ -339,30 +340,30 @@ class GeneralizedReedSolomonCode : public AbstractLinearCode<ElementType> {
   void RegisterEncodersAndDecoders() {
     // Register GRS encoder
     this->RegisterEncoder(
-        "GRSEncoder", [](const AbstractCode<ElementType>* code) {
-          return std::make_unique<GRSEncoder<ElementType>>(code);
+        "GRSEncoder", [](const AbstractCode<GaloisField>* code) {
+          return std::make_unique<GRSEncoder<GaloisField>>(code);
         });
 
     // Register GRS decoder (Peterson-Gorenstein-Zierler)
     this->RegisterDecoder(
-        "GRSDecoder", [](const AbstractCode<ElementType>* code) {
-          return std::make_unique<GRSDecoder<ElementType>>(code);
+        "GRSDecoder", [](const AbstractCode<GaloisField>* code) {
+          return std::make_unique<GRSDecoder<GaloisField>>(code);
         });
 
     // Also register Berlekamp-Massey decoder
     this->RegisterDecoder(
-        "BerlekampMassey", [](const AbstractCode<ElementType>* code) {
-          return std::make_unique<BerlekampMasseyDecoder<ElementType>>(code);
+        "BerlekampMassey", [](const AbstractCode<GaloisField>* code) {
+          return std::make_unique<BerlekampMasseyDecoder<GaloisField>>(code);
         });
   }
 };
 
 // Forward declarations for GRS-specific encoder/decoder
-template <typename ElementType>
+template <typename GaloisField>
 class GRSEncoder;
-template <typename ElementType>
+template <typename GaloisField>
 class GRSDecoder;
-template <typename ElementType>
+template <typename GaloisField>
 class BerlekampMasseyDecoder;
 
 }  // namespace coding

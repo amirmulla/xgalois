@@ -9,20 +9,20 @@
 namespace xg {
 namespace coding {
 
-template <typename ElementType>
-class CyclicCode : public AbstractLinearCode<ElementType> {
+template <typename GaloisField>
+class CyclicCode : public AbstractLinearCode<GaloisField> {
  public:
-  using element_type = ElementType;
-  using codeword_type = std::vector<ElementType>;
-  using message_type = std::vector<ElementType>;
-  using matrix_type = xg::linalg::Matrix<ElementType>;
-  using vector_type = xg::linalg::Vector<ElementType>;
-  using polynomial_type = xg::poly::PolyDense<ElementType>;
+  using element_type = xg::GaloisFieldElement<GaloisField>;
+  using codeword_type = std::vector<GaloisField>;
+  using message_type = std::vector<GaloisField>;
+  using matrix_type = xg::linalg::Matrix<GaloisField>;
+  using vector_type = xg::linalg::Vector<GaloisField>;
+  using polynomial_type = xg::poly::PolyDense<GaloisField>;
 
   // Constructor from generator polynomial
-  CyclicCode(std::shared_ptr<GaloisFieldBase<ElementType>> field, size_t length,
+  CyclicCode(std::shared_ptr<GaloisFieldBase<GaloisField>> field, size_t length,
              const polynomial_type& generator_poly)
-      : AbstractLinearCode<ElementType>(
+      : AbstractLinearCode<GaloisField>(
             length, length - generator_poly.Degree(), "CyclicEncoder",
             "CyclicSyndrome", Metric::HAMMING),
         field_(field),
@@ -43,8 +43,8 @@ class CyclicCode : public AbstractLinearCode<ElementType> {
   }
 
   // Constructor from parity check polynomial
-  static std::unique_ptr<CyclicCode<ElementType>> FromParityCheckPolynomial(
-      std::shared_ptr<GaloisFieldBase<ElementType>> field, size_t length,
+  static std::unique_ptr<CyclicCode<GaloisField>> FromParityCheckPolynomial(
+      std::shared_ptr<GaloisFieldBase<GaloisField>> field, size_t length,
       const polynomial_type& parity_check_poly) {
     auto generator_poly =
         ComputeGeneratorFromParityCheck(field, length, parity_check_poly);
@@ -52,7 +52,7 @@ class CyclicCode : public AbstractLinearCode<ElementType> {
   }
 
   // Override methods from AbstractLinearCode
-  std::shared_ptr<GaloisFieldBase<ElementType>> Field() const override {
+  std::shared_ptr<GaloisFieldBase<GaloisField>> Field() const override {
     return field_;
   }
 
@@ -68,7 +68,7 @@ class CyclicCode : public AbstractLinearCode<ElementType> {
     return ComputeMinimumDistance();
   }
 
-  std::unique_ptr<AbstractLinearCode<ElementType>> DualCode() const override {
+  std::unique_ptr<AbstractLinearCode<GaloisField>> DualCode() const override {
     // The dual of a cyclic code is also cyclic
     return std::make_unique<CyclicCode>(field_, this->length_,
                                         parity_check_poly_);
@@ -113,7 +113,7 @@ class CyclicCode : public AbstractLinearCode<ElementType> {
   }
 
   codeword_type PolynomialToVector(const polynomial_type& poly) const {
-    codeword_type result(this->length_, ElementType{});
+    codeword_type result(this->length_, element_type{});
     for (size_t i = 0; i <= poly.Degree() && i < this->length_; ++i) {
       result[i] = poly.GetCoefficient(i);
     }
@@ -121,7 +121,7 @@ class CyclicCode : public AbstractLinearCode<ElementType> {
   }
 
  private:
-  std::shared_ptr<GaloisFieldBase<ElementType>> field_;
+  std::shared_ptr<GaloisFieldBase<GaloisField>> field_;
   polynomial_type generator_poly_;
   polynomial_type parity_check_poly_;
   matrix_type generator_matrix_;
@@ -130,10 +130,10 @@ class CyclicCode : public AbstractLinearCode<ElementType> {
   polynomial_type ComputeParityCheckPolynomial() const {
     // h(x) = (x^n - 1) / g(x)
     // Create polynomial x^n - 1
-    std::vector<ElementType> xn_minus_1_coeffs(this->length_ + 1,
-                                               ElementType{});
-    xn_minus_1_coeffs[0] = field_->Neg(ElementType(1));  // -1
-    xn_minus_1_coeffs[this->length_] = ElementType(1);   // x^n
+    std::vector<GaloisField> xn_minus_1_coeffs(this->length_ + 1,
+                                               element_type{});
+    xn_minus_1_coeffs[0] = field_->Neg(element_type(1));  // -1
+    xn_minus_1_coeffs[this->length_] = element_type(1);   // x^n
 
     polynomial_type xn_minus_1(xn_minus_1_coeffs, field_);
 
@@ -142,12 +142,12 @@ class CyclicCode : public AbstractLinearCode<ElementType> {
   }
 
   static polynomial_type ComputeGeneratorFromParityCheck(
-      std::shared_ptr<GaloisFieldBase<ElementType>> field, size_t length,
+      std::shared_ptr<GaloisFieldBase<GaloisField>> field, size_t length,
       const polynomial_type& parity_check_poly) {
     // g(x) = (x^n - 1) / h(x)
-    std::vector<ElementType> xn_minus_1_coeffs(length + 1, ElementType{});
-    xn_minus_1_coeffs[0] = field->Neg(ElementType(1));  // -1
-    xn_minus_1_coeffs[length] = ElementType(1);         // x^n
+    std::vector<GaloisField> xn_minus_1_coeffs(length + 1, element_type{});
+    xn_minus_1_coeffs[0] = field->Neg(element_type(1));  // -1
+    xn_minus_1_coeffs[length] = element_type(1);         // x^n
 
     polynomial_type xn_minus_1(xn_minus_1_coeffs, field);
 
@@ -168,8 +168,8 @@ class CyclicCode : public AbstractLinearCode<ElementType> {
     // Each row i is x^i * g(x) mod (x^n - 1)
     for (size_t i = 0; i < k; ++i) {
       // Create polynomial x^i
-      std::vector<ElementType> xi_coeffs(i + 1, ElementType{});
-      xi_coeffs[i] = ElementType(1);
+      std::vector<GaloisField> xi_coeffs(i + 1, element_type{});
+      xi_coeffs[i] = element_type(1);
       polynomial_type xi(xi_coeffs, field_);
 
       // Compute x^i * g(x)
@@ -183,7 +183,7 @@ class CyclicCode : public AbstractLinearCode<ElementType> {
         if (j <= row_poly.Degree()) {
           generator_matrix_.Set(i, j, row_poly.GetCoefficient(j));
         } else {
-          generator_matrix_.Set(i, j, ElementType{});
+          generator_matrix_.Set(i, j, element_type{});
         }
       }
     }
@@ -199,8 +199,8 @@ class CyclicCode : public AbstractLinearCode<ElementType> {
     // Each row i is x^i * h(x) mod (x^n - 1)
     for (size_t i = 0; i < r; ++i) {
       // Create polynomial x^i
-      std::vector<ElementType> xi_coeffs(i + 1, ElementType{});
-      xi_coeffs[i] = ElementType(1);
+      std::vector<GaloisField> xi_coeffs(i + 1, element_type{});
+      xi_coeffs[i] = element_type(1);
       polynomial_type xi(xi_coeffs, field_);
 
       // Compute x^i * h(x)
@@ -214,7 +214,7 @@ class CyclicCode : public AbstractLinearCode<ElementType> {
         if (j <= row_poly.Degree()) {
           parity_check_matrix_.Set(i, j, row_poly.GetCoefficient(j));
         } else {
-          parity_check_matrix_.Set(i, j, ElementType{});
+          parity_check_matrix_.Set(i, j, element_type{});
         }
       }
     }
@@ -222,7 +222,7 @@ class CyclicCode : public AbstractLinearCode<ElementType> {
 
   polynomial_type ReduceModuloXnMinus1(const polynomial_type& poly) const {
     // Reduce polynomial modulo x^n - 1
-    std::vector<ElementType> coeffs(this->length_, ElementType{});
+    std::vector<GaloisField> coeffs(this->length_, element_type{});
 
     for (size_t i = 0; i <= poly.Degree(); ++i) {
       size_t pos = i % this->length_;
@@ -253,22 +253,22 @@ class CyclicCode : public AbstractLinearCode<ElementType> {
   void RegisterEncodersAndDecoders() {
     // Register cyclic encoder
     this->RegisterEncoder(
-        "CyclicEncoder", [](const AbstractCode<ElementType>* code) {
-          return std::make_unique<CyclicEncoder<ElementType>>(code);
+        "CyclicEncoder", [](const AbstractCode<GaloisField>* code) {
+          return std::make_unique<CyclicEncoder<GaloisField>>(code);
         });
 
     // Register cyclic syndrome decoder
     this->RegisterDecoder(
-        "CyclicSyndrome", [](const AbstractCode<ElementType>* code) {
-          return std::make_unique<CyclicSyndromeDecoder<ElementType>>(code);
+        "CyclicSyndrome", [](const AbstractCode<GaloisField>* code) {
+          return std::make_unique<CyclicSyndromeDecoder<GaloisField>>(code);
         });
   }
 };
 
 // Forward declarations for cyclic-specific encoder/decoder
-template <typename ElementType>
+template <typename GaloisField>
 class CyclicEncoder;
-template <typename ElementType>
+template <typename GaloisField>
 class CyclicSyndromeDecoder;
 
 }  // namespace coding

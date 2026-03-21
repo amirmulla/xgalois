@@ -30,8 +30,9 @@ int main() {
 
   // Create a test message using field elements
   const size_t message_length = 8;
-  using ElementType = GaloisFieldElementBase<GF2X<uint8_t>>;
-  xt::xarray<ElementType> message = xt::empty<ElementType>({message_length});
+  using ElementType = GaloisFieldElement<GF2X<uint8_t>>;
+  xt::xarray<ElementType> message;
+  message.resize({message_length});
 
   // Initialize message with field elements
   for (size_t i = 0; i < message_length; ++i) {
@@ -114,9 +115,9 @@ int main() {
   std::cout << '\n';
 
   // Create a test message using field elements
-  using PrimeElementType = GaloisFieldElementBase<GFP<uint32_t>>;
-  xt::xarray<PrimeElementType> prime_message =
-      xt::empty<PrimeElementType>({message_length});
+  using PrimeElementType = GaloisFieldElement<GFP<uint32_t>>;
+  xt::xarray<PrimeElementType> prime_message;
+  prime_message.resize({message_length});
 
   // Initialize message with field elements
   for (size_t i = 0; i < message_length; ++i) {

@@ -10,31 +10,31 @@
 #include <vector>
 #include <xtensor/containers/xarray.hpp>
 
-#include "xgalois/field/gf_base.hpp"
+#include "xgalois/field/gf_element.hpp"
 
 namespace xg {
 namespace coding {
 
 // Forward declarations
-template <typename ElementType>
+template <typename GaloisField>
 class Encoder;
-template <typename ElementType>
+template <typename GaloisField>
 class Decoder;
 
 enum class Metric : std::uint8_t { HAMMING, RANK, LEE };
 
-template <typename ElementType>
+template <typename GaloisField>
 class AbstractCode {
  public:
-  using element_type = ElementType;
-  using codeword_type = xt::xarray<ElementType>;
-  using message_type = xt::xarray<ElementType>;
+  using element_type = GaloisFieldElement<GaloisField>;
+  using codeword_type = xt::xarray<element_type>;
+  using message_type = xt::xarray<element_type>;
   using encoder_factory_type =
-      std::function<std::unique_ptr<Encoder<ElementType>>(
-          const AbstractCode<ElementType>*)>;
+      std::function<std::unique_ptr<Encoder<GaloisField>>(
+          const AbstractCode<GaloisField>*)>;
   using decoder_factory_type =
-      std::function<std::unique_ptr<Decoder<ElementType>>(
-          const AbstractCode<ElementType>*)>;
+      std::function<std::unique_ptr<Decoder<GaloisField>>(
+          const AbstractCode<GaloisField>*)>;
 
   // Constructor
   explicit AbstractCode(size_t length,
@@ -55,7 +55,7 @@ class AbstractCode {
   Metric GetMetric() const { return metric_; }
 
   // Field operations
-  virtual std::shared_ptr<GaloisFieldBase<ElementType>> Field() const = 0;
+  virtual std::shared_ptr<GaloisField> Field() const = 0;
 
   // Encoding/Decoding interface
   virtual codeword_type Encode(const message_type& message,
@@ -86,9 +86,9 @@ class AbstractCode {
   void RegisterEncoder(const std::string& name, encoder_factory_type factory);
   void RegisterDecoder(const std::string& name, decoder_factory_type factory);
 
-  std::unique_ptr<Encoder<ElementType>> GetEncoder(
+  std::unique_ptr<Encoder<GaloisField>> GetEncoder(
       const std::string& name = "") const;
-  std::unique_ptr<Decoder<ElementType>> GetDecoder(
+  std::unique_ptr<Decoder<GaloisField>> GetDecoder(
       const std::string& name = "") const;
 
   std::vector<std::string> AvailableEncoders() const;
@@ -122,17 +122,17 @@ class AbstractCode {
   std::unordered_map<std::string, decoder_factory_type> decoder_registry_;
 
   // Cached encoders/decoders
-  mutable std::unordered_map<std::string, std::unique_ptr<Encoder<ElementType>>>
+  mutable std::unordered_map<std::string, std::unique_ptr<Encoder<GaloisField>>>
       encoder_cache_;
-  mutable std::unordered_map<std::string, std::unique_ptr<Decoder<ElementType>>>
+  mutable std::unordered_map<std::string, std::unique_ptr<Decoder<GaloisField>>>
       decoder_cache_;
 };
 
 // Implementation of template methods
 
-template <typename ElementType>
-typename AbstractCode<ElementType>::codeword_type
-AbstractCode<ElementType>::Encode(const message_type& message,
+template <typename GaloisField>
+typename AbstractCode<GaloisField>::codeword_type
+AbstractCode<GaloisField>::Encode(const message_type& message,
                                   const std::string& encoder_name) const {
   auto encoder = GetEncoder(encoder_name);
   if (!encoder) {
@@ -141,9 +141,9 @@ AbstractCode<ElementType>::Encode(const message_type& message,
   return encoder->Encode(message);
 }
 
-template <typename ElementType>
-typename AbstractCode<ElementType>::message_type
-AbstractCode<ElementType>::DecodeToMessage(
+template <typename GaloisField>
+typename AbstractCode<GaloisField>::message_type
+AbstractCode<GaloisField>::DecodeToMessage(
     const codeword_type& received_word, const std::string& decoder_name) const {
   auto decoder = GetDecoder(decoder_name);
   if (!decoder) {
@@ -152,9 +152,9 @@ AbstractCode<ElementType>::DecodeToMessage(
   return decoder->DecodeToMessage(received_word);
 }
 
-template <typename ElementType>
-typename AbstractCode<ElementType>::codeword_type
-AbstractCode<ElementType>::DecodeToCode(const codeword_type& received_word,
+template <typename GaloisField>
+typename AbstractCode<GaloisField>::codeword_type
+AbstractCode<GaloisField>::DecodeToCode(const codeword_type& received_word,
                                         const std::string& decoder_name) const {
   auto decoder = GetDecoder(decoder_name);
   if (!decoder) {
@@ -163,9 +163,9 @@ AbstractCode<ElementType>::DecodeToCode(const codeword_type& received_word,
   return decoder->DecodeToCode(received_word);
 }
 
-template <typename ElementType>
-typename AbstractCode<ElementType>::message_type
-AbstractCode<ElementType>::Unencode(const codeword_type& codeword,
+template <typename GaloisField>
+typename AbstractCode<GaloisField>::message_type
+AbstractCode<GaloisField>::Unencode(const codeword_type& codeword,
                                     const std::string& encoder_name) const {
   auto encoder = GetEncoder(encoder_name);
   if (!encoder) {
@@ -174,20 +174,20 @@ AbstractCode<ElementType>::Unencode(const codeword_type& codeword,
   return encoder->Unencode(codeword);
 }
 
-template <typename ElementType>
-void AbstractCode<ElementType>::RegisterEncoder(const std::string& name,
+template <typename GaloisField>
+void AbstractCode<GaloisField>::RegisterEncoder(const std::string& name,
                                                 encoder_factory_type factory) {
   encoder_registry_[name] = factory;
 }
 
-template <typename ElementType>
-void AbstractCode<ElementType>::RegisterDecoder(const std::string& name,
+template <typename GaloisField>
+void AbstractCode<GaloisField>::RegisterDecoder(const std::string& name,
                                                 decoder_factory_type factory) {
   decoder_registry_[name] = factory;
 }
 
-template <typename ElementType>
-std::unique_ptr<Encoder<ElementType>> AbstractCode<ElementType>::GetEncoder(
+template <typename GaloisField>
+std::unique_ptr<Encoder<GaloisField>> AbstractCode<GaloisField>::GetEncoder(
     const std::string& name) const {
   std::string encoder_name = name.empty() ? default_encoder_name_ : name;
 
@@ -215,8 +215,8 @@ std::unique_ptr<Encoder<ElementType>> AbstractCode<ElementType>::GetEncoder(
   return it->second(this);
 }
 
-template <typename ElementType>
-std::unique_ptr<Decoder<ElementType>> AbstractCode<ElementType>::GetDecoder(
+template <typename GaloisField>
+std::unique_ptr<Decoder<GaloisField>> AbstractCode<GaloisField>::GetDecoder(
     const std::string& name) const {
   std::string decoder_name = name.empty() ? default_decoder_name_ : name;
 
@@ -244,8 +244,8 @@ std::unique_ptr<Decoder<ElementType>> AbstractCode<ElementType>::GetDecoder(
   return it->second(this);
 }
 
-template <typename ElementType>
-std::vector<std::string> AbstractCode<ElementType>::AvailableEncoders() const {
+template <typename GaloisField>
+std::vector<std::string> AbstractCode<GaloisField>::AvailableEncoders() const {
   std::vector<std::string> names;
   for (const auto& pair : encoder_registry_) {
     names.push_back(pair.first);
@@ -253,8 +253,8 @@ std::vector<std::string> AbstractCode<ElementType>::AvailableEncoders() const {
   return names;
 }
 
-template <typename ElementType>
-std::vector<std::string> AbstractCode<ElementType>::AvailableDecoders() const {
+template <typename GaloisField>
+std::vector<std::string> AbstractCode<GaloisField>::AvailableDecoders() const {
   std::vector<std::string> names;
   for (const auto& pair : decoder_registry_) {
     names.push_back(pair.first);
@@ -262,8 +262,8 @@ std::vector<std::string> AbstractCode<ElementType>::AvailableDecoders() const {
   return names;
 }
 
-template <typename ElementType>
-size_t AbstractCode<ElementType>::Distance(const codeword_type& a,
+template <typename GaloisField>
+size_t AbstractCode<GaloisField>::Distance(const codeword_type& a,
                                            const codeword_type& b) const {
   if (a.size() != b.size()) {
     throw std::invalid_argument("Codewords must have the same length");
@@ -291,8 +291,8 @@ size_t AbstractCode<ElementType>::Distance(const codeword_type& a,
   return distance;
 }
 
-template <typename ElementType>
-size_t AbstractCode<ElementType>::Weight(const codeword_type& word) const {
+template <typename GaloisField>
+size_t AbstractCode<GaloisField>::Weight(const codeword_type& word) const {
   size_t weight = 0;
   auto field = Field();
 

@@ -3,22 +3,24 @@
 
 #include <xtensor/containers/xarray.hpp>
 
+#include "xgalois/field/gf_element.hpp"
+
 namespace xg {
 namespace coding {
 
 // Forward declaration
-template <typename ElementType>
+template <typename GaloisField>
 class AbstractCode;
 
-template <typename ElementType>
+template <typename GaloisField>
 class Decoder {
  public:
-  using element_type = ElementType;
-  using codeword_type = xt::xarray<ElementType>;
-  using message_type = xt::xarray<ElementType>;
+  using element_type = GaloisFieldElement<GaloisField>;
+  using codeword_type = xt::xarray<element_type>;
+  using message_type = xt::xarray<element_type>;
 
   // Constructor
-  explicit Decoder(const AbstractCode<ElementType>* code) : code_(code) {}
+  explicit Decoder(const AbstractCode<GaloisField>* code) : code_(code) {}
 
   virtual ~Decoder() = default;
 
@@ -32,13 +34,13 @@ class Decoder {
   virtual size_t InputLength() const { return code_->Length(); }
 
   // Get the code this decoder is associated with
-  const AbstractCode<ElementType>* GetCode() const { return code_; }
+  const AbstractCode<GaloisField>* GetCode() const { return code_; }
 
   // String representation
   virtual std::string ToString() const = 0;
 
  protected:
-  const AbstractCode<ElementType>* code_;
+  const AbstractCode<GaloisField>* code_;
 };
 
 }  // namespace coding

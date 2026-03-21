@@ -8,20 +8,20 @@
 namespace xg {
 namespace coding {
 
-template <typename ElementType>
-class GeneratorMatrixEncoder : public Encoder<ElementType> {
+template <typename GaloisField>
+class GeneratorMatrixEncoder : public Encoder<GaloisField> {
  public:
-  using element_type = ElementType;
-  using codeword_type = std::vector<ElementType>;
-  using message_type = std::vector<ElementType>;
-  using matrix_type = xg::linalg::Matrix<ElementType>;
-  using vector_type = xg::linalg::Vector<ElementType>;
+  using element_type = xg::GaloisFieldElement<GaloisField>;
+  using codeword_type = std::vector<GaloisField>;
+  using message_type = std::vector<GaloisField>;
+  using matrix_type = xg::linalg::Matrix<GaloisField>;
+  using vector_type = xg::linalg::Vector<GaloisField>;
 
   // Constructor
-  explicit GeneratorMatrixEncoder(const AbstractCode<ElementType>* code)
-      : Encoder<ElementType>(code) {
+  explicit GeneratorMatrixEncoder(const AbstractCode<GaloisField>* code)
+      : Encoder<GaloisField>(code) {
     // Try to cast to linear code
-    linear_code_ = dynamic_cast<const AbstractLinearCode<ElementType>*>(code);
+    linear_code_ = dynamic_cast<const AbstractLinearCode<GaloisField>*>(code);
     if (!linear_code_) {
       throw std::invalid_argument(
           "GeneratorMatrixEncoder requires a linear code");
@@ -77,7 +77,7 @@ class GeneratorMatrixEncoder : public Encoder<ElementType> {
   }
 
  private:
-  const AbstractLinearCode<ElementType>* linear_code_;
+  const AbstractLinearCode<GaloisField>* linear_code_;
 
   // Helper functions
   codeword_type ToCodeword(const vector_type& vec) const {
@@ -95,11 +95,11 @@ class GeneratorMatrixEncoder : public Encoder<ElementType> {
     for (size_t i = 0; i < k; ++i) {
       for (size_t j = 0; j < k; ++j) {
         if (i == j) {
-          if (generator.Get(i, j) != ElementType(1)) {
+          if (generator.Get(i, j) != element_type(1)) {
             return false;
           }
         } else {
-          if (generator.Get(i, j) != ElementType{}) {
+          if (generator.Get(i, j) != element_type{}) {
             return false;
           }
         }
@@ -125,7 +125,7 @@ class GeneratorMatrixEncoder : public Encoder<ElementType> {
 
       // Convert i to base-q representation
       for (size_t j = 0; j < k; ++j) {
-        candidate[j] = ElementType(temp % q);
+        candidate[j] = element_type(temp % q);
         temp /= q;
       }
 

@@ -1,27 +1,26 @@
 #ifndef XGALOIS_CODING_ENCODER_HPP
 #define XGALOIS_CODING_ENCODER_HPP
 
-#include <memory>
-#include <stdexcept>
-#include <vector>
 #include <xtensor/containers/xarray.hpp>
+
+#include "xgalois/field/gf_element.hpp"
 
 namespace xg {
 namespace coding {
 
 // Forward declaration
-template <typename ElementType>
+template <typename GaloisField>
 class AbstractCode;
 
-template <typename ElementType>
+template <typename GaloisField>
 class Encoder {
  public:
-  using element_type = ElementType;
-  using codeword_type = xt::xarray<ElementType>;
-  using message_type = xt::xarray<ElementType>;
+  using element_type = xg::GaloisFieldElement<GaloisField>;
+  using codeword_type = xt::xarray<GaloisField>;
+  using message_type = xt::xarray<GaloisField>;
 
   // Constructor
-  explicit Encoder(const AbstractCode<ElementType>* code) : code_(code) {}
+  explicit Encoder(const AbstractCode<GaloisField>* code) : code_(code) {}
 
   virtual ~Encoder() = default;
 
@@ -35,13 +34,13 @@ class Encoder {
   virtual size_t MessageLength() const = 0;
 
   // Get the code this encoder is associated with
-  const AbstractCode<ElementType>* GetCode() const { return code_; }
+  const AbstractCode<GaloisField>* GetCode() const { return code_; }
 
   // String representation
   virtual std::string ToString() const = 0;
 
  protected:
-  const AbstractCode<ElementType>* code_;
+  const AbstractCode<GaloisField>* code_;
 };
 
 }  // namespace coding

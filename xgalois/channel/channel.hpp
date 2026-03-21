@@ -27,7 +27,7 @@ namespace channels {
 template <typename GaloisField>
 class Channel {
  public:
-  using ElementType = GaloisFieldElementBase<GaloisField>;
+  using ElementType = GaloisFieldElement<GaloisField>;
   using VectorType = xt::xarray<ElementType>;
 
   /**
@@ -190,7 +190,7 @@ class Channel {
 template <typename GaloisField>
 class StaticErrorRateChannel : public Channel<GaloisField> {
  public:
-  using ElementType = GaloisFieldElementBase<GaloisField>;
+  using ElementType = GaloisFieldElement<GaloisField>;
   using VectorType = xt::xarray<ElementType>;
 
   /**
@@ -282,7 +282,7 @@ class StaticErrorRateChannel : public Channel<GaloisField> {
 template <typename GaloisField>
 class ErrorErasureChannel : public Channel<GaloisField> {
  public:
-  using ElementType = GaloisFieldElementBase<GaloisField>;
+  using ElementType = GaloisFieldElement<GaloisField>;
   using VectorType = xt::xarray<ElementType>;
 
   /**
@@ -432,7 +432,7 @@ class ErrorErasureChannel : public Channel<GaloisField> {
 template <typename GaloisField>
 class QarySymmetricChannel : public Channel<GaloisField> {
  public:
-  using ElementType = GaloisFieldElementBase<GaloisField>;
+  using ElementType = GaloisFieldElement<GaloisField>;
   using VectorType = xt::xarray<ElementType>;
 
   /**
