@@ -3,7 +3,6 @@
 
 // C system headers
 #include <cassert>
-#include <cmath>
 
 // C++ standard library headers
 #include <algorithm>
@@ -11,7 +10,6 @@
 #include <ostream>
 #include <sstream>
 #include <stdexcept>
-#include <tuple>
 #include <utility>
 #include <vector>
 

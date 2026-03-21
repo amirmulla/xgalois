@@ -1,9 +1,6 @@
-#include "coding/coding.hpp"
+#include "xgalois/coding/coding.hpp"
 
 #include <gtest/gtest.h>
-
-#include "field/gf_extension.hpp"
-#include "field/gf_prime.hpp"
 
 using namespace xg;
 using namespace xg::coding;

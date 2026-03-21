@@ -5,7 +5,6 @@
 
 #include "xgalois/coding/decoder/decoder.hpp"
 #include "xgalois/coding/grs.hpp"
-#include "xgalois/poly/poly_dense.hpp"
 
 namespace xg {
 namespace coding {

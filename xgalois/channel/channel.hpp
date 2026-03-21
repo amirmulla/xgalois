@@ -8,15 +8,11 @@
 #include <random>
 #include <sstream>
 #include <stdexcept>
-#include <tuple>
 #include <utility>
 #include <vector>
 
-#include "xgalois/field/gf_base.hpp"
 #include "xgalois/field/gf_element.hpp"
 #include "xtensor/containers/xarray.hpp"
-#include "xtensor/generators/xrandom.hpp"
-#include "xtensor/views/xview.hpp"
 
 namespace xg {
 namespace channels {

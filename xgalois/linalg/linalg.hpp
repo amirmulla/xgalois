@@ -12,7 +12,6 @@
 #include <xtensor/views/xindex_view.hpp>
 #include <xtensor/views/xview.hpp>
 
-#include "xgalois/field/gf_base.hpp"
 #include "xgalois/field/gf_element.hpp"
 
 namespace xg {

@@ -9,14 +9,6 @@
 #include "xgalois/coding/decoder/decoder.hpp"
 #include "xgalois/coding/encoder/encoder.hpp"
 
-// Specific encoders
-#include "xgalois/coding/encoder/generator_matrix_encoder.hpp"
-#include "xgalois/coding/encoder/grs_encoder.hpp"
-
-// Specific decoders
-#include "xgalois/coding/decoder/grs_decoder.hpp"
-#include "xgalois/coding/decoder/syndrome_decoder.hpp"
-
 // Code implementations
 #include "xgalois/coding/cyclic_code.hpp"
 #include "xgalois/coding/grs.hpp"

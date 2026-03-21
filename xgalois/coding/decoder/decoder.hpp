@@ -1,9 +1,6 @@
 #ifndef XGALOIS_CODING_DECODER_HPP
 #define XGALOIS_CODING_DECODER_HPP
 
-#include <memory>
-#include <stdexcept>
-#include <vector>
 #include <xtensor/containers/xarray.hpp>
 
 namespace xg {
