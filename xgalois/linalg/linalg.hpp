@@ -35,8 +35,7 @@ namespace linalg {
  * @return The dot product result
  */
 template <typename GaloisField>
-auto dot(const xt::xarray<GaloisFieldElement<GaloisField>> &a,
-         const xt::xarray<GaloisFieldElement<GaloisField>> &b) {
+auto dot(const garray<GaloisField> &a, const garray<GaloisField> &b) {
   using ElementType = GaloisFieldElement<GaloisField>;
 
   // Handle vector dot product (1-D x 1-D) - return as 0-D array
@@ -53,7 +52,7 @@ auto dot(const xt::xarray<GaloisFieldElement<GaloisField>> &a,
     }
     // Return as a 0-D array for consistency
     std::vector<std::size_t> shape_0d = {};
-    xt::xarray<ElementType> result(shape_0d);
+    garray<GaloisField> result(shape_0d);
     result() = result_val;
     return result;
   }
@@ -65,7 +64,7 @@ auto dot(const xt::xarray<GaloisFieldElement<GaloisField>> &a,
     }
 
     auto field = a(0, 0).Field();
-    xt::xarray<ElementType> result({a.shape(0)});
+    garray<GaloisField> result({a.shape(0)});
 
     for (std::size_t i = 0; i < a.shape(0); ++i) {
       ElementType sum(field->AdditiveIdentity(), field);
@@ -85,7 +84,7 @@ auto dot(const xt::xarray<GaloisFieldElement<GaloisField>> &a,
     }
 
     auto field = a(0, 0).Field();
-    xt::xarray<ElementType> result({a.shape(0), b.shape(1)});
+    garray<GaloisField> result({a.shape(0), b.shape(1)});
 
     for (std::size_t i = 0; i < a.shape(0); ++i) {
       for (std::size_t j = 0; j < b.shape(1); ++j) {
@@ -110,8 +109,7 @@ auto dot(const xt::xarray<GaloisFieldElement<GaloisField>> &a,
  * @return The vector dot product result
  */
 template <typename GaloisField>
-auto vdot(const xt::xarray<GaloisFieldElement<GaloisField>> &a,
-          const xt::xarray<GaloisFieldElement<GaloisField>> &b) {
+auto vdot(const garray<GaloisField> &a, const garray<GaloisField> &b) {
   using ElementType = GaloisFieldElement<GaloisField>;
 
   if (a.size() != b.size()) {
@@ -138,15 +136,14 @@ auto vdot(const xt::xarray<GaloisFieldElement<GaloisField>> &a,
  * @return The outer product matrix
  */
 template <typename GaloisField>
-auto outer(const xt::xarray<GaloisFieldElement<GaloisField>> &a,
-           const xt::xarray<GaloisFieldElement<GaloisField>> &b) {
+auto outer(const garray<GaloisField> &a, const garray<GaloisField> &b) {
   using ElementType = GaloisFieldElement<GaloisField>;
 
   if (a.dimension() != 1 || b.dimension() != 1) {
     throw std::invalid_argument("outer product requires 1-D arrays");
   }
 
-  xt::xarray<ElementType> result({a.shape(0), b.shape(0)});
+  garray<GaloisField> result({a.shape(0), b.shape(0)});
 
   for (std::size_t i = 0; i < a.shape(0); ++i) {
     for (std::size_t j = 0; j < b.shape(0); ++j) {
@@ -164,7 +161,7 @@ auto outer(const xt::xarray<GaloisFieldElement<GaloisField>> &a,
  * @return The matrix power result
  */
 template <typename GaloisField>
-auto matrix_power(const xt::xarray<GaloisFieldElement<GaloisField>> &a, int n) {
+auto matrix_power(const garray<GaloisField> &a, int n) {
   using ElementType = GaloisFieldElement<GaloisField>;
 
   if (a.dimension() != 2 || a.shape(0) != a.shape(1)) {
@@ -177,7 +174,7 @@ auto matrix_power(const xt::xarray<GaloisFieldElement<GaloisField>> &a, int n) {
   if (n == 0) {
     // Return identity matrix
     auto field = a(0, 0).Field();
-    xt::xarray<ElementType> result({size, size});
+    garray<GaloisField> result({size, size});
 
     // Initialize to zero first
     ElementType zero(field->AdditiveIdentity(), field);
@@ -223,8 +220,7 @@ auto matrix_power(const xt::xarray<GaloisFieldElement<GaloisField>> &a, int n) {
  * @return The Kronecker product matrix
  */
 template <typename GaloisField>
-auto kron(const xt::xarray<GaloisFieldElement<GaloisField>> &a,
-          const xt::xarray<GaloisFieldElement<GaloisField>> &b) {
+auto kron(const garray<GaloisField> &a, const garray<GaloisField> &b) {
   using ElementType = GaloisFieldElement<GaloisField>;
 
   if (a.dimension() != 2 || b.dimension() != 2) {
@@ -236,7 +232,7 @@ auto kron(const xt::xarray<GaloisFieldElement<GaloisField>> &a,
   std::size_t b_rows = b.shape(0);
   std::size_t b_cols = b.shape(1);
 
-  xt::xarray<ElementType> result({a_rows * b_rows, a_cols * b_cols});
+  garray<GaloisField> result({a_rows * b_rows, a_cols * b_cols});
   auto field = a(0, 0).Field();  // Assuming a is not empty
   ElementType zero(field->AdditiveIdentity(), field);
 
@@ -267,8 +263,7 @@ auto kron(const xt::xarray<GaloisFieldElement<GaloisField>> &a,
  * @return The row echelon form of the matrix
  */
 template <typename GaloisField>
-auto row_echelon(
-    const xt::xarray<GaloisFieldElement<GaloisField>> &matrix_input) {
+auto row_echelon(const garray<GaloisField> &matrix_input) {
   using ElementType = GaloisFieldElement<GaloisField>;
   auto R = matrix_input;  // Make a copy to modify
 
@@ -344,7 +339,7 @@ auto row_echelon(
  * @return The reduced row echelon form of the matrix
  */
 template <typename GaloisField>
-auto rref(const xt::xarray<GaloisFieldElement<GaloisField>> &matrix_input) {
+auto rref(const garray<GaloisField> &matrix_input) {
   using ElementType = GaloisFieldElement<GaloisField>;
   auto R = row_echelon(matrix_input);  // Start with row echelon form
 
@@ -399,7 +394,7 @@ auto rref(const xt::xarray<GaloisFieldElement<GaloisField>> &matrix_input) {
  * @return The trace
  */
 template <typename GaloisField>
-auto trace(const xt::xarray<GaloisFieldElement<GaloisField>> &a) {
+auto trace(const garray<GaloisField> &a) {
   using ElementType = GaloisFieldElement<GaloisField>;
 
   if (a.dimension() != 2 || a.shape(0) != a.shape(1)) {
@@ -424,7 +419,7 @@ auto trace(const xt::xarray<GaloisFieldElement<GaloisField>> &a) {
  * @return The determinant
  */
 template <typename GaloisField>
-auto det(const xt::xarray<GaloisFieldElement<GaloisField>> &a) {
+auto det(const garray<GaloisField> &a) {
   using ElementType = GaloisFieldElement<GaloisField>;
 
   if (a.dimension() != 2 || a.shape(0) != a.shape(1)) {
@@ -487,7 +482,7 @@ auto det(const xt::xarray<GaloisFieldElement<GaloisField>> &a) {
  * @return The rank of the matrix
  */
 template <typename GaloisField>
-std::size_t matrix_rank(const xt::xarray<GaloisFieldElement<GaloisField>> &a) {
+std::size_t matrix_rank(const garray<GaloisField> &a) {
   using ElementType = GaloisFieldElement<GaloisField>;
 
   if (a.dimension() != 2) {
@@ -499,7 +494,7 @@ std::size_t matrix_rank(const xt::xarray<GaloisFieldElement<GaloisField>> &a) {
   }
 
   auto field = a(0, 0).Field();  // Assuming a is not empty
-  xt::xarray<ElementType> R = row_echelon(a);
+  garray<GaloisField> R = row_echelon(a);
 
   std::size_t rank = 0;
   for (std::size_t i = 0; i < R.shape(0); ++i) {
@@ -529,8 +524,7 @@ std::size_t matrix_rank(const xt::xarray<GaloisFieldElement<GaloisField>> &a) {
  * @return Solution vector x
  */
 template <typename GaloisField>
-auto solve(const xt::xarray<GaloisFieldElement<GaloisField>> &a,
-           const xt::xarray<GaloisFieldElement<GaloisField>> &b) {
+auto solve(const garray<GaloisField> &a, const garray<GaloisField> &b) {
   using ElementType = GaloisFieldElement<GaloisField>;
 
   if (a.dimension() != 2 || a.shape(0) != a.shape(1)) {
@@ -546,7 +540,7 @@ auto solve(const xt::xarray<GaloisFieldElement<GaloisField>> &a,
   auto field = a(0, 0).Field();
 
   // Create augmented matrix [A|b]
-  xt::xarray<ElementType> augmented({n, n + 1});
+  garray<GaloisField> augmented({n, n + 1});
 
   // Initialize to zero first
   ElementType zero(field->AdditiveIdentity(), field);
@@ -595,7 +589,7 @@ auto solve(const xt::xarray<GaloisFieldElement<GaloisField>> &a,
   }
 
   // Back substitution
-  xt::xarray<ElementType> x({n});
+  garray<GaloisField> x({n});
 
   // Initialize to zero
   std::fill(x.begin(), x.end(), zero);
@@ -618,7 +612,7 @@ auto solve(const xt::xarray<GaloisFieldElement<GaloisField>> &a,
  * @return The matrix inverse
  */
 template <typename GaloisField>
-auto inv(const xt::xarray<GaloisFieldElement<GaloisField>> &a) {
+auto inv(const garray<GaloisField> &a) {
   using ElementType = GaloisFieldElement<GaloisField>;
 
   if (a.dimension() != 2 || a.shape(0) != a.shape(1)) {
@@ -629,7 +623,7 @@ auto inv(const xt::xarray<GaloisFieldElement<GaloisField>> &a) {
   auto field = a(0, 0).Field();
 
   // Create augmented matrix [A|I]
-  xt::xarray<ElementType> augmented({n, 2 * n});
+  garray<GaloisField> augmented({n, 2 * n});
 
   // Initialize to zero first
   ElementType zero(field->AdditiveIdentity(), field);
@@ -686,7 +680,7 @@ auto inv(const xt::xarray<GaloisFieldElement<GaloisField>> &a) {
   }
 
   // Extract inverse from right half
-  xt::xarray<ElementType> result({n, n});
+  garray<GaloisField> result({n, n});
 
   for (std::size_t i = 0; i < n; ++i) {
     for (std::size_t j = 0; j < n; ++j) {
@@ -706,8 +700,7 @@ auto inv(const xt::xarray<GaloisFieldElement<GaloisField>> &a) {
  * @return The cross product vector (always 3 elements)
  */
 template <typename GaloisField>
-auto cross(const xt::xarray<GaloisFieldElement<GaloisField>> &a,
-           const xt::xarray<GaloisFieldElement<GaloisField>> &b) {
+auto cross(const garray<GaloisField> &a, const garray<GaloisField> &b) {
   using ElementType = GaloisFieldElement<GaloisField>;
 
   if (a.dimension() != 1 || b.dimension() != 1) {
@@ -730,7 +723,7 @@ auto cross(const xt::xarray<GaloisFieldElement<GaloisField>> &a,
   const ElementType &b1 = b(1);
   ElementType b2 = (b.shape(0) == 3) ? b(2) : zero;
 
-  xt::xarray<ElementType> result({3});
+  garray<GaloisField> result({3});
   result(0) = a1 * b2 - a2 * b1;
   result(1) = a2 * b0 - a0 * b2;
   result(2) = a0 * b1 - a1 * b0;
@@ -753,7 +746,7 @@ template <typename GaloisField>
 auto eye(std::size_t n, const std::shared_ptr<GaloisField> &field) {
   using ElementType = GaloisFieldElement<GaloisField>;
 
-  xt::xarray<ElementType> result({n, n});
+  garray<GaloisField> result({n, n});
 
   // Initialize to zero first
   ElementType zero(field->AdditiveIdentity(), field);
@@ -779,7 +772,7 @@ auto zeros(const std::vector<std::size_t> &shape,
            const std::shared_ptr<GaloisField> &field) {
   using ElementType = GaloisFieldElement<GaloisField>;
 
-  xt::xarray<ElementType> result(shape);
+  garray<GaloisField> result(shape);
 
   // Initialize all elements to additive identity
   auto zero = ElementType(field->AdditiveIdentity(), field);
