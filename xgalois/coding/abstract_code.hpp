@@ -1,6 +1,7 @@
 #ifndef XGALOIS_CODING_ABSTRACT_CODE_HPP
 #define XGALOIS_CODING_ABSTRACT_CODE_HPP
 
+#include <cstdint>
 #include <functional>
 #include <memory>
 #include <stdexcept>
@@ -20,7 +21,7 @@ class Encoder;
 template <typename ElementType>
 class Decoder;
 
-enum class Metric { HAMMING, RANK, LEE };
+enum class Metric : std::uint8_t { HAMMING, RANK, LEE };
 
 template <typename ElementType>
 class AbstractCode {
@@ -58,15 +59,28 @@ class AbstractCode {
 
   // Encoding/Decoding interface
   virtual codeword_type Encode(const message_type& message,
-                               const std::string& encoder_name = "") const;
-  virtual message_type DecodeToMessage(
-      const codeword_type& received_word,
-      const std::string& decoder_name = "") const;
-  virtual codeword_type DecodeToCode(
-      const codeword_type& received_word,
-      const std::string& decoder_name = "") const;
+                               const std::string& encoder_name) const;
+  codeword_type Encode(const message_type& message) const {
+    return Encode(message, "");
+  }
+
+  virtual message_type DecodeToMessage(const codeword_type& received_word,
+                                       const std::string& decoder_name) const;
+  message_type DecodeToMessage(const codeword_type& received_word) const {
+    return DecodeToMessage(received_word, "");
+  }
+
+  virtual codeword_type DecodeToCode(const codeword_type& received_word,
+                                     const std::string& decoder_name) const;
+  codeword_type DecodeToCode(const codeword_type& received_word) const {
+    return DecodeToCode(received_word, "");
+  }
+
   virtual message_type Unencode(const codeword_type& codeword,
-                                const std::string& encoder_name = "") const;
+                                const std::string& encoder_name) const;
+  message_type Unencode(const codeword_type& codeword) const {
+    return Unencode(codeword, "");
+  }
 
   // Encoder/Decoder management
   void RegisterEncoder(const std::string& name, encoder_factory_type factory);
@@ -283,14 +297,15 @@ size_t AbstractCode<ElementType>::Weight(const codeword_type& word) const {
   auto field = Field();
 
   switch (metric_) {
-    case Metric::HAMMING:
+    case Metric::HAMMING: {
+      auto zero_element = field->AdditiveIdentity();
       for (size_t i = 0; i < word.size(); ++i) {
-        if (word(i) !=
-            ElementType{}) {  // Assuming zero element is default constructed
+        if (word(i) != zero_element) {
           weight++;
         }
       }
       break;
+    }
     case Metric::LEE:
       throw std::runtime_error("Lee weight not implemented yet");
     case Metric::RANK:
