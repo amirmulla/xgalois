@@ -256,8 +256,8 @@ AbstractLinearCode<GaloisField>::ComputeGeneratorFromParityCheck(
 
   matrix_type G({k, n});
 
-  // This needs proper implementation based on your matrix library
-  // For now, return identity matrix as placeholder
+  // TODO(amirmulla): This needs proper implementation based on your matrix
+  // library. For now, return identity matrix as placeholder.
   for (size_t i = 0; i < k; ++i) {
     for (size_t j = 0; j < n; ++j) {
       if (i == j) {
