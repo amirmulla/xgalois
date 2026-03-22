@@ -15,10 +15,10 @@ template <typename GaloisField>
 class AbstractLinearCode : public AbstractCode<GaloisField> {
  public:
   using element_type = xg::GaloisFieldElement<GaloisField>;
-  using codeword_type = xt::xarray<GaloisField>;
-  using message_type = xt::xarray<GaloisField>;
-  using matrix_type = xt::xarray<GaloisField>;
-  using vector_type = xt::xarray<GaloisField>;
+  using codeword_type = xg::garray<GaloisField>;
+  using message_type = xg::garray<GaloisField>;
+  using matrix_type = xg::garray<GaloisField>;
+  using vector_type = xg::garray<GaloisField>;
 
   // Constructor
   AbstractLinearCode(

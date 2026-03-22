@@ -21,8 +21,8 @@ namespace coding {
 // Create a standard Reed-Solomon code
 template <typename GaloisField>
 std::unique_ptr<GeneralizedReedSolomonCode<GaloisField>> CreateReedSolomonCode(
-    std::shared_ptr<GaloisFieldBase<GaloisField>> field, size_t length,
-    size_t dimension, const element_type& primitive_element) {
+    std::shared_ptr<GaloisField> field, size_t length,
+    size_t dimension, const xg::GaloisFieldElement<GaloisField>& primitive_element) {
   return GeneralizedReedSolomonCode<GaloisField>::ReedSolomon(
       field, length, dimension, primitive_element);
 }
@@ -30,10 +30,10 @@ std::unique_ptr<GeneralizedReedSolomonCode<GaloisField>> CreateReedSolomonCode(
 // Create a standard Reed-Solomon code with consecutive evaluation points
 template <typename GaloisField>
 std::unique_ptr<GeneralizedReedSolomonCode<GaloisField>> CreateReedSolomonCode(
-    std::shared_ptr<GaloisFieldBase<GaloisField>> field, size_t length,
+    std::shared_ptr<GaloisField> field, size_t length,
     size_t dimension) {
   // Use primitive element (assuming it's 2 for binary extension fields)
-  element_type primitive_element(2);
+  xg::GaloisFieldElement<GaloisField> primitive_element(2, field);
   return CreateReedSolomonCode(field, length, dimension, primitive_element);
 }
 
@@ -41,7 +41,7 @@ std::unique_ptr<GeneralizedReedSolomonCode<GaloisField>> CreateReedSolomonCode(
 template <typename GaloisField>
 std::unique_ptr<GeneralizedReedSolomonCode<GaloisField>>
 CreateGeneralizedReedSolomonCode(
-    std::shared_ptr<GaloisFieldBase<GaloisField>> field,
+    std::shared_ptr<GaloisField> field,
     const xt::xarray<GaloisField>& evaluation_points,
     const xt::xarray<GaloisField>& column_multipliers, size_t dimension) {
   return std::make_unique<GeneralizedReedSolomonCode<GaloisField>>(
@@ -51,8 +51,8 @@ CreateGeneralizedReedSolomonCode(
 // Create a cyclic code from generator polynomial
 template <typename GaloisField>
 std::unique_ptr<CyclicCode<GaloisField>> CreateCyclicCode(
-    std::shared_ptr<GaloisFieldBase<GaloisField>> field, size_t length,
-    const xg::poly::PolyDense<GaloisField>& generator_poly) {
+    std::shared_ptr<GaloisField> field, size_t length,
+    const xg::PolynomialDense<GaloisField>& generator_poly) {
   return std::make_unique<CyclicCode<GaloisField>>(field, length,
                                                    generator_poly);
 }

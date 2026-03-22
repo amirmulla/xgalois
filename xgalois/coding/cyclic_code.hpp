@@ -9,18 +9,24 @@
 namespace xg {
 namespace coding {
 
+// Forward declarations for cyclic-specific encoder/decoder
+template <typename GaloisField>
+class CyclicEncoder;
+template <typename GaloisField>
+class CyclicSyndromeDecoder;
+
 template <typename GaloisField>
 class CyclicCode : public AbstractLinearCode<GaloisField> {
  public:
   using element_type = xg::GaloisFieldElement<GaloisField>;
-  using codeword_type = std::vector<GaloisField>;
-  using message_type = std::vector<GaloisField>;
-  using matrix_type = xg::linalg::Matrix<GaloisField>;
-  using vector_type = xg::linalg::Vector<GaloisField>;
-  using polynomial_type = xg::poly::PolyDense<GaloisField>;
+  using codeword_type = xg::garray<GaloisField>;
+  using message_type = xg::garray<GaloisField>;
+  using matrix_type = xg::garray<GaloisField>;
+  using vector_type = xg::garray<GaloisField>;
+  using polynomial_type = xg::PolynomialDense<GaloisField>;
 
   // Constructor from generator polynomial
-  CyclicCode(std::shared_ptr<GaloisFieldBase<GaloisField>> field, size_t length,
+  CyclicCode(std::shared_ptr<GaloisField> field, size_t length,
              const polynomial_type& generator_poly)
       : AbstractLinearCode<GaloisField>(
             length, length - generator_poly.Degree(), "CyclicEncoder",
@@ -44,7 +50,7 @@ class CyclicCode : public AbstractLinearCode<GaloisField> {
 
   // Constructor from parity check polynomial
   static std::unique_ptr<CyclicCode<GaloisField>> FromParityCheckPolynomial(
-      std::shared_ptr<GaloisFieldBase<GaloisField>> field, size_t length,
+      std::shared_ptr<GaloisField> field, size_t length,
       const polynomial_type& parity_check_poly) {
     auto generator_poly =
         ComputeGeneratorFromParityCheck(field, length, parity_check_poly);
@@ -52,7 +58,7 @@ class CyclicCode : public AbstractLinearCode<GaloisField> {
   }
 
   // Override methods from AbstractLinearCode
-  std::shared_ptr<GaloisFieldBase<GaloisField>> Field() const override {
+  std::shared_ptr<GaloisField> Field() const override {
     return field_;
   }
 
@@ -113,7 +119,7 @@ class CyclicCode : public AbstractLinearCode<GaloisField> {
   }
 
   codeword_type PolynomialToVector(const polynomial_type& poly) const {
-    codeword_type result(this->length_, element_type{});
+    codeword_type result = xt::zeros<GaloisField>({this->length_});
     for (size_t i = 0; i <= poly.Degree() && i < this->length_; ++i) {
       result[i] = poly.GetCoefficient(i);
     }
@@ -121,7 +127,7 @@ class CyclicCode : public AbstractLinearCode<GaloisField> {
   }
 
  private:
-  std::shared_ptr<GaloisFieldBase<GaloisField>> field_;
+  std::shared_ptr<GaloisField> field_;
   polynomial_type generator_poly_;
   polynomial_type parity_check_poly_;
   matrix_type generator_matrix_;
@@ -130,10 +136,14 @@ class CyclicCode : public AbstractLinearCode<GaloisField> {
   polynomial_type ComputeParityCheckPolynomial() const {
     // h(x) = (x^n - 1) / g(x)
     // Create polynomial x^n - 1
-    std::vector<GaloisField> xn_minus_1_coeffs(this->length_ + 1,
-                                               element_type{});
-    xn_minus_1_coeffs[0] = field_->Neg(element_type(1));  // -1
-    xn_minus_1_coeffs[this->length_] = element_type(1);   // x^n
+    std::vector<GaloisField> xn_minus_1_coeffs(this->length_ + 1);
+    // Initialize with zero elements
+    for (auto& c : xn_minus_1_coeffs) {
+      c = element_type(0, field_);
+    }
+
+    xn_minus_1_coeffs[0] = field_->Neg(element_type(1, field_));  // -1
+    xn_minus_1_coeffs[this->length_] = element_type(1, field_);   // x^n
 
     polynomial_type xn_minus_1(xn_minus_1_coeffs, field_);
 
@@ -142,12 +152,16 @@ class CyclicCode : public AbstractLinearCode<GaloisField> {
   }
 
   static polynomial_type ComputeGeneratorFromParityCheck(
-      std::shared_ptr<GaloisFieldBase<GaloisField>> field, size_t length,
+      std::shared_ptr<GaloisField> field, size_t length,
       const polynomial_type& parity_check_poly) {
     // g(x) = (x^n - 1) / h(x)
-    std::vector<GaloisField> xn_minus_1_coeffs(length + 1, element_type{});
-    xn_minus_1_coeffs[0] = field->Neg(element_type(1));  // -1
-    xn_minus_1_coeffs[length] = element_type(1);         // x^n
+    std::vector<GaloisField> xn_minus_1_coeffs(length + 1);
+    for (auto& c : xn_minus_1_coeffs) {
+      c = element_type(0, field);
+    }
+
+    xn_minus_1_coeffs[0] = field->Neg(element_type(1, field));  // -1
+    xn_minus_1_coeffs[length] = element_type(1, field);         // x^n
 
     polynomial_type xn_minus_1(xn_minus_1_coeffs, field);
 
@@ -168,8 +182,11 @@ class CyclicCode : public AbstractLinearCode<GaloisField> {
     // Each row i is x^i * g(x) mod (x^n - 1)
     for (size_t i = 0; i < k; ++i) {
       // Create polynomial x^i
-      std::vector<GaloisField> xi_coeffs(i + 1, element_type{});
-      xi_coeffs[i] = element_type(1);
+      std::vector<GaloisField> xi_coeffs(i + 1);
+      for (auto& c : xi_coeffs) {
+        c = element_type(0, field_);
+      }
+      xi_coeffs[i] = element_type(1, field_);
       polynomial_type xi(xi_coeffs, field_);
 
       // Compute x^i * g(x)
@@ -199,8 +216,11 @@ class CyclicCode : public AbstractLinearCode<GaloisField> {
     // Each row i is x^i * h(x) mod (x^n - 1)
     for (size_t i = 0; i < r; ++i) {
       // Create polynomial x^i
-      std::vector<GaloisField> xi_coeffs(i + 1, element_type{});
-      xi_coeffs[i] = element_type(1);
+      std::vector<GaloisField> xi_coeffs(i + 1);
+      for (auto& c : xi_coeffs) {
+        c = element_type(0, field_);
+      }
+      xi_coeffs[i] = element_type(1, field_);
       polynomial_type xi(xi_coeffs, field_);
 
       // Compute x^i * h(x)
@@ -264,12 +284,6 @@ class CyclicCode : public AbstractLinearCode<GaloisField> {
         });
   }
 };
-
-// Forward declarations for cyclic-specific encoder/decoder
-template <typename GaloisField>
-class CyclicEncoder;
-template <typename GaloisField>
-class CyclicSyndromeDecoder;
 
 }  // namespace coding
 }  // namespace xg

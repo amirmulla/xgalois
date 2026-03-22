@@ -8,11 +8,18 @@
 #include <xtensor/views/xview.hpp>
 
 #include "xgalois/coding/abstract_linear_code.hpp"
-#include "xgalois/field/gf_base.hpp"
 #include "xgalois/poly/poly_dense.hpp"
 
 namespace xg {
 namespace coding {
+
+// Forward declarations for GRS-specific encoder/decoder
+template <typename GaloisField>
+class GRSEncoder;
+template <typename GaloisField>
+class GRSDecoder;
+template <typename GaloisField>
+class BerlekampMasseyDecoder;
 
 template <typename GaloisField>
 class GeneralizedReedSolomonCode : public AbstractLinearCode<GaloisField> {
@@ -26,7 +33,7 @@ class GeneralizedReedSolomonCode : public AbstractLinearCode<GaloisField> {
 
   // Constructor for GRS code
   GeneralizedReedSolomonCode(
-      std::shared_ptr<GaloisFieldBase<GaloisField>> field,
+    std::shared_ptr<GaloisField> field,
       const xt::xarray<GaloisField>& evaluation_points,
       const xt::xarray<GaloisField>& column_multipliers, size_t dimension)
       : AbstractLinearCode<GaloisField>(evaluation_points.size(), dimension,
@@ -70,7 +77,7 @@ class GeneralizedReedSolomonCode : public AbstractLinearCode<GaloisField> {
 
   // Standard Reed-Solomon constructor (column multipliers all 1)
   static std::unique_ptr<GeneralizedReedSolomonCode<GaloisField>>
-  StandardReedSolomon(std::shared_ptr<GaloisFieldBase<GaloisField>> field,
+  StandardReedSolomon(std::shared_ptr<GaloisField> field,
                       const xt::xarray<GaloisField>& evaluation_points,
                       size_t dimension) {
     xt::xarray<GaloisField> multipliers =
@@ -81,7 +88,7 @@ class GeneralizedReedSolomonCode : public AbstractLinearCode<GaloisField> {
 
   // Reed-Solomon constructor using consecutive powers
   static std::unique_ptr<GeneralizedReedSolomonCode<GaloisField>> ReedSolomon(
-      std::shared_ptr<GaloisFieldBase<GaloisField>> field, size_t length,
+      std::shared_ptr<GaloisField> field, size_t length,
       size_t dimension, const element_type& primitive_element) {
     xt::xarray<GaloisField> evaluation_points =
         xt::zeros<GaloisField>({length});
@@ -99,7 +106,7 @@ class GeneralizedReedSolomonCode : public AbstractLinearCode<GaloisField> {
   }
 
   // Override methods from AbstractLinearCode
-  std::shared_ptr<GaloisFieldBase<GaloisField>> Field() const override {
+  std::shared_ptr<GaloisField> Field() const override {
     return field_;
   }
 
@@ -176,7 +183,7 @@ class GeneralizedReedSolomonCode : public AbstractLinearCode<GaloisField> {
   }
 
  private:
-  std::shared_ptr<GaloisFieldBase<GaloisField>> field_;
+  std::shared_ptr<GaloisField> field_;
   xt::xarray<GaloisField> evaluation_points_;
   xt::xarray<GaloisField> column_multipliers_;
   matrix_type generator_matrix_;
@@ -357,14 +364,6 @@ class GeneralizedReedSolomonCode : public AbstractLinearCode<GaloisField> {
         });
   }
 };
-
-// Forward declarations for GRS-specific encoder/decoder
-template <typename GaloisField>
-class GRSEncoder;
-template <typename GaloisField>
-class GRSDecoder;
-template <typename GaloisField>
-class BerlekampMasseyDecoder;
 
 }  // namespace coding
 }  // namespace xg

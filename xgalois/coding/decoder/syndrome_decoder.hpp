@@ -1,7 +1,8 @@
 #ifndef XGALOIS_CODING_SYNDROME_DECODER_HPP
 #define XGALOIS_CODING_SYNDROME_DECODER_HPP
 
-#include <unordered_map>
+#include <map>
+#include <vector>
 
 #include "xgalois/coding/abstract_linear_code.hpp"
 #include "xgalois/coding/decoder/decoder.hpp"
@@ -13,11 +14,11 @@ namespace coding {
 template <typename GaloisField>
 class SyndromeDecoder : public Decoder<GaloisField> {
  public:
-  using element_type = xg::GaloisFieldElement<GaloisField>;
-  using codeword_type = std::vector<GaloisField>;
-  using message_type = std::vector<GaloisField>;
-  using matrix_type = xg::linalg::Matrix<GaloisField>;
-  using vector_type = xg::linalg::Vector<GaloisField>;
+  using element_type = typename Decoder<GaloisField>::element_type;
+  using codeword_type = typename Decoder<GaloisField>::codeword_type;
+  using message_type = typename Decoder<GaloisField>::message_type;
+  using matrix_type = xg::garray<GaloisField>;
+  using vector_type = xg::garray<GaloisField>;
 
   // Constructor
   explicit SyndromeDecoder(const AbstractCode<GaloisField>* code,
@@ -52,7 +53,7 @@ class SyndromeDecoder : public Decoder<GaloisField> {
     codeword_type corrected = received_word;
 
     for (size_t i = 0; i < corrected.size(); ++i) {
-      corrected[i] = field->Sub(corrected[i], error_pattern[i]);
+      corrected[i] = field->Sub(corrected[i], error_pattern(i));
     }
 
     return corrected;
@@ -82,7 +83,7 @@ class SyndromeDecoder : public Decoder<GaloisField> {
   size_t max_errors_;
 
   // Syndrome table: maps syndrome to error pattern
-  std::unordered_map<std::vector<GaloisField>, std::vector<GaloisField>>
+  std::map<std::vector<element_type>, codeword_type>
       syndrome_table_;
 
   void BuildSyndromeTable() {
@@ -107,9 +108,11 @@ class SyndromeDecoder : public Decoder<GaloisField> {
 
   void GenerateErrorPatternsOfWeight(size_t n, size_t q, size_t weight,
                                      const matrix_type& parity_check) {
+    auto field = this->code_->Field();
     if (weight == 0) {
       // Zero error pattern
-      std::vector<GaloisField> error_pattern(n, element_type{});
+      codeword_type error_pattern =
+          xg::linalg::zeros<GaloisField>({n}, field);
       auto syndrome = ComputeSyndrome(error_pattern, parity_check);
       syndrome_table_[syndrome] = error_pattern;
       return;
@@ -126,7 +129,7 @@ class SyndromeDecoder : public Decoder<GaloisField> {
                                  const matrix_type& parity_check) {
     if (remaining_weight == 0) {
       // Generate all non-zero field elements for these positions
-      GenerateFieldCombinations(n, q, positions, 0, std::vector<GaloisField>(),
+      GenerateFieldCombinations(n, q, positions, 0, std::vector<element_type>(),
                                 parity_check);
       return;
     }
@@ -142,13 +145,15 @@ class SyndromeDecoder : public Decoder<GaloisField> {
   void GenerateFieldCombinations(size_t n, size_t q,
                                  const std::vector<size_t>& positions,
                                  size_t pos_index,
-                                 std::vector<GaloisField> field_values,
+                                 std::vector<element_type> field_values,
                                  const matrix_type& parity_check) {
+    auto field = this->code_->Field();
     if (pos_index == positions.size()) {
       // Create error pattern
-      std::vector<GaloisField> error_pattern(n, element_type{});
+      codeword_type error_pattern =
+          xg::linalg::zeros<GaloisField>({n}, field);
       for (size_t i = 0; i < positions.size(); ++i) {
-        error_pattern[positions[i]] = field_values[i];
+        error_pattern(positions[i]) = field_values[i];
       }
 
       auto syndrome = ComputeSyndrome(error_pattern, parity_check);
@@ -161,33 +166,31 @@ class SyndromeDecoder : public Decoder<GaloisField> {
     }
 
     // Try all non-zero field elements
-    auto field = this->code_->Field();
     for (size_t i = 1; i < q; ++i) {
-      field_values.push_back(element_type(i));
+      field_values.push_back(element_type(i, field));
       GenerateFieldCombinations(n, q, positions, pos_index + 1, field_values,
                                 parity_check);
       field_values.pop_back();
     }
   }
 
-  std::vector<GaloisField> ComputeSyndrome(
-      const std::vector<GaloisField>& error_pattern,
+  std::vector<element_type> ComputeSyndrome(
+      const codeword_type& error_pattern,
       const matrix_type& parity_check) const {
-    vector_type error_vec(error_pattern);
-    vector_type syndrome_vec = parity_check * error_vec;
+    vector_type syndrome_vec = xg::linalg::dot(parity_check, error_pattern);
 
-    std::vector<GaloisField> syndrome(syndrome_vec.Size());
-    for (size_t i = 0; i < syndrome_vec.Size(); ++i) {
-      syndrome[i] = syndrome_vec[i];
+    std::vector<element_type> syndrome(syndrome_vec.size());
+    for (size_t i = 0; i < syndrome_vec.size(); ++i) {
+      syndrome[i] = syndrome_vec(i);
     }
     return syndrome;
   }
 
-  std::vector<GaloisField> LookupErrorPattern(
+  codeword_type LookupErrorPattern(
       const vector_type& syndrome) const {
-    std::vector<GaloisField> syndrome_vec(syndrome.Size());
-    for (size_t i = 0; i < syndrome.Size(); ++i) {
-      syndrome_vec[i] = syndrome[i];
+    std::vector<element_type> syndrome_vec(syndrome.size());
+    for (size_t i = 0; i < syndrome.size(); ++i) {
+      syndrome_vec[i] = syndrome(i);
     }
 
     auto it = syndrome_table_.find(syndrome_vec);
@@ -196,7 +199,8 @@ class SyndromeDecoder : public Decoder<GaloisField> {
     }
 
     // If syndrome not found, return zero error pattern (uncorrectable)
-    return std::vector<GaloisField>(this->code_->Length(), element_type{});
+    return xg::linalg::zeros<GaloisField>({this->code_->Length()},
+                                          this->code_->Field());
   }
 };
 

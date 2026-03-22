@@ -16,8 +16,8 @@ template <typename GaloisField>
 class Encoder {
  public:
   using element_type = xg::GaloisFieldElement<GaloisField>;
-  using codeword_type = xt::xarray<GaloisField>;
-  using message_type = xt::xarray<GaloisField>;
+  using codeword_type = xt::xarray<element_type>;
+  using message_type = xt::xarray<element_type>;
 
   // Constructor
   explicit Encoder(const AbstractCode<GaloisField>* code) : code_(code) {}

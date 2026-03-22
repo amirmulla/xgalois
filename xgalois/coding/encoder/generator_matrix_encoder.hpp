@@ -11,11 +11,11 @@ namespace coding {
 template <typename GaloisField>
 class GeneratorMatrixEncoder : public Encoder<GaloisField> {
  public:
-  using element_type = xg::GaloisFieldElement<GaloisField>;
-  using codeword_type = std::vector<GaloisField>;
-  using message_type = std::vector<GaloisField>;
-  using matrix_type = xg::linalg::Matrix<GaloisField>;
-  using vector_type = xg::linalg::Vector<GaloisField>;
+  using element_type = typename Encoder<GaloisField>::element_type;
+  using codeword_type = typename Encoder<GaloisField>::codeword_type;
+  using message_type = typename Encoder<GaloisField>::message_type;
+  using matrix_type = xg::garray<GaloisField>;
+  using vector_type = xg::garray<GaloisField>;
 
   // Constructor
   explicit GeneratorMatrixEncoder(const AbstractCode<GaloisField>* code)
@@ -35,10 +35,9 @@ class GeneratorMatrixEncoder : public Encoder<GaloisField> {
     }
 
     auto generator = linear_code_->GeneratorMatrix();
-    vector_type msg_vec(message);
-    vector_type codeword_vec = msg_vec * generator;
+    codeword_type codeword_vec = xg::linalg::dot(message, generator);
 
-    return ToCodeword(codeword_vec);
+    return codeword_vec;
   }
 
   // Unencode: find message from codeword
@@ -57,9 +56,10 @@ class GeneratorMatrixEncoder : public Encoder<GaloisField> {
 
     // Check if generator is in systematic form [I_k | P]
     if (IsSystematic(generator)) {
-      message_type message(MessageLength());
+      message_type message = xg::linalg::zeros<GaloisField>({MessageLength()},
+                                                            this->code_->Field());
       for (size_t i = 0; i < MessageLength(); ++i) {
-        message[i] = codeword[i];
+        message(i) = codeword(i);
       }
       return message;
     } else {
@@ -81,25 +81,21 @@ class GeneratorMatrixEncoder : public Encoder<GaloisField> {
 
   // Helper functions
   codeword_type ToCodeword(const vector_type& vec) const {
-    codeword_type result(vec.Size());
-    for (size_t i = 0; i < vec.Size(); ++i) {
-      result[i] = vec[i];
-    }
-    return result;
+    return vec;
   }
 
   bool IsSystematic(const matrix_type& generator) const {
     // Check if the first k columns form an identity matrix
-    size_t k = generator.Rows();
+    size_t k = generator.shape(0);
 
     for (size_t i = 0; i < k; ++i) {
       for (size_t j = 0; j < k; ++j) {
         if (i == j) {
-          if (generator.Get(i, j) != element_type(1)) {
+          if (generator(i, j) != element_type(1, this->code_->Field())) {
             return false;
           }
         } else {
-          if (generator.Get(i, j) != element_type{}) {
+          if (generator(i, j) != element_type(0, this->code_->Field())) {
             return false;
           }
         }
@@ -120,12 +116,12 @@ class GeneratorMatrixEncoder : public Encoder<GaloisField> {
 
     // Try all possible messages
     for (size_t i = 0; i < static_cast<size_t>(std::pow(q, k)); ++i) {
-      message_type candidate(k);
+      message_type candidate = xg::linalg::zeros<GaloisField>({k}, field);
       size_t temp = i;
 
       // Convert i to base-q representation
       for (size_t j = 0; j < k; ++j) {
-        candidate[j] = element_type(temp % q);
+        candidate(j) = element_type(temp % q, field);
         temp /= q;
       }
 

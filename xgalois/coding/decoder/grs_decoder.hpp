@@ -5,6 +5,7 @@
 
 #include "xgalois/coding/decoder/decoder.hpp"
 #include "xgalois/coding/grs.hpp"
+#include "xgalois/poly/poly_dense.hpp"
 
 namespace xg {
 namespace coding {
@@ -13,9 +14,9 @@ template <typename GaloisField>
 class GRSDecoder : public Decoder<GaloisField> {
  public:
   using element_type = xg::GaloisFieldElement<GaloisField>;
-  using codeword_type = std::vector<GaloisField>;
-  using message_type = std::vector<GaloisField>;
-  using polynomial_type = xg::poly::PolyDense<GaloisField>;
+  using codeword_type = xt::xarray<element_type>;
+  using message_type = xt::xarray<element_type>;
+  using polynomial_type = xg::PolynomialDense<GaloisField>;
 
   // Constructor
   explicit GRSDecoder(const AbstractCode<GaloisField>* code)
@@ -87,21 +88,21 @@ class GRSDecoder : public Decoder<GaloisField> {
   size_t max_errors_;
 
   // Compute syndrome polynomial
-  std::vector<GaloisField> ComputeSyndrome(
+  std::vector<element_type> ComputeSyndrome(
       const codeword_type& received_word) const {
     auto field = grs_code_->Field();
     auto eval_points = grs_code_->EvaluationPoints();
     auto multipliers = grs_code_->ColumnMultipliers();
 
     size_t syndrome_length = 2 * max_errors_;
-    std::vector<GaloisField> syndrome(syndrome_length);
+    std::vector<element_type> syndrome(syndrome_length);
 
     // Syndrome S_i = sum_{j=0}^{n-1} r_j * alpha_j^i for i = 0, 1, ..., 2t-1
     for (size_t i = 0; i < syndrome_length; ++i) {
-      syndrome[i] = element_type{};
+      syndrome[i] = element_type(0, field);
       for (size_t j = 0; j < received_word.size(); ++j) {
-        element_type power = field->Pow(eval_points[j], i);
-        element_type term = field->Mul(received_word[j], power);
+        element_type power = field->Pow(eval_points(j), i);
+        element_type term = field->Mul(received_word(j), power);
         syndrome[i] = field->Add(syndrome[i], term);
       }
     }
@@ -109,9 +110,9 @@ class GRSDecoder : public Decoder<GaloisField> {
     return syndrome;
   }
 
-  bool IsSyndromeZero(const std::vector<GaloisField>& syndrome) const {
+  bool IsSyndromeZero(const std::vector<element_type>& syndrome) const {
     for (const auto& s : syndrome) {
-      if (s != element_type{}) {
+      if (s.Value() != 0) {
         return false;
       }
     }
@@ -120,7 +121,7 @@ class GRSDecoder : public Decoder<GaloisField> {
 
   // Find error locator polynomial using Peterson's algorithm
   polynomial_type FindErrorLocator(
-      const std::vector<GaloisField>& syndrome) const {
+      const std::vector<element_type>& syndrome) const {
     auto field = grs_code_->Field();
 
     // Try different numbers of errors from 1 to max_errors_
@@ -129,9 +130,9 @@ class GRSDecoder : public Decoder<GaloisField> {
 
       // Set up linear system for Peterson's algorithm
       // S * Lambda = -S_shifted
-      std::vector<std::vector<GaloisField>> matrix(t,
-                                                   std::vector<GaloisField>(t));
-      std::vector<GaloisField> rhs(t);
+      std::vector<std::vector<element_type>> matrix(t,
+                                                    std::vector<element_type>(t));
+      std::vector<element_type> rhs(t);
 
       for (size_t i = 0; i < t; ++i) {
         for (size_t j = 0; j < t; ++j) {
@@ -145,18 +146,18 @@ class GRSDecoder : public Decoder<GaloisField> {
 
       if (!solution.empty()) {
         // Found solution, construct error locator polynomial
-        std::vector<GaloisField> coeffs(t + 1);
-        coeffs[0] = element_type(1);  // Leading coefficient
+        std::vector<element_type> coeffs(t + 1);
+        coeffs[0] = element_type(1, field);  // Leading coefficient
         for (size_t i = 0; i < t; ++i) {
           coeffs[i + 1] = solution[i];
         }
 
-        return polynomial_type(coeffs, field);
+        return polynomial_type(coeffs);
       }
     }
 
     // No solution found, return empty polynomial
-    return polynomial_type({element_type(1)}, field);
+    return polynomial_type({element_type(1, field)});
   }
 
   // Find error locations by finding roots of error locator polynomial
@@ -178,15 +179,15 @@ class GRSDecoder : public Decoder<GaloisField> {
   }
 
   // Find error values using Forney's algorithm
-  std::vector<GaloisField> FindErrorValues(
-      const std::vector<GaloisField>& syndrome,
+  std::vector<element_type> FindErrorValues(
+      const std::vector<element_type>& syndrome,
       const polynomial_type& error_locator,
       const std::vector<size_t>& error_locations) const {
     auto field = grs_code_->Field();
     auto eval_points = grs_code_->EvaluationPoints();
     auto multipliers = grs_code_->ColumnMultipliers();
 
-    std::vector<GaloisField> error_values(error_locations.size());
+    std::vector<element_type> error_values(error_locations.size());
 
     // Compute error evaluator polynomial
     auto error_evaluator = ComputeErrorEvaluator(syndrome, error_locator);
@@ -219,17 +220,17 @@ class GRSDecoder : public Decoder<GaloisField> {
 
   // Compute error evaluator polynomial
   polynomial_type ComputeErrorEvaluator(
-      const std::vector<GaloisField>& syndrome,
+      const std::vector<element_type>& syndrome,
       const polynomial_type& error_locator) const {
     auto field = grs_code_->Field();
 
     // Create syndrome polynomial
-    std::vector<GaloisField> syndrome_coeffs(syndrome.size() + 1,
-                                             element_type{});
+    std::vector<element_type> syndrome_coeffs(syndrome.size() + 1,
+                                              element_type(0, field));
     for (size_t i = 0; i < syndrome.size(); ++i) {
       syndrome_coeffs[i + 1] = syndrome[i];
     }
-    polynomial_type syndrome_poly(syndrome_coeffs, field);
+    polynomial_type syndrome_poly(syndrome_coeffs);
 
     // Error evaluator = (syndrome_poly * error_locator) mod x^(2t)
     auto product = syndrome_poly.Mul(error_locator);
@@ -248,22 +249,22 @@ class GRSDecoder : public Decoder<GaloisField> {
   codeword_type CorrectErrors(
       const codeword_type& received_word,
       const std::vector<size_t>& error_locations,
-      const std::vector<GaloisField>& error_values) const {
+      const std::vector<element_type>& error_values) const {
     auto field = grs_code_->Field();
     codeword_type corrected = received_word;
 
     for (size_t i = 0; i < error_locations.size(); ++i) {
       size_t loc = error_locations[i];
-      corrected[loc] = field->Sub(corrected[loc], error_values[i]);
+      corrected(loc) = field->Sub(corrected(loc), error_values[i]);
     }
 
     return corrected;
   }
 
   // Solve linear system Ax = b using Gaussian elimination
-  std::vector<GaloisField> SolveLinearSystem(
-      const std::vector<std::vector<GaloisField>>& A,
-      const std::vector<GaloisField>& b) const {
+  std::vector<element_type> SolveLinearSystem(
+      const std::vector<std::vector<element_type>>& A,
+      const std::vector<element_type>& b) const {
     auto field = grs_code_->Field();
     size_t n = A.size();
 
@@ -272,8 +273,8 @@ class GRSDecoder : public Decoder<GaloisField> {
     }
 
     // Create augmented matrix
-    std::vector<std::vector<GaloisField>> augmented(
-        n, std::vector<GaloisField>(n + 1));
+    std::vector<std::vector<element_type>> augmented(
+        n, std::vector<element_type>(n + 1));
     for (size_t i = 0; i < n; ++i) {
       for (size_t j = 0; j < n; ++j) {
         augmented[i][j] = A[i][j];
@@ -286,13 +287,13 @@ class GRSDecoder : public Decoder<GaloisField> {
       // Find pivot
       size_t pivot = i;
       for (size_t j = i + 1; j < n; ++j) {
-        if (augmented[j][i] != element_type{}) {
+        if (augmented[j][i].Value() != 0) {
           pivot = j;
           break;
         }
       }
 
-      if (augmented[pivot][i] == element_type{}) {
+      if (augmented[pivot][i].Value() == 0) {
         return {};  // No solution
       }
 
