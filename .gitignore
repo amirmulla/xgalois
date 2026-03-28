@@ -52,3 +52,9 @@ doc/.venv/
 # Clangd / VSCode
 .vscode/
 .cache/
+
+# Agentic AI
+.claude/
+.everything-claude-code/
+.agent/
+.agents/
