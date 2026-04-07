@@ -50,8 +50,8 @@ for every class, function, and namespace in the xgalois C++ library.
 .. topic:: Coding Theory — ``xg::coding``
 
    Abstract linear codes, Generalized Reed–Solomon (GRS) codes,
-   cyclic codes, encoders and decoders. Mirrors the structure found in
-   `SageMath's Coding Theory module <https://doc.sagemath.org/html/en/reference/coding/index.html>`_.
+   cyclic codes, encoders and decoders. Provides a rigorous algebraic
+   foundation for error correction.
 
 .. topic:: Communication Channels — ``xg::channels``
 
