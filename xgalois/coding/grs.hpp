@@ -13,7 +13,6 @@
 namespace xg {
 namespace coding {
 
-// Forward declarations for GRS-specific encoder/decoder
 template <typename GaloisField>
 class GRSEncoder;
 template <typename GaloisField>
@@ -31,7 +30,6 @@ class GeneralizedReedSolomonCode : public AbstractLinearCode<GaloisField> {
   using vector_type = xt::xarray<GaloisField>;
   using polynomial_type = xg::PolynomialDense<GaloisField>;
 
-  // Constructor for GRS code
   GeneralizedReedSolomonCode(
     std::shared_ptr<GaloisField> field,
       const xt::xarray<GaloisField>& evaluation_points,
@@ -52,7 +50,6 @@ class GeneralizedReedSolomonCode : public AbstractLinearCode<GaloisField> {
           "Dimension cannot exceed number of evaluation points");
     }
 
-    // Check that evaluation points are distinct
     for (size_t i = 0; i < evaluation_points.size(); ++i) {
       for (size_t j = i + 1; j < evaluation_points.size(); ++j) {
         if (evaluation_points(i) == evaluation_points(j)) {
@@ -61,21 +58,17 @@ class GeneralizedReedSolomonCode : public AbstractLinearCode<GaloisField> {
       }
     }
 
-    // Check that column multipliers are non-zero
     for (size_t i = 0; i < column_multipliers.size(); ++i) {
       if (column_multipliers(i) == element_type{}) {
         throw std::invalid_argument("Column multipliers must be non-zero");
       }
     }
 
-    // Build generator and parity check matrices
     BuildMatrices();
 
-    // Register encoders and decoders
     RegisterEncodersAndDecoders();
   }
 
-  // Standard Reed-Solomon constructor (column multipliers all 1)
   static std::unique_ptr<GeneralizedReedSolomonCode<GaloisField>>
   StandardReedSolomon(std::shared_ptr<GaloisField> field,
                       const xt::xarray<GaloisField>& evaluation_points,
@@ -86,7 +79,6 @@ class GeneralizedReedSolomonCode : public AbstractLinearCode<GaloisField> {
         field, evaluation_points, multipliers, dimension);
   }
 
-  // Reed-Solomon constructor using consecutive powers
   static std::unique_ptr<GeneralizedReedSolomonCode<GaloisField>> ReedSolomon(
       std::shared_ptr<GaloisField> field, size_t length,
       size_t dimension, const element_type& primitive_element) {
@@ -94,7 +86,6 @@ class GeneralizedReedSolomonCode : public AbstractLinearCode<GaloisField> {
         xt::zeros<GaloisField>({length});
     xt::xarray<GaloisField> multipliers = xt::ones<GaloisField>({length});
 
-    // Use consecutive powers of primitive element
     element_type power = element_type(1);
     for (size_t i = 0; i < length; ++i) {
       evaluation_points(i) = power;
@@ -105,7 +96,6 @@ class GeneralizedReedSolomonCode : public AbstractLinearCode<GaloisField> {
         field, evaluation_points, multipliers, dimension);
   }
 
-  // Override methods from AbstractLinearCode
   std::shared_ptr<GaloisField> Field() const override {
     return field_;
   }
@@ -117,12 +107,12 @@ class GeneralizedReedSolomonCode : public AbstractLinearCode<GaloisField> {
   }
 
   size_t MinimumDistance() const override {
-    // For GRS codes, minimum distance is n - k + 1 (MDS property)
+
     return this->length_ - this->dimension_ + 1;
   }
 
   std::unique_ptr<AbstractLinearCode<GaloisField>> DualCode() const override {
-    // Dual of GRS code is also GRS
+
     return ComputeDualCode();
   }
 
@@ -133,7 +123,6 @@ class GeneralizedReedSolomonCode : public AbstractLinearCode<GaloisField> {
            std::to_string(field_->Order()) + ")";
   }
 
-  // GRS-specific methods
   const xt::xarray<GaloisField>& EvaluationPoints() const {
     return evaluation_points_;
   }
@@ -142,7 +131,6 @@ class GeneralizedReedSolomonCode : public AbstractLinearCode<GaloisField> {
     return column_multipliers_;
   }
 
-  // Encode polynomial directly
   codeword_type EncodePolynomial(const polynomial_type& message_poly) const {
     if (message_poly.Degree() >= this->dimension_) {
       throw std::invalid_argument(
@@ -158,22 +146,18 @@ class GeneralizedReedSolomonCode : public AbstractLinearCode<GaloisField> {
     return codeword;
   }
 
-  // Decode to polynomial (if possible)
   polynomial_type DecodeToPolynomial(const codeword_type& received_word) const {
-    // This would use polynomial interpolation
-    // For now, use the standard decoder and then interpolate
+
     auto decoder = this->GetDecoder();
     auto corrected = decoder->DecodeToCode(received_word);
 
     return InterpolateFromCodeword(corrected);
   }
 
-  // Check if code is Maximum Distance Separable (MDS)
   bool IsMDS() const {
     return MinimumDistance() == this->length_ - this->dimension_ + 1;
   }
 
-  // Systematic encoding positions
   xt::xarray<size_t> SystematicPositions() const {
     xt::xarray<size_t> positions = xt::zeros<size_t>({this->dimension_});
     for (size_t i = 0; i < this->dimension_; ++i) {
@@ -200,8 +184,6 @@ class GeneralizedReedSolomonCode : public AbstractLinearCode<GaloisField> {
 
     generator_matrix_ = matrix_type(k, n);
 
-    // Generator matrix: G[i][j] = v_j * alpha_j^i
-    // where v_j is column multiplier and alpha_j is evaluation point
     for (size_t i = 0; i < k; ++i) {
       for (size_t j = 0; j < n; ++j) {
         element_type power = field_->Pow(evaluation_points_(j), i);
@@ -218,12 +200,6 @@ class GeneralizedReedSolomonCode : public AbstractLinearCode<GaloisField> {
 
     parity_check_matrix_ = matrix_type(r, n);
 
-    // Parity check matrix for GRS dual code
-    // H[i][j] = w_j * beta_j^i / v_j
-    // where w_j are dual multipliers and beta_j are dual evaluation points
-
-    // For standard construction, use same evaluation points
-    // and compute dual multipliers
     auto dual_multipliers = ComputeDualMultipliers();
 
     for (size_t i = 0; i < r; ++i) {
@@ -236,12 +212,12 @@ class GeneralizedReedSolomonCode : public AbstractLinearCode<GaloisField> {
   }
 
   xt::xarray<GaloisField> ComputeDualMultipliers() const {
-    // Compute dual multipliers for GRS dual code
+
     xt::xarray<GaloisField> dual_multipliers =
         xt::zeros<GaloisField>({this->length_});
 
     for (size_t j = 0; j < this->length_; ++j) {
-      // Compute product of (alpha_j - alpha_i) for all i != j
+
       element_type product = element_type(1);
       for (size_t i = 0; i < this->length_; ++i) {
         if (i != j) {
@@ -251,7 +227,6 @@ class GeneralizedReedSolomonCode : public AbstractLinearCode<GaloisField> {
         }
       }
 
-      // Dual multiplier is 1 / (v_j * product)
       element_type denominator = field_->Mul(column_multipliers_(j), product);
       dual_multipliers(j) = field_->Inv(denominator);
     }
@@ -268,15 +243,13 @@ class GeneralizedReedSolomonCode : public AbstractLinearCode<GaloisField> {
   }
 
   polynomial_type InterpolateFromCodeword(const codeword_type& codeword) const {
-    // Lagrange interpolation to recover polynomial
+
     xt::xarray<GaloisField> values = xt::zeros<GaloisField>({this->length_});
 
-    // Remove column multipliers
     for (size_t i = 0; i < this->length_; ++i) {
       values(i) = field_->Div(codeword(i), column_multipliers_(i));
     }
 
-    // Use first k points for interpolation
     xt::xarray<GaloisField> points = xt::zeros<GaloisField>({this->dimension_});
     xt::xarray<GaloisField> vals = xt::zeros<GaloisField>({this->dimension_});
 
@@ -299,16 +272,15 @@ class GeneralizedReedSolomonCode : public AbstractLinearCode<GaloisField> {
     xt::xarray<GaloisField> result_coeffs = xt::zeros<GaloisField>({n});
 
     for (size_t i = 0; i < n; ++i) {
-      // Compute Lagrange basis polynomial L_i(x)
+
       xt::xarray<GaloisField> basis_coeffs = xt::ones<GaloisField>({1});
 
       for (size_t j = 0; j < n; ++j) {
         if (i != j) {
-          // Multiply by (x - points[j]) / (points[i] - points[j])
+
           element_type denominator = field_->Sub(points(i), points(j));
           element_type inv_denom = field_->Inv(denominator);
 
-          // Multiply basis_coeffs by (x - points[j])
           xt::xarray<GaloisField> new_coeffs =
               xt::zeros<GaloisField>({basis_coeffs.size() + 1});
           for (size_t k = 0; k < basis_coeffs.size(); ++k) {
@@ -318,7 +290,6 @@ class GeneralizedReedSolomonCode : public AbstractLinearCode<GaloisField> {
             new_coeffs(k + 1) = field_->Add(new_coeffs(k + 1), basis_coeffs(k));
           }
 
-          // Multiply by 1 / (points[i] - points[j])
           for (size_t k = 0; k < new_coeffs.size(); ++k) {
             new_coeffs(k) = field_->Mul(new_coeffs(k), inv_denom);
           }
@@ -327,7 +298,6 @@ class GeneralizedReedSolomonCode : public AbstractLinearCode<GaloisField> {
         }
       }
 
-      // Add values[i] * L_i(x) to result
       for (size_t k = 0; k < basis_coeffs.size() && k < result_coeffs.size();
            ++k) {
         element_type term = field_->Mul(values(i), basis_coeffs(k));
@@ -335,7 +305,6 @@ class GeneralizedReedSolomonCode : public AbstractLinearCode<GaloisField> {
       }
     }
 
-    // Convert xtensor array to std::vector for polynomial constructor
     std::vector<GaloisField> coeffs_vec(result_coeffs.size());
     for (size_t i = 0; i < result_coeffs.size(); ++i) {
       coeffs_vec[i] = result_coeffs(i);
@@ -345,19 +314,17 @@ class GeneralizedReedSolomonCode : public AbstractLinearCode<GaloisField> {
   }
 
   void RegisterEncodersAndDecoders() {
-    // Register GRS encoder
+
     this->RegisterEncoder(
         "GRSEncoder", [](const AbstractCode<GaloisField>* code) {
           return std::make_unique<GRSEncoder<GaloisField>>(code);
         });
 
-    // Register GRS decoder (Peterson-Gorenstein-Zierler)
     this->RegisterDecoder(
         "GRSDecoder", [](const AbstractCode<GaloisField>* code) {
           return std::make_unique<GRSDecoder<GaloisField>>(code);
         });
 
-    // Also register Berlekamp-Massey decoder
     this->RegisterDecoder(
         "BerlekampMassey", [](const AbstractCode<GaloisField>* code) {
           return std::make_unique<BerlekampMasseyDecoder<GaloisField>>(code);
@@ -365,7 +332,7 @@ class GeneralizedReedSolomonCode : public AbstractLinearCode<GaloisField> {
   }
 };
 
-}  // namespace coding
-}  // namespace xg
+}
+}
 
-#endif  // XGALOIS_CODING_GRS_HPP
+#endif

@@ -25,7 +25,6 @@ class DatabaseInterface {
     return f.good();
   }
 
-  // Helper method for parsing CSV lines with quoted strings
   std::vector<std::string> parse_csv_line(const std::string& line) const {
     std::vector<std::string> segments;
     std::string current_segment;
@@ -42,7 +41,7 @@ class DatabaseInterface {
         current_segment += c;
       }
     }
-    // Add the last segment
+
     if (!current_segment.empty() || !segments.empty()) {
       segments.push_back(current_segment);
     }
@@ -50,15 +49,10 @@ class DatabaseInterface {
   }
 };
 
-// ----------------- Prime Factors Database -----------------
-// This database stores prime factorization results for integers.
-// Each entry is expected to be in the format:
-// number,factor1:mult1;factor2:mult2;...,composite_flag
-
 struct PrimeFactorsResult {
   std::vector<uint64_t> factors;
   std::vector<int> multiplicities;
-  int composite;  // Assuming 0 for prime, 1 for composite, -1 for unknown/error
+  int composite;
 };
 
 class PrimeFactorsDatabase : public DatabaseInterface {
@@ -71,9 +65,6 @@ class PrimeFactorsDatabase : public DatabaseInterface {
 
  public:
   PrimeFactorsDatabase() = default;
-  // Example: number,factor1:mult1;factor2:mult2;...,composite_flag
-  // 10,2:1;5:1,1
-  // 7,7:1,0
 
   PrimeFactorsResult fetch(uint64_t n) const {
     if (!file_exists()) {
@@ -83,7 +74,7 @@ class PrimeFactorsDatabase : public DatabaseInterface {
     std::ifstream db_file(get_db_path());
     std::string line;
     while (std::getline(db_file, line)) {
-      // Skip empty lines and comment lines (starting with //)
+
       if (line.empty() || line.substr(0, 2) == "//") {
         continue;
       }
@@ -93,7 +84,7 @@ class PrimeFactorsDatabase : public DatabaseInterface {
       std::vector<std::string> segments;
 
       while (std::getline(ss, segment,
-                          ',')) {  // Fixed: Changed \\\',\\\' to \',\'
+                          ',')) {
         segments.push_back(segment);
       }
 
@@ -118,12 +109,12 @@ class PrimeFactorsDatabase : public DatabaseInterface {
         std::stringstream factors_ss(segments[1]);
         std::string factor_pair_str;
         while (std::getline(factors_ss, factor_pair_str,
-                            ';')) {  // Fixed: Changed \\\';\\\' to \';\'
+                            ';')) {
           std::stringstream factor_pair_ss(factor_pair_str);
           std::string factor_str, mult_str;
           if (std::getline(factor_pair_ss, factor_str, ':') &&
               std::getline(factor_pair_ss, mult_str,
-                           ':')) {  // Fixed: Changed \\\':\\\' to \':\' (twice)
+                           ':')) {
             try {
               result.factors.push_back(std::stoll(factor_str));
               result.multiplicities.push_back(std::stoi(mult_str));
@@ -152,11 +143,6 @@ class PrimeFactorsDatabase : public DatabaseInterface {
   }
 };
 
-// ----------------- Irreducible Polynomial Database -----------------
-// This database stores irreducible polynomial coefficients and degrees for
-// finite fields. Each entry is expected to be in the format:
-// characteristic,degree,"degree1;degree2;...","coeff1;coeff2;..."
-
 struct IrreduciblePolyResult {
   std::vector<int> nonzero_degrees;
   std::vector<int> nonzero_coeffs;
@@ -172,7 +158,6 @@ class IrreduciblePolyDatabase : public DatabaseInterface {
 
  public:
   IrreduciblePolyDatabase() = default;
-  // Example: 2,3,"3;1;0","1;1;1"  (for x^3 + x + 1 over GF(2))
 
   IrreduciblePolyResult fetch(int characteristic, int degree) const {
     if (!file_exists()) {
@@ -182,12 +167,11 @@ class IrreduciblePolyDatabase : public DatabaseInterface {
     std::ifstream db_file(get_db_path());
     std::string line;
     while (std::getline(db_file, line)) {
-      // Skip empty lines and comment lines (starting with //)
+
       if (line.empty() || line.substr(0, 2) == "//") {
         continue;
       }
 
-      // Parse CSV line with quoted strings support
       std::vector<std::string> segments = parse_csv_line(line);
 
       if (segments.size() < 4) continue;
@@ -206,7 +190,7 @@ class IrreduciblePolyDatabase : public DatabaseInterface {
         std::stringstream degrees_ss(segments[2]);
         std::string deg_str;
         while (std::getline(degrees_ss, deg_str,
-                            ';')) {  // Fixed: Changed \\\';\\\' to \';\'
+                            ';')) {
           try {
             result.nonzero_degrees.push_back(std::stoi(deg_str));
           } catch (const std::invalid_argument& ia) {
@@ -220,7 +204,7 @@ class IrreduciblePolyDatabase : public DatabaseInterface {
         std::stringstream coeffs_ss(segments[3]);
         std::string coeff_str;
         while (std::getline(coeffs_ss, coeff_str,
-                            ';')) {  // Fixed: Changed \\\';\\\' to \';\'
+                            ';')) {
           try {
             result.nonzero_coeffs.push_back(std::stoi(coeff_str));
           } catch (const std::invalid_argument& ia) {
@@ -246,11 +230,6 @@ class IrreduciblePolyDatabase : public DatabaseInterface {
   }
 };
 
-// ----------------- Conway Polynomial Database -----------------
-// This database stores Conway polynomials for finite fields.
-// Each entry is expected to be in the format:
-// characteristic,degree,"degree1;degree2;...","coeff1;coeff2;..."
-
 using ConwayPolyResult = IrreduciblePolyResult;
 
 class ConwayPolyDatabase : public DatabaseInterface {
@@ -263,8 +242,6 @@ class ConwayPolyDatabase : public DatabaseInterface {
 
  public:
   ConwayPolyDatabase() = default;
-  // Example: 2,4,"4;1;0","1;1;1" (for x^4 + x + 1 over GF(2) - a Conway
-  // polynomial for GF(2^4))
 
   ConwayPolyResult fetch(int characteristic, int degree) const {
     if (!file_exists()) {
@@ -274,12 +251,11 @@ class ConwayPolyDatabase : public DatabaseInterface {
     std::ifstream db_file(get_db_path());
     std::string line;
     while (std::getline(db_file, line)) {
-      // Skip empty lines and comment lines (starting with //)
+
       if (line.empty() || line.substr(0, 2) == "//") {
         continue;
       }
 
-      // Parse CSV line with quoted strings support
       std::vector<std::string> segments = parse_csv_line(line);
 
       if (segments.size() < 4) continue;
@@ -298,7 +274,7 @@ class ConwayPolyDatabase : public DatabaseInterface {
         std::stringstream degrees_ss(segments[2]);
         std::string deg_str;
         while (std::getline(degrees_ss, deg_str,
-                            ';')) {  // Fixed: Changed \\\';\\\' to \';\'
+                            ';')) {
           try {
             result.nonzero_degrees.push_back(std::stoi(deg_str));
           } catch (const std::invalid_argument& ia) {
@@ -312,7 +288,7 @@ class ConwayPolyDatabase : public DatabaseInterface {
         std::stringstream coeffs_ss(segments[3]);
         std::string coeff_str;
         while (std::getline(coeffs_ss, coeff_str,
-                            ';')) {  // Fixed: Changed \\\';\\\' to \';\'
+                            ';')) {
           try {
             result.nonzero_coeffs.push_back(std::stoi(coeff_str));
           } catch (const std::invalid_argument& ia) {
@@ -338,22 +314,6 @@ class ConwayPolyDatabase : public DatabaseInterface {
   }
 };
 
-// ---------------------------------------------------------------------------
-// Utility functions for Conway polynomial retrieval and formatting
-// ---------------------------------------------------------------------------
-
-/**
- * @brief Convert database polynomial result to string representation
- *
- * Converts the degree/coefficient pairs from database format into a string
- * representation suitable for polynomial parsing.
- *
- * @param degrees Vector of non-zero polynomial degrees
- * @param coeffs Vector of corresponding coefficients
- * @param characteristic Field characteristic (for coefficient normalization)
- *
- * @return String representation of the polynomial
- */
 static std::string ConvertPolyResultToString(const std::vector<int>& degrees,
                                              const std::vector<int>& coeffs,
                                              int characteristic) {
@@ -369,15 +329,12 @@ static std::string ConvertPolyResultToString(const std::vector<int>& degrees,
   std::string result;
   bool first_term = true;
 
-  // Process terms in descending degree order for conventional polynomial
-  // format
   std::vector<std::pair<int, int>> degree_coeff_pairs;
   degree_coeff_pairs.reserve(degrees.size());
   for (size_t i = 0; i < degrees.size(); ++i) {
     degree_coeff_pairs.emplace_back(degrees[i], coeffs[i]);
   }
 
-  // Sort by degree in descending order
   std::sort(degree_coeff_pairs.begin(), degree_coeff_pairs.end(),
             [](const auto& a, const auto& b) { return a.first > b.first; });
 
@@ -388,9 +345,8 @@ static std::string ConvertPolyResultToString(const std::vector<int>& degrees,
       result += "+";
     }
 
-    // Handle coefficient
     if (characteristic == 2) {
-      // Binary field: coefficients are always 1 for non-zero terms
+
       if (degree == 0) {
         result += "1";
       } else if (degree == 1) {
@@ -399,7 +355,7 @@ static std::string ConvertPolyResultToString(const std::vector<int>& degrees,
         result += "x^" + std::to_string(degree);
       }
     } else {
-      // General field: include coefficient if not 1
+
       if (coeff != 1 || degree == 0) {
         result += std::to_string(coeff);
       }
@@ -420,26 +376,11 @@ static std::string ConvertPolyResultToString(const std::vector<int>& degrees,
   return result.empty() ? "0" : result;
 }
 
-/**
- * @brief Retrieve an irreducible polynomial from the database
- *
- * Looks up a suitable irreducible polynomial for the given characteristic and
- * degree from the precomputed database. This provides mathematically verified
- * polynomials for field extension construction.
- *
- * @param characteristic The prime characteristic of the base field
- * @param degree The degree of the polynomial needed
- *
- * @return String representation of the irreducible polynomial
- *
- * @throws std::runtime_error if polynomial not found in database
- */
 inline std::string GetIrreduciblePolynomial(int characteristic, int degree) {
   try {
     databases::IrreduciblePolyDatabase irreducible_db;
     auto result = irreducible_db.fetch(characteristic, degree);
 
-    // Convert database result to string format
     return ConvertPolyResultToString(result.nonzero_degrees,
                                      result.nonzero_coeffs, characteristic);
   } catch (const std::runtime_error& e) {
@@ -449,26 +390,11 @@ inline std::string GetIrreduciblePolynomial(int characteristic, int degree) {
   }
 }
 
-/**
- * @brief Retrieve a Conway polynomial for the given characteristic and degree
- *
- * Fetches a Conway polynomial from the database and returns it as a string
- * representation. Conway polynomials are monic irreducible polynomials over
- * finite fields that satisfy specific compatibility conditions.
- *
- * @param characteristic The characteristic of the field (prime p)
- * @param degree The degree of the extension (exponent n in GF(p^n))
- *
- * @return String representation of the Conway polynomial
- *
- * @throws std::runtime_error if Conway polynomial not found in database
- */
 inline std::string GetConwayPolynomial(int characteristic, int degree) {
   try {
     databases::ConwayPolyDatabase conway_db;
     auto result = conway_db.fetch(characteristic, degree);
 
-    // Convert database result to string format
     return ConvertPolyResultToString(result.nonzero_degrees,
                                      result.nonzero_coeffs, characteristic);
   } catch (const std::runtime_error& e) {
@@ -478,7 +404,7 @@ inline std::string GetConwayPolynomial(int characteristic, int degree) {
   }
 }
 
-}  // namespace databases
-}  // namespace xg
+}
+}
 
-#endif  // XGALOIS_DATABASES_INTERFACE_HPP
+#endif

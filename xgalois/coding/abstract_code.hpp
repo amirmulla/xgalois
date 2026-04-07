@@ -15,7 +15,6 @@
 namespace xg {
 namespace coding {
 
-// Forward declarations
 template <typename GaloisField>
 class Encoder;
 template <typename GaloisField>
@@ -36,7 +35,6 @@ class AbstractCode {
       std::function<std::unique_ptr<Decoder<GaloisField>>(
           const AbstractCode<GaloisField>*)>;
 
-  // Constructor
   explicit AbstractCode(size_t length,
                         const std::string& default_encoder_name = "",
                         const std::string& default_decoder_name = "",
@@ -48,16 +46,13 @@ class AbstractCode {
 
   virtual ~AbstractCode() = default;
 
-  // Basic properties
   size_t Length() const { return length_; }
   virtual size_t Dimension() const = 0;
   virtual size_t MinimumDistance() const = 0;
   Metric GetMetric() const { return metric_; }
 
-  // Field operations
   virtual std::shared_ptr<GaloisField> Field() const = 0;
 
-  // Encoding/Decoding interface
   virtual codeword_type Encode(const message_type& message,
                                const std::string& encoder_name) const;
   codeword_type Encode(const message_type& message) const {
@@ -82,7 +77,6 @@ class AbstractCode {
     return Unencode(codeword, "");
   }
 
-  // Encoder/Decoder management
   void RegisterEncoder(const std::string& name, encoder_factory_type factory);
   void RegisterDecoder(const std::string& name, decoder_factory_type factory);
 
@@ -94,19 +88,15 @@ class AbstractCode {
   std::vector<std::string> AvailableEncoders() const;
   std::vector<std::string> AvailableDecoders() const;
 
-  // Code properties
   virtual bool Contains(const codeword_type& word) const = 0;
   virtual std::vector<codeword_type> GetCodewords() const = 0;
   virtual codeword_type RandomCodeword() const = 0;
 
-  // Distance calculations
   virtual size_t Distance(const codeword_type& a, const codeword_type& b) const;
   virtual size_t Weight(const codeword_type& word) const;
 
-  // String representation
   virtual std::string ToString() const = 0;
 
-  // Convenience operator for encoding
   codeword_type operator()(const message_type& message) const {
     return Encode(message);
   }
@@ -117,18 +107,14 @@ class AbstractCode {
   std::string default_decoder_name_;
   Metric metric_;
 
-  // Encoder/Decoder registries
   std::unordered_map<std::string, encoder_factory_type> encoder_registry_;
   std::unordered_map<std::string, decoder_factory_type> decoder_registry_;
 
-  // Cached encoders/decoders
   mutable std::unordered_map<std::string, std::unique_ptr<Encoder<GaloisField>>>
       encoder_cache_;
   mutable std::unordered_map<std::string, std::unique_ptr<Decoder<GaloisField>>>
       decoder_cache_;
 };
-
-// Implementation of template methods
 
 template <typename GaloisField>
 typename AbstractCode<GaloisField>::codeword_type
@@ -196,17 +182,15 @@ std::unique_ptr<Encoder<GaloisField>> AbstractCode<GaloisField>::GetEncoder(
         "No encoder name specified and no default encoder set");
   }
 
-  // Check cache first
   auto cache_it = encoder_cache_.find(encoder_name);
   if (cache_it != encoder_cache_.end()) {
-    // Return a copy since we can't return the same unique_ptr twice
+
     auto it = encoder_registry_.find(encoder_name);
     if (it != encoder_registry_.end()) {
       return it->second(this);
     }
   }
 
-  // Create new encoder
   auto it = encoder_registry_.find(encoder_name);
   if (it == encoder_registry_.end()) {
     throw std::runtime_error("Unknown encoder: " + encoder_name);
@@ -225,17 +209,15 @@ std::unique_ptr<Decoder<GaloisField>> AbstractCode<GaloisField>::GetDecoder(
         "No decoder name specified and no default decoder set");
   }
 
-  // Check cache first
   auto cache_it = decoder_cache_.find(decoder_name);
   if (cache_it != decoder_cache_.end()) {
-    // Return a copy since we can't return the same unique_ptr twice
+
     auto it = decoder_registry_.find(decoder_name);
     if (it != decoder_registry_.end()) {
       return it->second(this);
     }
   }
 
-  // Create new decoder
   auto it = decoder_registry_.find(decoder_name);
   if (it == decoder_registry_.end()) {
     throw std::runtime_error("Unknown decoder: " + decoder_name);
@@ -281,10 +263,10 @@ size_t AbstractCode<GaloisField>::Distance(const codeword_type& a,
       }
       break;
     case Metric::LEE:
-      // Lee distance implementation would depend on field characteristics
+
       throw std::runtime_error("Lee distance not implemented yet");
     case Metric::RANK:
-      // Rank distance implementation would be more complex
+
       throw std::runtime_error("Rank distance not implemented yet");
   }
 
@@ -315,7 +297,7 @@ size_t AbstractCode<GaloisField>::Weight(const codeword_type& word) const {
   return weight;
 }
 
-}  // namespace coding
-}  // namespace xg
+}
+}
 
-#endif  // XGALOIS_CODING_ABSTRACT_CODE_HPP
+#endif

@@ -18,10 +18,9 @@ class GRSEncoder : public Encoder<GaloisField> {
   using message_type = xt::xarray<GaloisField>;
   using polynomial_type = xg::PolynomialDense<GaloisField>;
 
-  // Constructor
   explicit GRSEncoder(const AbstractCode<GaloisField>* code)
       : Encoder<GaloisField>(code) {
-    // Try to cast to GRS code
+
     grs_code_ =
         dynamic_cast<const GeneralizedReedSolomonCode<GaloisField>*>(code);
     if (!grs_code_) {
@@ -30,24 +29,20 @@ class GRSEncoder : public Encoder<GaloisField> {
     }
   }
 
-  // Encode message as polynomial evaluation
   codeword_type Encode(const message_type& message) const override {
     if (message.size() != MessageLength()) {
       throw std::invalid_argument("Message length must match code dimension");
     }
 
-    // Create polynomial from message coefficients
     std::vector<GaloisField> message_vec(message.size());
     for (size_t i = 0; i < message.size(); ++i) {
       message_vec[i] = message(i);
     }
     polynomial_type message_poly(message_vec, grs_code_->Field());
 
-    // Encode using polynomial evaluation
     return grs_code_->EncodePolynomial(message_poly);
   }
 
-  // Unencode: interpolate polynomial from codeword
   message_type Unencode(const codeword_type& codeword) const override {
     if (codeword.size() != this->code_->Length()) {
       throw std::invalid_argument("Codeword length must match code length");
@@ -57,10 +52,8 @@ class GRSEncoder : public Encoder<GaloisField> {
       throw std::invalid_argument("Input is not a valid codeword");
     }
 
-    // Interpolate polynomial from codeword
     auto poly = grs_code_->DecodeToPolynomial(codeword);
 
-    // Extract coefficients as message
     message_type message = xt::zeros<GaloisField>({MessageLength()});
     for (size_t i = 0; i < MessageLength(); ++i) {
       if (i <= poly.Degree()) {
@@ -80,14 +73,10 @@ class GRSEncoder : public Encoder<GaloisField> {
            std::to_string(grs_code_->Dimension()) + "] GRS code";
   }
 
-  // GRS-specific encoding methods
-
-  // Encode polynomial directly
   codeword_type EncodePolynomial(const polynomial_type& message_poly) const {
     return grs_code_->EncodePolynomial(message_poly);
   }
 
-  // Systematic encoding (message appears in first k positions)
   codeword_type SystematicEncode(const message_type& message) const {
     if (message.size() != MessageLength()) {
       throw std::invalid_argument("Message length must match code dimension");
@@ -97,10 +86,6 @@ class GRSEncoder : public Encoder<GaloisField> {
     auto eval_points = grs_code_->EvaluationPoints();
     auto multipliers = grs_code_->ColumnMultipliers();
 
-    // For systematic encoding, we need to solve for the polynomial
-    // such that f(α_0) = m_0/v_0, f(α_1) = m_1/v_1, ..., f(α_{k-1}) =
-    // m_{k-1}/v_{k-1}
-
     xt::xarray<GaloisField> points = xt::zeros<GaloisField>({MessageLength()});
     xt::xarray<GaloisField> values = xt::zeros<GaloisField>({MessageLength()});
 
@@ -109,17 +94,14 @@ class GRSEncoder : public Encoder<GaloisField> {
       values(i) = field->Div(message(i), multipliers(i));
     }
 
-    // Interpolate polynomial
     auto message_poly = LagrangeInterpolation(points, values);
 
-    // Encode polynomial
     return EncodePolynomial(message_poly);
   }
 
  private:
   const GeneralizedReedSolomonCode<GaloisField>* grs_code_;
 
-  // Lagrange interpolation helper
   polynomial_type LagrangeInterpolation(
       const xt::xarray<GaloisField>& points,
       const xt::xarray<GaloisField>& values) const {
@@ -132,16 +114,15 @@ class GRSEncoder : public Encoder<GaloisField> {
     xt::xarray<GaloisField> result_coeffs = xt::zeros<GaloisField>({n});
 
     for (size_t i = 0; i < n; ++i) {
-      // Compute Lagrange basis polynomial L_i(x)
+
       xt::xarray<GaloisField> basis_coeffs = xt::ones<GaloisField>({1});
 
       for (size_t j = 0; j < n; ++j) {
         if (i != j) {
-          // Multiply by (x - points[j]) / (points[i] - points[j])
+
           element_type denominator = field->Sub(points(i), points(j));
           element_type inv_denom = field->Inv(denominator);
 
-          // Multiply basis_coeffs by (x - points[j])
           xt::xarray<GaloisField> new_coeffs =
               xt::zeros<GaloisField>({basis_coeffs.size() + 1});
           for (size_t k = 0; k < basis_coeffs.size(); ++k) {
@@ -151,7 +132,6 @@ class GRSEncoder : public Encoder<GaloisField> {
             new_coeffs(k + 1) = field->Add(new_coeffs(k + 1), basis_coeffs(k));
           }
 
-          // Multiply by 1 / (points[i] - points[j])
           for (size_t k = 0; k < new_coeffs.size(); ++k) {
             new_coeffs(k) = field->Mul(new_coeffs(k), inv_denom);
           }
@@ -160,7 +140,6 @@ class GRSEncoder : public Encoder<GaloisField> {
         }
       }
 
-      // Add values[i] * L_i(x) to result
       for (size_t k = 0; k < basis_coeffs.size() && k < result_coeffs.size();
            ++k) {
         element_type term = field->Mul(values(i), basis_coeffs(k));
@@ -168,7 +147,6 @@ class GRSEncoder : public Encoder<GaloisField> {
       }
     }
 
-    // Convert xtensor array to std::vector for polynomial constructor
     std::vector<GaloisField> coeffs_vec(result_coeffs.size());
     for (size_t i = 0; i < result_coeffs.size(); ++i) {
       coeffs_vec[i] = result_coeffs(i);
@@ -178,7 +156,7 @@ class GRSEncoder : public Encoder<GaloisField> {
   }
 };
 
-}  // namespace coding
-}  // namespace xg
+}
+}
 
-#endif  // XGALOIS_CODING_GRS_ENCODER_HPP
+#endif

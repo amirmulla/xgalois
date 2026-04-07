@@ -8,11 +8,11 @@
 namespace xg {
 
 enum class FieldRepresentation : std::uint8_t {
-  INT,  // E.g., 5 (default for prime fields)
-  HEX,  // E.g., 0x5
-  POW,  // E.g., g^k (useful for fields with known generator)
-  LOG,  // E.g., log_g(x) (useful for fields with known generator)
-  POLY  // E.g., x+1 (default for extension fields)
+  INT,
+  HEX,
+  POW,
+  LOG,
+  POLY
 };
 
 template <typename ElementType>
@@ -22,13 +22,10 @@ class GaloisFieldBase {
 
   virtual ~GaloisFieldBase() = default;
 
-  // Returns the characteristic of the field (e.g., p for GF(p^n))
   virtual uint32_t Characteristic() const = 0;
 
-  // Returns the order (number of elements) of the field
   virtual uint32_t Order() const = 0;
 
-  // Field operations
   inline virtual ElementType Add(const ElementType &a,
                                  const ElementType &b) const = 0;
   inline virtual ElementType Sub(const ElementType &a,
@@ -72,6 +69,6 @@ inline std::ostream &operator<<(std::ostream &os,
   return os;
 };
 
-}  // namespace xg
+}
 
-#endif  // XGALOIS_FIELD_GF_BASE_HPP
+#endif

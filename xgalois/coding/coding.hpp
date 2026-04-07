@@ -1,24 +1,18 @@
 #ifndef XGALOIS_CODING_HPP
 #define XGALOIS_CODING_HPP
 
-// Base classes
 #include "xgalois/coding/abstract_code.hpp"
 #include "xgalois/coding/abstract_linear_code.hpp"
 
-// Encoder/Decoder framework
 #include "xgalois/coding/decoder/decoder.hpp"
 #include "xgalois/coding/encoder/encoder.hpp"
 
-// Code implementations
 #include "xgalois/coding/cyclic_code.hpp"
 #include "xgalois/coding/grs.hpp"
 
 namespace xg {
 namespace coding {
 
-// Convenience functions for creating codes
-
-// Create a standard Reed-Solomon code
 template <typename GaloisField>
 std::unique_ptr<GeneralizedReedSolomonCode<GaloisField>> CreateReedSolomonCode(
     std::shared_ptr<GaloisField> field, size_t length,
@@ -27,17 +21,15 @@ std::unique_ptr<GeneralizedReedSolomonCode<GaloisField>> CreateReedSolomonCode(
       field, length, dimension, primitive_element);
 }
 
-// Create a standard Reed-Solomon code with consecutive evaluation points
 template <typename GaloisField>
 std::unique_ptr<GeneralizedReedSolomonCode<GaloisField>> CreateReedSolomonCode(
     std::shared_ptr<GaloisField> field, size_t length,
     size_t dimension) {
-  // Use primitive element (assuming it's 2 for binary extension fields)
+
   xg::GaloisFieldElement<GaloisField> primitive_element(2, field);
   return CreateReedSolomonCode(field, length, dimension, primitive_element);
 }
 
-// Create a generalized Reed-Solomon code
 template <typename GaloisField>
 std::unique_ptr<GeneralizedReedSolomonCode<GaloisField>>
 CreateGeneralizedReedSolomonCode(
@@ -48,7 +40,6 @@ CreateGeneralizedReedSolomonCode(
       field, evaluation_points, column_multipliers, dimension);
 }
 
-// Create a cyclic code from generator polynomial
 template <typename GaloisField>
 std::unique_ptr<CyclicCode<GaloisField>> CreateCyclicCode(
     std::shared_ptr<GaloisField> field, size_t length,
@@ -57,37 +48,31 @@ std::unique_ptr<CyclicCode<GaloisField>> CreateCyclicCode(
                                                    generator_poly);
 }
 
-// Error correction capability helper
 template <typename GaloisField>
 size_t ErrorCorrectionCapability(const AbstractCode<GaloisField>& code) {
   return (code.MinimumDistance() - 1) / 2;
 }
 
-// Code rate helper
 template <typename GaloisField>
 double CodeRate(const AbstractLinearCode<GaloisField>& code) {
   return code.Rate();
 }
 
-// Redundancy helper
 template <typename GaloisField>
 size_t Redundancy(const AbstractLinearCode<GaloisField>& code) {
   return code.Redundancy();
 }
 
-// Check if code is MDS (Maximum Distance Separable)
 template <typename GaloisField>
 bool IsMDS(const AbstractLinearCode<GaloisField>& code) {
   return code.MinimumDistance() == code.Length() - code.Dimension() + 1;
 }
 
-// Singleton bound check
 template <typename GaloisField>
 bool SatisfiesSingletonBound(const AbstractLinearCode<GaloisField>& code) {
   return code.MinimumDistance() <= code.Length() - code.Dimension() + 1;
 }
 
-// Hamming bound check
 template <typename GaloisField>
 bool SatisfiesHammingBound(const AbstractLinearCode<GaloisField>& code) {
   auto field = code.Field();
@@ -96,7 +81,6 @@ bool SatisfiesHammingBound(const AbstractLinearCode<GaloisField>& code) {
   size_t k = code.Dimension();
   size_t t = ErrorCorrectionCapability(code);
 
-  // Calculate volume of Hamming sphere
   size_t volume = 1;
   for (size_t i = 1; i <= t; ++i) {
     size_t binomial = 1;
@@ -110,7 +94,6 @@ bool SatisfiesHammingBound(const AbstractLinearCode<GaloisField>& code) {
          static_cast<size_t>(std::pow(q, n));
 }
 
-// Perfect code check
 template <typename GaloisField>
 bool IsPerfectCode(const AbstractLinearCode<GaloisField>& code) {
   auto field = code.Field();
@@ -119,7 +102,6 @@ bool IsPerfectCode(const AbstractLinearCode<GaloisField>& code) {
   size_t k = code.Dimension();
   size_t t = ErrorCorrectionCapability(code);
 
-  // Calculate volume of Hamming sphere
   size_t volume = 1;
   for (size_t i = 1; i <= t; ++i) {
     size_t binomial = 1;
@@ -133,7 +115,7 @@ bool IsPerfectCode(const AbstractLinearCode<GaloisField>& code) {
          static_cast<size_t>(std::pow(q, n));
 }
 
-}  // namespace coding
-}  // namespace xg
+}
+}
 
-#endif  // XGALOIS_CODING_HPP
+#endif
