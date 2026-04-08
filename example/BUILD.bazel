@@ -12,7 +12,7 @@ cc_binary(
     name = "gf_factory_example",
     srcs = ["field/gf_factory_example.cpp"],
     deps = [
-        "//xgalois:xgalois",
+        "//xgalois",
     ],
 )
 
@@ -22,7 +22,7 @@ cc_binary(
     name = "gf_prime_example",
     srcs = ["field/gf_prime_example.cpp"],
     deps = [
-        "//xgalois:xgalois",
+        "//xgalois",
     ],
 )
 
@@ -32,7 +32,7 @@ cc_binary(
     name = "gf_binary_example",
     srcs = ["field/gf_binary_example.cpp"],
     deps = [
-        "//xgalois:xgalois",
+        "//xgalois",
     ],
 )
 
@@ -42,7 +42,7 @@ cc_binary(
     name = "gf_extension_example",
     srcs = ["field/gf_extension_example.cpp"],
     deps = [
-        "//xgalois:xgalois",
+        "//xgalois",
     ],
 )
 
@@ -56,7 +56,7 @@ cc_binary(
     name = "poly_example",
     srcs = ["poly/poly_example.cpp"],
     deps = [
-        "//xgalois:xgalois",
+        "//xgalois",
     ],
 )
 
@@ -70,7 +70,7 @@ cc_binary(
     name = "linalg_example",
     srcs = ["linalg/linalg_example.cpp"],
     deps = [
-        "//xgalois:xgalois",
+        "//xgalois",
     ],
 )
 
@@ -85,7 +85,7 @@ cc_binary(
     name = "xtensor_example",
     srcs = ["xtensor/xtensor_example.cpp"],
     deps = [
-        "//xgalois:xgalois",
+        "//xgalois",
     ],
 )
 
@@ -101,6 +101,6 @@ cc_binary(
     name = "channel_example",
     srcs = ["channel/channel_example.cpp"],
     deps = [
-        "//xgalois:xgalois",
+        "//xgalois",
     ],
 )
