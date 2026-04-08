@@ -1,10 +1,4 @@
-//===----------------------------------------------------------------------===//
-//                          XGalois Library
-//===----------------------------------------------------------------------===//
-// Copyright (C) 2024 Amir Mulla
-//
-// Comprehensive unit tests for database interface classes
-//===----------------------------------------------------------------------===//
+
 
 #include "xgalois/databases/interface.hpp"
 
@@ -17,11 +11,6 @@
 namespace xg {
 namespace databases {
 
-// =============================================================================
-// Test Data and Utilities
-// =============================================================================
-
-// Test data for prime factorization
 struct PrimeTestCase {
   uint64_t number;
   std::vector<uint64_t> expected_factors;
@@ -29,7 +18,6 @@ struct PrimeTestCase {
   int expected_composite;
 };
 
-// Test data for polynomial cases
 struct PolyTestCase {
   int characteristic;
   int degree;
@@ -37,13 +25,12 @@ struct PolyTestCase {
   std::vector<int> expected_coeffs;
 };
 
-// Known test cases for comprehensive testing
 static const std::vector<PrimeTestCase> kPrimeTestCases = {
-    {273323, {273323}, {1}, 0},                  // Prime
-    {142903, {142903}, {1}, 0},                  // Another prime
-    {21218, {2, 103}, {1, 1}, 1},                // 2 * 103
-    {643482, {2, 3, 7, 5107}, {1, 1, 1, 1}, 1},  // Multiple factors
-    {309550, {2, 5, 41, 151}, {1, 1, 1, 1}, 1},  // Another composite
+    {273323, {273323}, {1}, 0},
+    {142903, {142903}, {1}, 0},
+    {21218, {2, 103}, {1, 1}, 1},
+    {643482, {2, 3, 7, 5107}, {1, 1, 1, 1}, 1},
+    {309550, {2, 5, 41, 151}, {1, 1, 1, 1}, 1},
 };
 
 static const std::vector<PolyTestCase> kIrreducibleTestCases = {
@@ -58,16 +45,11 @@ static const std::vector<PolyTestCase> kConwayTestCases = {
     {2, 3, {0, 1, 3}, {1, 1, 1}},
 };
 
-// =============================================================================
-// Enhanced Test Fixtures
-// =============================================================================
-
-// Base test fixture with common utilities
 class DatabaseInterfaceTest : public ::testing::Test {
  protected:
   void SetUp() override {
     start_time_ = std::chrono::high_resolution_clock::now();
-    // Verify database files exist
+
     VerifyDatabaseFiles();
   }
 
@@ -76,13 +58,11 @@ class DatabaseInterfaceTest : public ::testing::Test {
     auto duration = std::chrono::duration_cast<std::chrono::milliseconds>(
         end_time - start_time_);
 
-    // Log test duration for performance monitoring
-    if (duration.count() > 100) {  // Log if test takes more than 100ms
+    if (duration.count() > 100) {
       std::cout << "Test took " << duration.count() << "ms" << '\n';
     }
   }
 
-  // Utility function to test prime factorization cases
   void TestPrimeFactors(const PrimeTestCase& test_case) {
     PrimeFactorsDatabase db;
     PrimeFactorsResult result = db.fetch(test_case.number);
@@ -98,7 +78,6 @@ class DatabaseInterfaceTest : public ::testing::Test {
     }
   }
 
-  // Utility function to test polynomial cases
   void TestPolynomialFetch(const PolyTestCase& test_case,
                            bool is_irreducible = true) {
     if (is_irreducible) {
@@ -147,7 +126,6 @@ class DatabaseInterfaceTest : public ::testing::Test {
   }
 };
 
-// Test PrimeFactorsDatabase directly
 TEST_F(DatabaseInterfaceTest, PrimeFactorsFetchPrime) {
   TestPrimeFactors(kPrimeTestCases[0]);
 }
@@ -168,11 +146,9 @@ TEST_F(DatabaseInterfaceTest,
 TEST_F(DatabaseInterfaceTest, PrimeFactorsFetchNotFound) {
   PrimeFactorsDatabase db;
 
-  // Test with a number not in the database
   EXPECT_THROW(db.fetch(1), std::runtime_error);
 }
 
-// Test IrreduciblePolyDatabase directly
 TEST_F(DatabaseInterfaceTest, IrreduciblePolyFetchGF2Degree2) {
   TestPolynomialFetch(kIrreducibleTestCases[0]);
 }
@@ -188,11 +164,9 @@ TEST_F(DatabaseInterfaceTest, IrreduciblePolyFetchGF2Degree4) {
 TEST_F(DatabaseInterfaceTest, IrreduciblePolyFetchNotFound) {
   IrreduciblePolyDatabase db;
 
-  // Test with a combination that likely doesn't exist
   EXPECT_THROW(db.fetch(999, 999), std::runtime_error);
 }
 
-// Test ConwayPolyDatabase directly
 TEST_F(DatabaseInterfaceTest, ConwayPolyFetchGF2Degree1) {
   TestPolynomialFetch(kConwayTestCases[0], false);
 }
@@ -211,53 +185,40 @@ TEST_F(DatabaseInterfaceTest, ConwayPolyFetchNotFound) {
   EXPECT_THROW(db.fetch(999, 999), std::runtime_error);
 }
 
-// Test error handling with missing database files
 TEST_F(DatabaseInterfaceTest, DatabaseFileNotFoundHandling) {
-  // We can't easily test missing database files with the default classes
-  // since they have hardcoded paths, but we can verify the error messages
-  // are appropriate by testing with invalid queries that should fail gracefully
-
   PrimeFactorsDatabase prime_db;
   IrreduciblePolyDatabase irreducible_db;
   ConwayPolyDatabase conway_db;
 
-  // Test with numbers/parameters that don't exist in the database
   EXPECT_THROW(prime_db.fetch(999999999), std::runtime_error);
   EXPECT_THROW(irreducible_db.fetch(999, 999), std::runtime_error);
   EXPECT_THROW(conway_db.fetch(999, 999), std::runtime_error);
 }
 
-// Performance test using the existing database
 TEST_F(DatabaseInterfaceTest, DatabasePerformance) {
   PrimeFactorsDatabase db;
 
   auto start = std::chrono::high_resolution_clock::now();
 
-  // Test multiple lookups to measure performance
   std::vector<uint64_t> test_numbers = {273323, 142903, 21218, 643482, 309550};
 
   for (uint64_t num : test_numbers) {
     PrimeFactorsResult result = db.fetch(num);
-    EXPECT_GT(result.factors.size(), 0);  // Should find valid results
+    EXPECT_GT(result.factors.size(), 0);
   }
 
   auto end = std::chrono::high_resolution_clock::now();
   auto duration =
       std::chrono::duration_cast<std::chrono::milliseconds>(end - start);
 
-  // Performance test - should complete reasonably quickly
-  // With the large database, this might take longer, so we set a reasonable
-  // threshold
-  EXPECT_LT(duration.count(), 1000);  // Less than 1 second for 5 lookups
+  EXPECT_LT(duration.count(), 1000);
 }
 
-// Test data consistency and format
 TEST_F(DatabaseInterfaceTest, DatabaseDataConsistency) {
   PrimeFactorsDatabase prime_db;
   IrreduciblePolyDatabase irreducible_db;
   ConwayPolyDatabase conway_db;
 
-  // Test that the results have consistent data
   PrimeFactorsResult prime_result = prime_db.fetch(273323);
   EXPECT_EQ(prime_result.factors.size(), prime_result.multiplicities.size());
   EXPECT_FALSE(prime_result.factors.empty());
@@ -273,35 +234,25 @@ TEST_F(DatabaseInterfaceTest, DatabaseDataConsistency) {
   EXPECT_FALSE(conway_result.nonzero_degrees.empty());
 }
 
-// Test multiple database operations
 TEST_F(DatabaseInterfaceTest, MultipleDatabaseOperations) {
   PrimeFactorsDatabase prime_db;
   IrreduciblePolyDatabase irreducible_db;
   ConwayPolyDatabase conway_db;
 
-  // Test that we can successfully perform multiple operations on different
-  // databases
-
-  // Prime factors operations
   PrimeFactorsResult prime1 = prime_db.fetch(273323);
   PrimeFactorsResult prime2 = prime_db.fetch(21218);
-  EXPECT_NE(prime1.composite,
-            prime2.composite);  // One is prime, one is composite
+  EXPECT_NE(prime1.composite, prime2.composite);
 
-  // Irreducible polynomial operations
   IrreduciblePolyResult irreducible1 = irreducible_db.fetch(2, 2);
   IrreduciblePolyResult irreducible2 = irreducible_db.fetch(2, 3);
-  // Both should have valid results, but the degrees should be different
-  EXPECT_NE(irreducible1.nonzero_degrees[0],
-            irreducible2.nonzero_degrees[0]);  // Different leading degree
 
-  // Conway polynomial operations
+  EXPECT_NE(irreducible1.nonzero_degrees[0], irreducible2.nonzero_degrees[0]);
+
   ConwayPolyResult conway1 = conway_db.fetch(2, 1);
   ConwayPolyResult conway2 = conway_db.fetch(2, 2);
   EXPECT_NE(conway1.nonzero_degrees.size(), conway2.nonzero_degrees.size());
 }
 
-// Test polynomial string conversion
 TEST_F(DatabaseInterfaceTest, ConvertPolyResultToStringBinary) {
   std::vector<int> degrees = {2, 1, 0};
   std::vector<int> coeffs = {1, 1, 1};
@@ -344,7 +295,6 @@ TEST_F(DatabaseInterfaceTest, ConvertPolyResultToStringMismatch) {
                std::invalid_argument);
 }
 
-// Test GetIrreduciblePolynomial utility function
 TEST_F(DatabaseInterfaceTest, GetIrreduciblePolynomialGF2Degree2) {
   std::string poly_str = GetIrreduciblePolynomial(2, 2);
   EXPECT_EQ(poly_str, "x^2+x+1");
@@ -359,7 +309,6 @@ TEST_F(DatabaseInterfaceTest, GetIrreduciblePolynomialNotFound) {
   EXPECT_THROW(GetIrreduciblePolynomial(999, 999), std::runtime_error);
 }
 
-// Test GetConwayPolynomial utility function
 TEST_F(DatabaseInterfaceTest, GetConwayPolynomialGF2Degree2) {
   std::string poly_str = GetConwayPolynomial(2, 2);
   EXPECT_EQ(poly_str, "x^2+x+1");
@@ -374,11 +323,6 @@ TEST_F(DatabaseInterfaceTest, GetConwayPolynomialNotFound) {
   EXPECT_THROW(GetConwayPolynomial(999, 999), std::runtime_error);
 }
 
-// =============================================================================
-// Parameterized Tests
-// =============================================================================
-
-// Parameterized test for all prime factorization cases
 class PrimeFactorsParameterizedTest
     : public DatabaseInterfaceTest,
       public ::testing::WithParamInterface<PrimeTestCase> {};
@@ -390,7 +334,6 @@ TEST_P(PrimeFactorsParameterizedTest, FactorizationTest) {
 INSTANTIATE_TEST_SUITE_P(AllPrimeFactorizations, PrimeFactorsParameterizedTest,
                          ::testing::ValuesIn(kPrimeTestCases));
 
-// Parameterized test for irreducible polynomials
 class IrreduciblePolyParameterizedTest
     : public DatabaseInterfaceTest,
       public ::testing::WithParamInterface<PolyTestCase> {};
@@ -403,7 +346,6 @@ INSTANTIATE_TEST_SUITE_P(AllIrreduciblePolynomials,
                          IrreduciblePolyParameterizedTest,
                          ::testing::ValuesIn(kIrreducibleTestCases));
 
-// Parameterized test for Conway polynomials
 class ConwayPolyParameterizedTest
     : public DatabaseInterfaceTest,
       public ::testing::WithParamInterface<PolyTestCase> {};
@@ -415,14 +357,9 @@ TEST_P(ConwayPolyParameterizedTest, ConwayPolyTest) {
 INSTANTIATE_TEST_SUITE_P(AllConwayPolynomials, ConwayPolyParameterizedTest,
                          ::testing::ValuesIn(kConwayTestCases));
 
-// =============================================================================
-// Additional Edge Case Tests
-// =============================================================================
-
 TEST_F(DatabaseInterfaceTest, PrimeFactorsEdgeCases) {
   PrimeFactorsDatabase db;
 
-  // Test edge cases that should throw exceptions
   std::vector<uint64_t> invalid_numbers = {0, static_cast<uint64_t>(-1),
                                            999999999};
 
@@ -436,7 +373,6 @@ TEST_F(DatabaseInterfaceTest, PolynomialEdgeCases) {
   IrreduciblePolyDatabase irreducible_db;
   ConwayPolyDatabase conway_db;
 
-  // Test invalid characteristics and degrees
   std::vector<std::pair<int, int>> invalid_params = {
       {0, 1}, {1, 1}, {-1, 2}, {2, 0}, {2, -1}};
 
@@ -450,22 +386,16 @@ TEST_F(DatabaseInterfaceTest, PolynomialEdgeCases) {
   }
 }
 
-// =============================================================================
-// Stress Tests
-// =============================================================================
-
 TEST_F(DatabaseInterfaceTest, StressTestMultipleLookups) {
   PrimeFactorsDatabase prime_db;
   IrreduciblePolyDatabase irreducible_db;
   ConwayPolyDatabase conway_db;
 
-  // Perform multiple lookups rapidly
   auto start = std::chrono::high_resolution_clock::now();
 
-  // Repeat the test cases multiple times
   for (int i = 0; i < 10; ++i) {
     for (const auto& test_case : kPrimeTestCases) {
-      if (test_case.number > 0) {  // Skip invalid numbers
+      if (test_case.number > 0) {
         PrimeFactorsResult result = prime_db.fetch(test_case.number);
         EXPECT_FALSE(result.factors.empty());
       }
@@ -488,23 +418,18 @@ TEST_F(DatabaseInterfaceTest, StressTestMultipleLookups) {
   auto duration =
       std::chrono::duration_cast<std::chrono::milliseconds>(end - start);
 
-  // Should complete within reasonable time
   EXPECT_LT(duration.count(), 10000)
       << "Stress test took too long: " << duration.count() << "ms";
 }
 
 TEST_F(DatabaseInterfaceTest, ConcurrentDatabaseAccess) {
-  // Test that multiple databases can be used simultaneously without
-  // interference
   PrimeFactorsDatabase prime_db1, prime_db2;
   IrreduciblePolyDatabase irreducible_db1, irreducible_db2;
   ConwayPolyDatabase conway_db1, conway_db2;
 
-  // Perform lookups with multiple database instances
   PrimeFactorsResult prime_result1 = prime_db1.fetch(273323);
   PrimeFactorsResult prime_result2 = prime_db2.fetch(273323);
 
-  // Results should be identical
   EXPECT_EQ(prime_result1.factors, prime_result2.factors);
   EXPECT_EQ(prime_result1.multiplicities, prime_result2.multiplicities);
   EXPECT_EQ(prime_result1.composite, prime_result2.composite);

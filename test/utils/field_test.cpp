@@ -1,10 +1,4 @@
-//===----------------------------------------------------------------------===//
-//                          XGalois Library
-//===----------------------------------------------------------------------===//
-// Copyright (C) 2024 Amir Mulla
-//
-// Comprehensive unit tests for field utility functions
-//===----------------------------------------------------------------------===//
+
 
 #include "xgalois/utils/field.hpp"
 
@@ -14,20 +8,10 @@
 
 using namespace xg::utils;
 
-//===----------------------------------------------------------------------===//
-// Test Fixtures
-//===----------------------------------------------------------------------===//
-
 class FieldUtilsTest : public ::testing::Test {
  protected:
-  void SetUp() override {
-    // No special setup needed for field utilities
-  }
+  void SetUp() override {}
 };
-
-//===----------------------------------------------------------------------===//
-// ConvertRepresentation Tests
-//===----------------------------------------------------------------------===//
 
 TEST_F(FieldUtilsTest, ConvertRepresentationValidCases) {
   EXPECT_EQ(ConvertRepresentation("int"), xg::FieldRepresentation::INT);
@@ -38,7 +22,6 @@ TEST_F(FieldUtilsTest, ConvertRepresentationValidCases) {
 }
 
 TEST_F(FieldUtilsTest, ConvertRepresentationCaseSensitive) {
-  // Test that the function is case-sensitive
   EXPECT_THROW(ConvertRepresentation("INT"), std::invalid_argument);
   EXPECT_THROW(ConvertRepresentation("HEX"), std::invalid_argument);
   EXPECT_THROW(ConvertRepresentation("POW"), std::invalid_argument);
@@ -66,7 +49,6 @@ TEST_F(FieldUtilsTest, ConvertRepresentationExceptionMessage) {
 }
 
 TEST_F(FieldUtilsTest, ConvertRepresentationWithWhitespace) {
-  // Test that whitespace is not trimmed (should throw)
   EXPECT_THROW(ConvertRepresentation(" int"), std::invalid_argument);
   EXPECT_THROW(ConvertRepresentation("int "), std::invalid_argument);
   EXPECT_THROW(ConvertRepresentation(" int "), std::invalid_argument);
@@ -74,10 +56,8 @@ TEST_F(FieldUtilsTest, ConvertRepresentationWithWhitespace) {
 }
 
 TEST_F(FieldUtilsTest, ConvertRepresentationSpecialCharacters) {
-  // Test with special characters
   EXPECT_THROW(ConvertRepresentation("int\n"), std::invalid_argument);
   EXPECT_THROW(ConvertRepresentation("int\t"), std::invalid_argument);
-  // Note: Testing with null character is tricky as it would terminate the
-  // string Instead test with other invalid variations
+
   EXPECT_THROW(ConvertRepresentation("int\r"), std::invalid_argument);
 }

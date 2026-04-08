@@ -1,9 +1,4 @@
-/**
- * @file gf_prime_benchmark.cpp
- * @brief Comprehensive benchmark comparison between prime field implementations
- * Compares 2 different implementation classes (standard and logarithm) across
- * small, medium, and large field sizes
- */
+
 
 #include <benchmark/benchmark.h>
 #include <sys/resource.h>
@@ -20,10 +15,6 @@
 
 using namespace xg;
 
-//------------------------------------------------------------------------------
-// Memory Usage Utilities
-//------------------------------------------------------------------------------
-
 struct MemoryUsage {
   size_t peak_rss_kb;
   size_t current_rss_kb;
@@ -34,13 +25,11 @@ struct MemoryUsage {
 MemoryUsage GetMemoryUsage() {
   MemoryUsage usage;
 
-  // Get peak memory usage
   struct rusage rusage_data;
   if (getrusage(RUSAGE_SELF, &rusage_data) == 0) {
-    usage.peak_rss_kb = rusage_data.ru_maxrss / 1024;  // Convert to KB on macOS
+    usage.peak_rss_kb = rusage_data.ru_maxrss / 1024;
   }
 
-  // Get current memory usage using ps command (macOS compatible)
   pid_t pid = getpid();
   char command[256];
   snprintf(command, sizeof(command), "ps -o rss= -p %d", pid);
@@ -57,23 +46,12 @@ MemoryUsage GetMemoryUsage() {
   return usage;
 }
 
-//------------------------------------------------------------------------------
-// Prime Field Sizes for Testing
-//------------------------------------------------------------------------------
-
-// Small prime fields - Common small primes (reduced sample)
 const std::vector<uint32_t> SMALL_PRIMES = {2, 3, 7, 13, 23, 31, 47};
 
-// Medium prime fields - Practical sizes for applications (reduced sample)
 const std::vector<uint32_t> MEDIUM_PRIMES = {53, 71, 89, 103, 127};
 
-// Large prime fields - Larger primes for testing scalability (reduced sample)
 const std::vector<uint32_t> LARGE_PRIMES = {131, 179, 241, 307, 389, 463,
                                             577, 683, 787, 907, 997};
-
-//------------------------------------------------------------------------------
-// Helper Functions
-//------------------------------------------------------------------------------
 
 template <typename FieldType>
 std::vector<typename FieldType::element_type> GenerateRandomElements(
@@ -84,7 +62,7 @@ std::vector<typename FieldType::element_type> GenerateRandomElements(
 
   for (size_t i = 0; i < count; ++i) {
     auto elem = field->Random();
-    // Ensure we don't have zero for operations that don't allow it
+
     while (elem == 0) {
       elem = field->Random();
     }
@@ -94,12 +72,6 @@ std::vector<typename FieldType::element_type> GenerateRandomElements(
   return elements;
 }
 
-//------------------------------------------------------------------------------
-// Small Prime Field Benchmarks (Small primes: 2, 3, 5, 7, 11, 13, 17, 19, 23,
-// 29, 31, 37, 41, 43, 47)
-//------------------------------------------------------------------------------
-
-// GaloisFieldPrime - Standard Implementation
 static void BM_GFP_Small_Addition(benchmark::State& state) {
   uint32_t p = static_cast<uint32_t>(state.range(0));
   auto field = std::make_shared<GaloisFieldPrime<uint32_t>>(p);
@@ -186,7 +158,6 @@ static void BM_GFP_Small_Exponentiation(benchmark::State& state) {
   state.counters["FieldOrder"] = field->Order();
 }
 
-// GaloisFieldPrimeTable - Logarithm Table Implementation
 static void BM_GFPTABLE_Small_Addition(benchmark::State& state) {
   uint32_t p = static_cast<uint32_t>(state.range(0));
   auto field = std::make_shared<GaloisFieldPrimeTable<uint32_t>>(p);
@@ -273,11 +244,6 @@ static void BM_GFPTABLE_Small_Exponentiation(benchmark::State& state) {
   state.counters["FieldOrder"] = field->Order();
 }
 
-//------------------------------------------------------------------------------
-// Medium Prime Field Benchmarks
-//------------------------------------------------------------------------------
-
-// GaloisFieldPrime - Standard Implementation
 static void BM_GFP_Medium_Addition(benchmark::State& state) {
   uint32_t p = static_cast<uint32_t>(state.range(0));
   auto field = std::make_shared<GaloisFieldPrime<uint32_t>>(p);
@@ -362,7 +328,6 @@ static void BM_GFP_Medium_Exponentiation(benchmark::State& state) {
   state.counters["FieldOrder"] = field->Order();
 }
 
-// GaloisFieldPrimeTable - Logarithm Table Implementation
 static void BM_GFPTABLE_Medium_Addition(benchmark::State& state) {
   uint32_t p = static_cast<uint32_t>(state.range(0));
   auto field = std::make_shared<GaloisFieldPrimeTable<uint32_t>>(p);
@@ -447,11 +412,6 @@ static void BM_GFPTABLE_Medium_Exponentiation(benchmark::State& state) {
   state.counters["FieldOrder"] = field->Order();
 }
 
-//------------------------------------------------------------------------------
-// Large Prime Field Benchmarks
-//------------------------------------------------------------------------------
-
-// GaloisFieldPrime - Standard Implementation
 static void BM_GFP_Large_Addition(benchmark::State& state) {
   uint32_t p = static_cast<uint32_t>(state.range(0));
   auto field = std::make_shared<GaloisFieldPrime<uint32_t>>(p);
@@ -536,7 +496,6 @@ static void BM_GFP_Large_Exponentiation(benchmark::State& state) {
   state.counters["FieldOrder"] = field->Order();
 }
 
-// GaloisFieldPrimeTable - Logarithm Table Implementation
 static void BM_GFPTABLE_Large_Addition(benchmark::State& state) {
   uint32_t p = static_cast<uint32_t>(state.range(0));
   auto field = std::make_shared<GaloisFieldPrimeTable<uint32_t>>(p);
@@ -621,11 +580,6 @@ static void BM_GFPTABLE_Large_Exponentiation(benchmark::State& state) {
   state.counters["FieldOrder"] = field->Order();
 }
 
-//------------------------------------------------------------------------------
-// Benchmark Registration
-//------------------------------------------------------------------------------
-
-// Small prime field benchmarks - using specific small primes
 BENCHMARK(BM_GFP_Small_Addition)
     ->Args({2})
     ->Args({3})
@@ -718,7 +672,6 @@ BENCHMARK(BM_GFPTABLE_Small_Exponentiation)
     ->Args({47})
     ->Unit(benchmark::kNanosecond);
 
-// Medium prime field benchmarks - using specific medium primes
 BENCHMARK(BM_GFP_Medium_Addition)
     ->Args({53})
     ->Args({71})
@@ -791,7 +744,6 @@ BENCHMARK(BM_GFPTABLE_Medium_Exponentiation)
     ->Args({127})
     ->Unit(benchmark::kNanosecond);
 
-// Large prime field benchmarks - using specific large primes
 BENCHMARK(BM_GFP_Large_Addition)
     ->Args({131})
     ->Args({179})

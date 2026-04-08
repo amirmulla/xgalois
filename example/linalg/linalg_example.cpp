@@ -1,8 +1,4 @@
-/**
- * @file linalg_example.cpp
- * @brief Examples for linear algebra operations over Galois fields using direct
- * constructors
- */
+
 
 #include <iostream>
 #include <memory>
@@ -16,7 +12,6 @@
 
 using namespace xg;
 
-// Helper function to print a field element
 template <typename ElementType>
 std::string ElementToString(const ElementType& element) {
   std::stringstream ss;
@@ -29,7 +24,6 @@ int main() {
   std::cout << "===============================\n";
   std::cout << "This example uses direct field constructors (NO factory)\n";
 
-  // Create fields using direct constructors
   std::cout << "\n=== Creating Fields for Linear Algebra Examples ===\n";
 
   auto gf7_field = std::make_shared<GFP<uint8_t>>(7);
@@ -41,20 +35,16 @@ int main() {
   auto gf11_field = std::make_shared<GFP<uint8_t>>(11);
   std::cout << "Created GF(11) using direct GFP constructor\n";
 
-  // Linear algebra over GF(7)
   std::cout << "\n=== Linear Algebra over GF(7) ===\n";
 
-  // Create field element type for convenience
   using Element7 = GaloisFieldElementBase<GFP<uint8_t>>;
 
-  // Create a 3x3 matrix over GF(7)
   std::cout << "Creating a 3x3 matrix over GF(7):\n";
   std::vector<std::vector<Element7>> matrix_data = {
       {Element7(1, gf7_field), Element7(2, gf7_field), Element7(3, gf7_field)},
       {Element7(4, gf7_field), Element7(5, gf7_field), Element7(6, gf7_field)},
       {Element7(0, gf7_field), Element7(1, gf7_field), Element7(2, gf7_field)}};
 
-  // Display the matrix
   std::cout << "Matrix A:\n";
   for (size_t i = 0; i < matrix_data.size(); ++i) {
     std::cout << "  [ ";
@@ -65,14 +55,12 @@ int main() {
     std::cout << " ]\n";
   }
 
-  // Create another 3x3 matrix
   std::cout << "\nCreating another 3x3 matrix over GF(7):\n";
   std::vector<std::vector<Element7>> matrix_data2 = {
       {Element7(2, gf7_field), Element7(0, gf7_field), Element7(1, gf7_field)},
       {Element7(1, gf7_field), Element7(3, gf7_field), Element7(2, gf7_field)},
       {Element7(4, gf7_field), Element7(1, gf7_field), Element7(5, gf7_field)}};
 
-  // Display the second matrix
   std::cout << "Matrix B:\n";
   for (size_t i = 0; i < matrix_data2.size(); ++i) {
     std::cout << "  [ ";
@@ -83,7 +71,6 @@ int main() {
     std::cout << " ]\n";
   }
 
-  // Matrix addition
   std::cout << "\n=== Matrix Addition ===\n";
   std::vector<std::vector<Element7>> sum_matrix(
       3, std::vector<Element7>(3, Element7(0, gf7_field)));
@@ -104,7 +91,6 @@ int main() {
     std::cout << " ]\n";
   }
 
-  // Matrix multiplication
   std::cout << "\n=== Matrix Multiplication ===\n";
   std::vector<std::vector<Element7>> product_matrix(
       3, std::vector<Element7>(3, Element7(0, gf7_field)));
@@ -129,10 +115,8 @@ int main() {
     std::cout << " ]\n";
   }
 
-  // Vector operations
   std::cout << "\n=== Vector Operations over GF(7) ===\n";
 
-  // Create vectors
   std::vector<Element7> vector1 = {
       Element7(1, gf7_field), Element7(3, gf7_field), Element7(5, gf7_field)};
   std::vector<Element7> vector2 = {
@@ -152,7 +136,6 @@ int main() {
   }
   std::cout << " ]\n";
 
-  // Vector addition
   std::vector<Element7> vector_sum(3, Element7(0, gf7_field));
   for (size_t i = 0; i < 3; ++i) {
     vector_sum[i] = vector1[i] + vector2[i];
@@ -165,14 +148,12 @@ int main() {
   }
   std::cout << " ]\n";
 
-  // Dot product
   Element7 dot_product(0, gf7_field);
   for (size_t i = 0; i < 3; ++i) {
     dot_product = dot_product + (vector1[i] * vector2[i]);
   }
   std::cout << "v1 · v2 = " << ElementToString(dot_product) << "\n";
 
-  // Scalar multiplication
   Element7 scalar(3, gf7_field);
   std::vector<Element7> scaled_vector(3, Element7(0, gf7_field));
   for (size_t i = 0; i < 3; ++i) {
@@ -186,12 +167,10 @@ int main() {
   }
   std::cout << " ]\n";
 
-  // Linear algebra over GF(2)
   std::cout << "\n=== Linear Algebra over GF(2) ===\n";
 
   using Element2 = GaloisFieldElementBase<GF2>;
 
-  // Create a 2x2 matrix over GF(2)
   std::cout << "Creating matrices over GF(2):\n";
   std::vector<std::vector<Element2>> bin_matrix1 = {
       {Element2(1, gf2_field), Element2(0, gf2_field)},
@@ -221,7 +200,6 @@ int main() {
     std::cout << " ]\n";
   }
 
-  // Binary matrix multiplication
   std::vector<std::vector<Element2>> bin_product(
       2, std::vector<Element2>(2, Element2(0, gf2_field)));
 
@@ -245,7 +223,6 @@ int main() {
     std::cout << " ]\n";
   }
 
-  // Identity matrix
   std::cout << "\n=== Identity Matrix ===\n";
   std::vector<std::vector<Element7>> identity(
       3, std::vector<Element7>(3, Element7(0, gf7_field)));
@@ -263,7 +240,6 @@ int main() {
     std::cout << " ]\n";
   }
 
-  // Verify identity property: A * I = A
   std::cout << "\nVerifying A * I = A:\n";
   std::vector<std::vector<Element7>> result(
       3, std::vector<Element7>(3, Element7(0, gf7_field)));

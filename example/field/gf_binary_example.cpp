@@ -1,8 +1,4 @@
-/**
- * @file gf_binary_example.cpp
- * @brief Examples for binary field operations using GF2, GF2X aliases and
- * direct constructors
- */
+
 
 #include <bitset>
 #include <iostream>
@@ -19,14 +15,12 @@ int main() {
   std::cout << "This example uses GF2, GF2X aliases and direct constructors "
                "(NO factory)\n";
 
-  // Create the base binary field GF(2)
   std::cout << "\n=== Creating Base Binary Field GF(2) ===\n";
   auto gf2_field = std::make_shared<GF2>();
   std::cout << "Created GF(2) using GF2 alias\n";
   std::cout << "  Order: " << gf2_field->Order()
             << ", Characteristic: " << gf2_field->Characteristic() << "\n";
 
-  // Demonstrate basic GF(2) operations
   std::cout << "\n=== Operations in GF(2) ===\n";
   uint8_t a = 1, b = 1, c = 0;
   std::cout << "a = " << static_cast<int>(a) << ", b = " << static_cast<int>(b)
@@ -36,38 +30,28 @@ int main() {
   std::cout << "a * b = " << static_cast<int>(gf2_field->Mul(a, b)) << "\n";
   std::cout << "a + c = " << static_cast<int>(gf2_field->Add(a, c)) << "\n";
 
-  // Create binary extension fields using GF2X alias
   std::cout << "\n=== Creating Binary Extension Fields with GF2X Alias ===\n";
 
-  // GF(2^2) using GF2X alias
-  auto gf4_field = std::make_shared<GF2X<uint8_t>>(2);  // Degree 2
+  auto gf4_field = std::make_shared<GF2X<uint8_t>>(2);
   std::cout << "Created GF(2^2) using GF2X<uint8_t> alias\n";
   std::cout << "  Order: " << gf4_field->Order()
             << ", Characteristic: " << gf4_field->Characteristic() << "\n";
 
-  // GF(2^3) using GF2X alias
-  auto gf8_field = std::make_shared<GF2X<uint8_t>>(3);  // Degree 3
+  auto gf8_field = std::make_shared<GF2X<uint8_t>>(3);
   std::cout << "Created GF(2^3) using GF2X<uint8_t> alias\n";
   std::cout << "  Order: " << gf8_field->Order()
             << ", Characteristic: " << gf8_field->Characteristic() << "\n";
 
-  // GF(2^4) using GF2X alias
-  auto gf16_field = std::make_shared<GF2X<uint8_t>>(4);  // Degree 4
+  auto gf16_field = std::make_shared<GF2X<uint8_t>>(4);
   std::cout << "Created GF(2^4) using GF2X<uint8_t> alias\n";
   std::cout << "  Order: " << gf16_field->Order()
             << ", Characteristic: " << gf16_field->Characteristic() << "\n";
 
-  // Demonstrate operations in GF(2^4)
   std::cout << "\n=== Operations in GF(2^4) ===\n";
 
-  // Elements in GF(2^4) represented as polynomials over GF(2)
-  // For example: 3 = 0011₂ represents polynomial x + 1
-  //              5 = 0101₂ represents polynomial x² + 1
-  //              9 = 1001₂ represents polynomial x³ + 1
-
-  uint8_t x = 3;  // x + 1
-  uint8_t y = 5;  // x² + 1
-  uint8_t z = 9;  // x³ + 1
+  uint8_t x = 3;
+  uint8_t y = 5;
+  uint8_t z = 9;
 
   std::cout << "Elements in polynomial representation:\n";
   std::cout << "  x = " << static_cast<int>(x)
@@ -92,12 +76,10 @@ int main() {
   std::cout << "  x^(-1) = " << static_cast<int>(x_inv)
             << " (binary: " << std::bitset<4>(x_inv) << ")\n";
 
-  // Verify multiplicative inverse
   auto verification = gf16_field->Mul(x, x_inv);
   std::cout << "  Verification: x * x^(-1) = " << static_cast<int>(verification)
             << " (should be 1)\n";
 
-  // Demonstrate field properties
   std::cout << "\n=== Field Properties ===\n";
   std::cout << "GF(2^4) characteristics:\n";
   std::cout << "  Extension degree: " << static_cast<int>(gf16_field->Degree())
@@ -105,14 +87,13 @@ int main() {
   std::cout << "  Primitive element: "
             << static_cast<int>(gf16_field->MultiplicativeGenerator()) << "\n";
 
-  // Generate all elements using primitive element
   std::cout << "\n=== All Elements using Primitive Element ===\n";
   auto primitive = gf16_field->MultiplicativeGenerator();
-  uint8_t current = 1;  // Start with 1
+  uint8_t current = 1;
 
   std::cout << "Powers of primitive element " << static_cast<int>(primitive)
             << ":\n";
-  for (int i = 0; i < 15; ++i) {  // 2^4 - 1 = 15 non-zero elements
+  for (int i = 0; i < 15; ++i) {
     std::cout << "  " << static_cast<int>(primitive) << "^" << i << " = "
               << static_cast<int>(current)
               << " (binary: " << std::bitset<4>(current) << ")\n";
