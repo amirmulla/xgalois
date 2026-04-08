@@ -1,6 +1,6 @@
 ---
 Checks: "clang-diagnostic-*,clang-analyzer-*,google-*,performance-*"
 WarningsAsErrors: ""
-HeaderFilterRegex: ".*"
+HeaderFilterRegex: ".*xgalois.*"
 FormatStyle: google
 ...
