@@ -38,7 +38,6 @@ PolynomialDenseExtendedGcd(const PolynomialDense<GaloisField> &a,
   PolynomialType kGfOnePoly(std::vector<ElementType>{kGfOneElem}, var_name);
 
   if (b.Degree() == -1) {
-
     PolynomialType monic_a = a;
     if (a.Degree() != -1 && a[a.Degree()] != kGfOneElem) {
       ElementType inv_lc = a[a.Degree()].Inv();
@@ -51,20 +50,15 @@ PolynomialDenseExtendedGcd(const PolynomialDense<GaloisField> &a,
   }
 
   if (a.Degree() == -1) {
-
     PolynomialType monic_b = b;
     if (b.Degree() != -1 && b[b.Degree()] != kGfOneElem) {
       ElementType inv_lc = b[b.Degree()].Inv();
       monic_b = b * inv_lc;
       return {std::move(monic_b),
-              {kGfZeroPoly,
-               PolynomialType(std::vector<ElementType>{inv_lc},
-                              b.GetVariable())}};
+              {kGfZeroPoly, PolynomialType(std::vector<ElementType>{inv_lc},
+                                           b.GetVariable())}};
     }
-    return {
-        std::move(monic_b),
-        {kGfZeroPoly,
-         kGfOnePoly}};
+    return {std::move(monic_b), {kGfZeroPoly, kGfOnePoly}};
 
     PolynomialType one_poly_for_b(std::vector<ElementType>{kGfOneElem},
                                   b.GetVariable());
@@ -105,7 +99,6 @@ PolynomialDenseExtendedGcd(const PolynomialDense<GaloisField> &a,
       t0 *= inv_leading_coeff;
     }
   } else {
-
     s0 = kGfZeroPoly;
     t0 = kGfZeroPoly;
   }
@@ -114,7 +107,7 @@ PolynomialDenseExtendedGcd(const PolynomialDense<GaloisField> &a,
 }
 
 template <typename GaloisField>
-static typename GaloisField::element_type ExtractCoefficient(
+static inline typename GaloisField::element_type ExtractCoefficient(
     const std::string &term) {
   using ElementType = typename GaloisField::element_type;
   if (term.find('x') == std::string::npos &&
@@ -151,8 +144,7 @@ static typename GaloisField::element_type ExtractCoefficient(
   }
 }
 
-static int ExtractDegree(const std::string &term) {
-
+static inline int ExtractDegree(const std::string &term) {
   size_t x_pos = term.find('x');
   if (x_pos == std::string::npos) {
     x_pos = term.find('X');
@@ -163,7 +155,6 @@ static int ExtractDegree(const std::string &term) {
 
   size_t caret_pos = term.find('^', x_pos);
   if (caret_pos == std::string::npos) {
-
     return 1;
   }
 
@@ -286,7 +277,6 @@ template <typename GaloisField>
 PolynomialDense<GaloisField> ParsePolynomial(
     const std::shared_ptr<GaloisField> &base_field, const std::string &poly_str,
     const std::string &variable_name) {
-
   if (variable_name == "x") {
     return ParsePolynomial(base_field, poly_str);
   }
@@ -341,7 +331,6 @@ bool IsIrreducible(const PolynomialDense<GaloisField> &poly) {
   PolynomialType x_poly(x_coeffs, var_name);
 
   if (n == 2) {
-
     for (uint64_t i = 0; i < q; ++i) {
       ElementType test_val(i, field);
       std::vector<ElementType> test_coeffs = {test_val};
@@ -367,9 +356,7 @@ bool IsIrreducible(const PolynomialDense<GaloisField> &poly) {
   PolynomialType current_poly = x_poly;
 
   for (int i = 1; i <= n / 2; ++i) {
-
     for (uint64_t j = 0; j < q; ++j) {
-
       PolynomialType temp = current_poly * current_poly;
       current_poly = temp.DivRem(poly).second;
     }
@@ -388,7 +375,6 @@ bool IsIrreducible(const PolynomialDense<GaloisField> &poly) {
 
 template <typename GaloisField>
 uint64_t BinaryPolynomialToUint(const PolynomialDense<GaloisField> &poly) {
-
   if (poly.Degree() >= 64) {
     throw std::invalid_argument("Polynomial degree (" +
                                 std::to_string(poly.Degree()) +
@@ -409,7 +395,7 @@ uint64_t BinaryPolynomialToUint(const PolynomialDense<GaloisField> &poly) {
   return result;
 }
 
-}
-}
+}  // namespace utils
+}  // namespace xg
 
 #endif

@@ -186,7 +186,6 @@ template <typename GaloisField>
 typename AbstractLinearCode<GaloisField>::matrix_type
 AbstractLinearCode<GaloisField>::ComputeParityCheckFromGenerator(
     const matrix_type& generator) const {
-
   size_t k = generator.shape(0);
   size_t n = generator.shape(1);
 
@@ -215,7 +214,6 @@ template <typename GaloisField>
 typename AbstractLinearCode<GaloisField>::matrix_type
 AbstractLinearCode<GaloisField>::ComputeGeneratorFromParityCheck(
     const matrix_type& parity_check) const {
-
   size_t n_minus_k = parity_check.shape(0);
   size_t n = parity_check.shape(1);
   size_t k = n - n_minus_k;
@@ -235,7 +233,7 @@ AbstractLinearCode<GaloisField>::ComputeGeneratorFromParityCheck(
   return G;
 }
 
-}
-}
+}  // namespace coding
+}  // namespace xg
 
 #endif

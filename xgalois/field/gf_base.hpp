@@ -7,13 +7,7 @@
 
 namespace xg {
 
-enum class FieldRepresentation : std::uint8_t {
-  INT,
-  HEX,
-  POW,
-  LOG,
-  POLY
-};
+enum class FieldRepresentation : std::uint8_t { INT, HEX, POW, LOG, POLY };
 
 template <typename ElementType>
 class GaloisFieldBase {
@@ -69,6 +63,6 @@ inline std::ostream &operator<<(std::ostream &os,
   return os;
 };
 
-}
+}  // namespace xg
 
 #endif

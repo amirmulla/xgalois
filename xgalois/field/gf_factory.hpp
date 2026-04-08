@@ -5,7 +5,6 @@
 
 #include <cmath>
 #include <cstdint>
-
 #include <memory>
 #include <stdexcept>
 #include <string>
@@ -77,7 +76,6 @@ GaloisFieldElementVariant FetchElement(const GaloisFieldVariant &field_variant,
               "Extension fields require polynomial element creation - use "
               "field methods directly");
         } else {
-
           using ElementType = typename FieldType::element_type;
           ElementType element_value = static_cast<ElementType>(value);
           return GaloisFieldElementBase<FieldType>(element_value, field_ptr);
@@ -122,7 +120,6 @@ GaloisFieldElementStrictVariant FetchElementStrict(
               "Extension fields require polynomial element creation - use "
               "field methods directly");
         } else {
-
           using ElementType = typename FieldType::element_type;
           ElementType element_value = static_cast<ElementType>(value);
           return GaloisFieldElement<FieldType>(element_value, field_ptr);
@@ -149,7 +146,6 @@ GaloisFieldElement<FieldType> FetchElement(
 
 class GaloisFieldFactory {
  public:
-
   static GaloisFieldVariant Create(std::pair<uint64_t, uint64_t> prime_exp,
                                    const std::string &representation = "int",
                                    const std::string &modulus = "",
@@ -192,7 +188,6 @@ class GaloisFieldFactory {
                                    const std::string &impl = "auto",
                                    bool check_irreducible = false,
                                    bool prime_testing = false) {
-
     if (order < 2) {
       throw std::invalid_argument("Order of finite field must be at least 2");
     }
@@ -212,7 +207,6 @@ class GaloisFieldFactory {
   }
 
  private:
-
   static GaloisFieldVariant CreatePrimeField(
       uint64_t prime, const std::string &representation = "int",
       bool prime_testing = false) {
@@ -281,7 +275,6 @@ class GaloisFieldFactory {
   static GaloisFieldVariant CreateBinaryField(
       const std::string &representation = "int",
       const std::string &impl = "auto") {
-
     auto field = std::make_shared<GaloisFieldBinary>();
     field->SetRepresentation(utils::ConvertRepresentation(representation));
     return field;
@@ -304,7 +297,6 @@ class GaloisFieldFactory {
     }
 
     if (impl == "auto") {
-
       if (exponent <= 7) {
         return CreateBinaryExtensionFieldTyped<uint8_t>(
             exponent, representation, modulus, variable_name, "log_opt",
@@ -343,25 +335,21 @@ class GaloisFieldFactory {
     uint8_t m = static_cast<uint8_t>(exponent);
 
     if (impl == "standard" || impl == "poly") {
-
       auto field = std::make_shared<GaloisFieldBinaryExtension<ElementType>>(
           m, representation, modulus, variable_name, check_irreducible);
       return field;
 
     } else if (impl == "log" || impl == "log_tables") {
-
       auto field = std::make_shared<GFBELogTables<ElementType>>(
           m, representation, modulus, variable_name, check_irreducible);
       return field;
 
     } else if (impl == "log_opt" || impl == "log_optimized") {
-
       auto field = std::make_shared<GFBELogTablesOpt<ElementType>>(
           m, representation, modulus, variable_name, check_irreducible);
       return field;
 
     } else if (impl == "zech" || impl == "zech_log") {
-
       if constexpr (std::is_same_v<ElementType, uint32_t>) {
         auto field = std::make_shared<GFBEZechLogTables<uint32_t>>(
             m, representation, modulus, variable_name, check_irreducible);
@@ -403,6 +391,6 @@ GaloisFieldVariant GF(uint64_t order, const std::string &representation = "int",
                                     prime_testing);
 }
 
-}
+}  // namespace xg
 
 #endif

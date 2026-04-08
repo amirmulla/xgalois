@@ -140,7 +140,6 @@ class StaticErrorRateChannel : public Channel<GaloisField> {
   }
 
   VectorType transmit_unsafe(const VectorType &message) override {
-
     size_t num_errors;
     if (min_errors_ == max_errors_) {
       num_errors = min_errors_;
@@ -216,7 +215,6 @@ class ErrorErasureChannel : public Channel<GaloisField> {
 
   std::pair<VectorType, xt::xarray<bool>> transmit_unsafe_with_erasures(
       const VectorType &message) {
-
     size_t num_errors =
         (min_errors_ == max_errors_)
             ? min_errors_
@@ -332,7 +330,6 @@ class QarySymmetricChannel : public Channel<GaloisField> {
 
     for (size_t i = 0; i < message.size(); ++i) {
       if (dist(gen) < epsilon_) {
-
         ElementType new_symbol;
         do {
           new_symbol = ElementType(this->field_->Random(), this->field_);
@@ -404,7 +401,7 @@ std::shared_ptr<QarySymmetricChannel<GaloisField>> CreateQarySymmetricChannel(
                                                              epsilon);
 }
 
-}
-}
+}  // namespace channels
+}  // namespace xg
 
 #endif

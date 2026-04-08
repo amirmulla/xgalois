@@ -56,5 +56,5 @@ ElementType ParsePowerString(const std::string &pow_str,
   return field.Pow(generator, exp);
 }
 
-}
-}
+}  // namespace utils
+}  // namespace xg

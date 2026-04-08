@@ -23,7 +23,6 @@ class SyndromeDecoder : public Decoder<GaloisField> {
   explicit SyndromeDecoder(const AbstractCode<GaloisField>* code,
                            size_t max_errors = 1)
       : Decoder<GaloisField>(code), max_errors_(max_errors) {
-
     linear_code_ = dynamic_cast<const AbstractLinearCode<GaloisField>*>(code);
     if (!linear_code_) {
       throw std::invalid_argument("SyndromeDecoder requires a linear code");
@@ -73,8 +72,7 @@ class SyndromeDecoder : public Decoder<GaloisField> {
   const AbstractLinearCode<GaloisField>* linear_code_;
   size_t max_errors_;
 
-  std::map<std::vector<element_type>, codeword_type>
-      syndrome_table_;
+  std::map<std::vector<element_type>, codeword_type> syndrome_table_;
 
   void BuildSyndromeTable() {
     auto field = this->code_->Field();
@@ -98,9 +96,7 @@ class SyndromeDecoder : public Decoder<GaloisField> {
                                      const matrix_type& parity_check) {
     auto field = this->code_->Field();
     if (weight == 0) {
-
-      codeword_type error_pattern =
-          xg::linalg::zeros<GaloisField>({n}, field);
+      codeword_type error_pattern = xg::linalg::zeros<GaloisField>({n}, field);
       auto syndrome = ComputeSyndrome(error_pattern, parity_check);
       syndrome_table_[syndrome] = error_pattern;
       return;
@@ -115,7 +111,6 @@ class SyndromeDecoder : public Decoder<GaloisField> {
                                  std::vector<size_t>& positions,
                                  const matrix_type& parity_check) {
     if (remaining_weight == 0) {
-
       GenerateFieldCombinations(n, q, positions, 0, std::vector<element_type>(),
                                 parity_check);
       return;
@@ -136,9 +131,7 @@ class SyndromeDecoder : public Decoder<GaloisField> {
                                  const matrix_type& parity_check) {
     auto field = this->code_->Field();
     if (pos_index == positions.size()) {
-
-      codeword_type error_pattern =
-          xg::linalg::zeros<GaloisField>({n}, field);
+      codeword_type error_pattern = xg::linalg::zeros<GaloisField>({n}, field);
       for (size_t i = 0; i < positions.size(); ++i) {
         error_pattern(positions[i]) = field_values[i];
       }
@@ -171,8 +164,7 @@ class SyndromeDecoder : public Decoder<GaloisField> {
     return syndrome;
   }
 
-  codeword_type LookupErrorPattern(
-      const vector_type& syndrome) const {
+  codeword_type LookupErrorPattern(const vector_type& syndrome) const {
     std::vector<element_type> syndrome_vec(syndrome.size());
     for (size_t i = 0; i < syndrome.size(); ++i) {
       syndrome_vec[i] = syndrome(i);
@@ -188,7 +180,7 @@ class SyndromeDecoder : public Decoder<GaloisField> {
   }
 };
 
-}
-}
+}  // namespace coding
+}  // namespace xg
 
 #endif

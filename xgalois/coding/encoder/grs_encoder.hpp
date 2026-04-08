@@ -20,7 +20,6 @@ class GRSEncoder : public Encoder<GaloisField> {
 
   explicit GRSEncoder(const AbstractCode<GaloisField>* code)
       : Encoder<GaloisField>(code) {
-
     grs_code_ =
         dynamic_cast<const GeneralizedReedSolomonCode<GaloisField>*>(code);
     if (!grs_code_) {
@@ -114,12 +113,10 @@ class GRSEncoder : public Encoder<GaloisField> {
     xt::xarray<GaloisField> result_coeffs = xt::zeros<GaloisField>({n});
 
     for (size_t i = 0; i < n; ++i) {
-
       xt::xarray<GaloisField> basis_coeffs = xt::ones<GaloisField>({1});
 
       for (size_t j = 0; j < n; ++j) {
         if (i != j) {
-
           element_type denominator = field->Sub(points(i), points(j));
           element_type inv_denom = field->Inv(denominator);
 
@@ -156,7 +153,7 @@ class GRSEncoder : public Encoder<GaloisField> {
   }
 };
 
-}
-}
+}  // namespace coding
+}  // namespace xg
 
 #endif

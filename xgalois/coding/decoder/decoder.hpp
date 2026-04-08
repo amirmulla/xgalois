@@ -37,7 +37,7 @@ class Decoder {
   const AbstractCode<GaloisField>* code_;
 };
 
-}
-}
+}  // namespace coding
+}  // namespace xg
 
 #endif

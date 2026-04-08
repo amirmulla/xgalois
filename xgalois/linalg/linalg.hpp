@@ -107,8 +107,6 @@ auto vdot(const garray<GaloisField> &a, const garray<GaloisField> &b) {
 
 template <typename GaloisField>
 auto outer(const garray<GaloisField> &a, const garray<GaloisField> &b) {
-  using ElementType = GaloisFieldElement<GaloisField>;
-
   if (a.dimension() != 1 || b.dimension() != 1) {
     throw std::invalid_argument("outer product requires 1-D arrays");
   }
@@ -135,7 +133,6 @@ auto matrix_power(const garray<GaloisField> &a, int n) {
   auto field = a(0, 0).Field();
 
   if (n == 0) {
-
     auto field = a(0, 0).Field();
     garray<GaloisField> result({size, size});
 
@@ -153,7 +150,6 @@ auto matrix_power(const garray<GaloisField> &a, int n) {
   }
 
   if (n < 0) {
-
     throw std::invalid_argument("Negative matrix powers not yet implemented");
   }
 
@@ -213,8 +209,7 @@ auto row_echelon(const garray<GaloisField> &matrix_input) {
     return R;
   }
 
-  auto field =
-      R(0, 0).Field();
+  auto field = R(0, 0).Field();
   std::size_t rows = R.shape(0);
   std::size_t cols = R.shape(1);
   std::size_t lead = 0;
@@ -227,8 +222,7 @@ auto row_echelon(const garray<GaloisField> &matrix_input) {
       while (i < rows && R(i, lead).Value() == field->AdditiveIdentity()) {
         i++;
       }
-      if (i <
-          rows) {
+      if (i < rows) {
         break;
       }
 
@@ -247,16 +241,14 @@ auto row_echelon(const garray<GaloisField> &matrix_input) {
 
     ElementType pivot_val = R(r, lead);
 
-    if (pivot_val.Value() !=
-        field->MultiplicativeIdentity()) {
+    if (pivot_val.Value() != field->MultiplicativeIdentity()) {
       for (std::size_t j = lead; j < cols; ++j) {
         R(r, j) = R(r, j) / pivot_val;
       }
     }
 
     for (std::size_t k = r + 1; k < rows; ++k) {
-      if (R(k, lead).Value() !=
-          field->AdditiveIdentity()) {
+      if (R(k, lead).Value() != field->AdditiveIdentity()) {
         ElementType factor = R(k, lead);
         for (std::size_t j = lead; j < cols; ++j) {
           R(k, j) = R(k, j) - factor * R(r, j);
@@ -280,13 +272,11 @@ auto rref(const garray<GaloisField> &matrix_input) {
     return R;
   }
 
-  auto field =
-      R(0, 0).Field();
+  auto field = R(0, 0).Field();
   std::size_t rows = R.shape(0);
   std::size_t cols = R.shape(1);
 
   for (int r = static_cast<int>(rows) - 1; r >= 0; --r) {
-
     std::size_t pivot_col = cols;
     for (std::size_t j = 0; j < cols; ++j) {
       if (R(r, j).Value() == field->MultiplicativeIdentity()) {
@@ -300,7 +290,6 @@ auto rref(const garray<GaloisField> &matrix_input) {
     }
 
     if (pivot_col < cols) {
-
       for (int i = r - 1; i >= 0; --i) {
         if (R(i, pivot_col).Value() != field->AdditiveIdentity()) {
           ElementType factor = R(i, pivot_col);
@@ -348,7 +337,6 @@ auto det(const garray<GaloisField> &a) {
   ElementType det_result(field->MultiplicativeIdentity(), field);
 
   for (std::size_t i = 0; i < n; ++i) {
-
     std::size_t pivot_row = i;
     for (std::size_t k = i + 1; k < n; ++k) {
       if (matrix(k, i).Value() != field->AdditiveIdentity()) {
@@ -387,8 +375,6 @@ auto det(const garray<GaloisField> &a) {
 
 template <typename GaloisField>
 std::size_t matrix_rank(const garray<GaloisField> &a) {
-  using ElementType = GaloisFieldElement<GaloisField>;
-
   if (a.dimension() != 2) {
     throw std::invalid_argument("matrix_rank requires a 2-D array (matrix)");
   }
@@ -445,7 +431,6 @@ auto solve(const garray<GaloisField> &a, const garray<GaloisField> &b) {
   }
 
   for (std::size_t i = 0; i < n; ++i) {
-
     std::size_t pivot_row = i;
     for (std::size_t k = i + 1; k < n; ++k) {
       if (augmented(k, i).Value() != field->AdditiveIdentity()) {
@@ -515,7 +500,6 @@ auto inv(const garray<GaloisField> &a) {
   }
 
   for (std::size_t i = 0; i < n; ++i) {
-
     std::size_t pivot_row = i;
     for (std::size_t k = i + 1; k < n; ++k) {
       if (augmented(k, i).Value() != field->AdditiveIdentity()) {
@@ -621,7 +605,7 @@ auto zeros(const std::vector<std::size_t> &shape,
   return result;
 }
 
-}
-}
+}  // namespace linalg
+}  // namespace xg
 
 #endif

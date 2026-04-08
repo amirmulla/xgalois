@@ -30,10 +30,10 @@ class GeneralizedReedSolomonCode : public AbstractLinearCode<GaloisField> {
   using vector_type = xt::xarray<GaloisField>;
   using polynomial_type = xg::PolynomialDense<GaloisField>;
 
-  GeneralizedReedSolomonCode(
-    std::shared_ptr<GaloisField> field,
-      const xt::xarray<GaloisField>& evaluation_points,
-      const xt::xarray<GaloisField>& column_multipliers, size_t dimension)
+  GeneralizedReedSolomonCode(std::shared_ptr<GaloisField> field,
+                             const xt::xarray<GaloisField>& evaluation_points,
+                             const xt::xarray<GaloisField>& column_multipliers,
+                             size_t dimension)
       : AbstractLinearCode<GaloisField>(evaluation_points.size(), dimension,
                                         "GRSEncoder", "GRSDecoder",
                                         Metric::HAMMING),
@@ -80,8 +80,8 @@ class GeneralizedReedSolomonCode : public AbstractLinearCode<GaloisField> {
   }
 
   static std::unique_ptr<GeneralizedReedSolomonCode<GaloisField>> ReedSolomon(
-      std::shared_ptr<GaloisField> field, size_t length,
-      size_t dimension, const element_type& primitive_element) {
+      std::shared_ptr<GaloisField> field, size_t length, size_t dimension,
+      const element_type& primitive_element) {
     xt::xarray<GaloisField> evaluation_points =
         xt::zeros<GaloisField>({length});
     xt::xarray<GaloisField> multipliers = xt::ones<GaloisField>({length});
@@ -96,9 +96,7 @@ class GeneralizedReedSolomonCode : public AbstractLinearCode<GaloisField> {
         field, evaluation_points, multipliers, dimension);
   }
 
-  std::shared_ptr<GaloisField> Field() const override {
-    return field_;
-  }
+  std::shared_ptr<GaloisField> Field() const override { return field_; }
 
   matrix_type GeneratorMatrix() const override { return generator_matrix_; }
 
@@ -107,12 +105,10 @@ class GeneralizedReedSolomonCode : public AbstractLinearCode<GaloisField> {
   }
 
   size_t MinimumDistance() const override {
-
     return this->length_ - this->dimension_ + 1;
   }
 
   std::unique_ptr<AbstractLinearCode<GaloisField>> DualCode() const override {
-
     return ComputeDualCode();
   }
 
@@ -147,7 +143,6 @@ class GeneralizedReedSolomonCode : public AbstractLinearCode<GaloisField> {
   }
 
   polynomial_type DecodeToPolynomial(const codeword_type& received_word) const {
-
     auto decoder = this->GetDecoder();
     auto corrected = decoder->DecodeToCode(received_word);
 
@@ -212,12 +207,10 @@ class GeneralizedReedSolomonCode : public AbstractLinearCode<GaloisField> {
   }
 
   xt::xarray<GaloisField> ComputeDualMultipliers() const {
-
     xt::xarray<GaloisField> dual_multipliers =
         xt::zeros<GaloisField>({this->length_});
 
     for (size_t j = 0; j < this->length_; ++j) {
-
       element_type product = element_type(1);
       for (size_t i = 0; i < this->length_; ++i) {
         if (i != j) {
@@ -243,7 +236,6 @@ class GeneralizedReedSolomonCode : public AbstractLinearCode<GaloisField> {
   }
 
   polynomial_type InterpolateFromCodeword(const codeword_type& codeword) const {
-
     xt::xarray<GaloisField> values = xt::zeros<GaloisField>({this->length_});
 
     for (size_t i = 0; i < this->length_; ++i) {
@@ -272,12 +264,10 @@ class GeneralizedReedSolomonCode : public AbstractLinearCode<GaloisField> {
     xt::xarray<GaloisField> result_coeffs = xt::zeros<GaloisField>({n});
 
     for (size_t i = 0; i < n; ++i) {
-
       xt::xarray<GaloisField> basis_coeffs = xt::ones<GaloisField>({1});
 
       for (size_t j = 0; j < n; ++j) {
         if (i != j) {
-
           element_type denominator = field_->Sub(points(i), points(j));
           element_type inv_denom = field_->Inv(denominator);
 
@@ -314,7 +304,6 @@ class GeneralizedReedSolomonCode : public AbstractLinearCode<GaloisField> {
   }
 
   void RegisterEncodersAndDecoders() {
-
     this->RegisterEncoder(
         "GRSEncoder", [](const AbstractCode<GaloisField>* code) {
           return std::make_unique<GRSEncoder<GaloisField>>(code);
@@ -332,7 +321,7 @@ class GeneralizedReedSolomonCode : public AbstractLinearCode<GaloisField> {
   }
 };
 
-}
-}
+}  // namespace coding
+}  // namespace xg
 
 #endif

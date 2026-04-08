@@ -74,7 +74,6 @@ class PrimeFactorsDatabase : public DatabaseInterface {
     std::ifstream db_file(get_db_path());
     std::string line;
     while (std::getline(db_file, line)) {
-
       if (line.empty() || line.substr(0, 2) == "//") {
         continue;
       }
@@ -83,8 +82,7 @@ class PrimeFactorsDatabase : public DatabaseInterface {
       std::string segment;
       std::vector<std::string> segments;
 
-      while (std::getline(ss, segment,
-                          ',')) {
+      while (std::getline(ss, segment, ',')) {
         segments.push_back(segment);
       }
 
@@ -108,13 +106,11 @@ class PrimeFactorsDatabase : public DatabaseInterface {
 
         std::stringstream factors_ss(segments[1]);
         std::string factor_pair_str;
-        while (std::getline(factors_ss, factor_pair_str,
-                            ';')) {
+        while (std::getline(factors_ss, factor_pair_str, ';')) {
           std::stringstream factor_pair_ss(factor_pair_str);
           std::string factor_str, mult_str;
           if (std::getline(factor_pair_ss, factor_str, ':') &&
-              std::getline(factor_pair_ss, mult_str,
-                           ':')) {
+              std::getline(factor_pair_ss, mult_str, ':')) {
             try {
               result.factors.push_back(std::stoll(factor_str));
               result.multiplicities.push_back(std::stoi(mult_str));
@@ -167,7 +163,6 @@ class IrreduciblePolyDatabase : public DatabaseInterface {
     std::ifstream db_file(get_db_path());
     std::string line;
     while (std::getline(db_file, line)) {
-
       if (line.empty() || line.substr(0, 2) == "//") {
         continue;
       }
@@ -189,8 +184,7 @@ class IrreduciblePolyDatabase : public DatabaseInterface {
         IrreduciblePolyResult result;
         std::stringstream degrees_ss(segments[2]);
         std::string deg_str;
-        while (std::getline(degrees_ss, deg_str,
-                            ';')) {
+        while (std::getline(degrees_ss, deg_str, ';')) {
           try {
             result.nonzero_degrees.push_back(std::stoi(deg_str));
           } catch (const std::invalid_argument& ia) {
@@ -203,8 +197,7 @@ class IrreduciblePolyDatabase : public DatabaseInterface {
 
         std::stringstream coeffs_ss(segments[3]);
         std::string coeff_str;
-        while (std::getline(coeffs_ss, coeff_str,
-                            ';')) {
+        while (std::getline(coeffs_ss, coeff_str, ';')) {
           try {
             result.nonzero_coeffs.push_back(std::stoi(coeff_str));
           } catch (const std::invalid_argument& ia) {
@@ -251,7 +244,6 @@ class ConwayPolyDatabase : public DatabaseInterface {
     std::ifstream db_file(get_db_path());
     std::string line;
     while (std::getline(db_file, line)) {
-
       if (line.empty() || line.substr(0, 2) == "//") {
         continue;
       }
@@ -273,8 +265,7 @@ class ConwayPolyDatabase : public DatabaseInterface {
         ConwayPolyResult result;
         std::stringstream degrees_ss(segments[2]);
         std::string deg_str;
-        while (std::getline(degrees_ss, deg_str,
-                            ';')) {
+        while (std::getline(degrees_ss, deg_str, ';')) {
           try {
             result.nonzero_degrees.push_back(std::stoi(deg_str));
           } catch (const std::invalid_argument& ia) {
@@ -287,8 +278,7 @@ class ConwayPolyDatabase : public DatabaseInterface {
 
         std::stringstream coeffs_ss(segments[3]);
         std::string coeff_str;
-        while (std::getline(coeffs_ss, coeff_str,
-                            ';')) {
+        while (std::getline(coeffs_ss, coeff_str, ';')) {
           try {
             result.nonzero_coeffs.push_back(std::stoi(coeff_str));
           } catch (const std::invalid_argument& ia) {
@@ -346,7 +336,6 @@ static std::string ConvertPolyResultToString(const std::vector<int>& degrees,
     }
 
     if (characteristic == 2) {
-
       if (degree == 0) {
         result += "1";
       } else if (degree == 1) {
@@ -355,7 +344,6 @@ static std::string ConvertPolyResultToString(const std::vector<int>& degrees,
         result += "x^" + std::to_string(degree);
       }
     } else {
-
       if (coeff != 1 || degree == 0) {
         result += std::to_string(coeff);
       }
@@ -404,7 +392,7 @@ inline std::string GetConwayPolynomial(int characteristic, int degree) {
   }
 }
 
-}
-}
+}  // namespace databases
+}  // namespace xg
 
 #endif

@@ -3,11 +3,9 @@
 
 #include "xgalois/coding/abstract_code.hpp"
 #include "xgalois/coding/abstract_linear_code.hpp"
-
+#include "xgalois/coding/cyclic_code.hpp"
 #include "xgalois/coding/decoder/decoder.hpp"
 #include "xgalois/coding/encoder/encoder.hpp"
-
-#include "xgalois/coding/cyclic_code.hpp"
 #include "xgalois/coding/grs.hpp"
 
 namespace xg {
@@ -15,17 +13,15 @@ namespace coding {
 
 template <typename GaloisField>
 std::unique_ptr<GeneralizedReedSolomonCode<GaloisField>> CreateReedSolomonCode(
-    std::shared_ptr<GaloisField> field, size_t length,
-    size_t dimension, const xg::GaloisFieldElement<GaloisField>& primitive_element) {
+    std::shared_ptr<GaloisField> field, size_t length, size_t dimension,
+    const xg::GaloisFieldElement<GaloisField>& primitive_element) {
   return GeneralizedReedSolomonCode<GaloisField>::ReedSolomon(
       field, length, dimension, primitive_element);
 }
 
 template <typename GaloisField>
 std::unique_ptr<GeneralizedReedSolomonCode<GaloisField>> CreateReedSolomonCode(
-    std::shared_ptr<GaloisField> field, size_t length,
-    size_t dimension) {
-
+    std::shared_ptr<GaloisField> field, size_t length, size_t dimension) {
   xg::GaloisFieldElement<GaloisField> primitive_element(2, field);
   return CreateReedSolomonCode(field, length, dimension, primitive_element);
 }
@@ -115,7 +111,7 @@ bool IsPerfectCode(const AbstractLinearCode<GaloisField>& code) {
          static_cast<size_t>(std::pow(q, n));
 }
 
-}
-}
+}  // namespace coding
+}  // namespace xg
 
 #endif

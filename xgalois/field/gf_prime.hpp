@@ -1,10 +1,9 @@
 #ifndef XGALOIS_FIELD_GF_PRIME_HPP_
 #define XGALOIS_FIELD_GF_PRIME_HPP_
 
+#include <algorithm>
 #include <cassert>
 #include <cstdint>
-
-#include <algorithm>
 #include <iostream>
 #include <random>
 #include <sstream>
@@ -26,7 +25,6 @@ class GaloisFieldPrime : public GaloisFieldBase<ElementType> {
       "ElementType must be at most 32 bits to prevent overflow issues.");
 
  public:
-
   explicit GaloisFieldPrime(ElementType prime, const std::string &rep = "int",
                             bool prime_testing = false)
       : p_(prime), representation_(utils::ConvertRepresentation(rep)) {
@@ -50,7 +48,6 @@ class GaloisFieldPrime : public GaloisFieldBase<ElementType> {
     if (this->p_ > 2) {
       this->generator_ = this->MultiplicativeGenerator();
     } else if (this->p_ == 2) {
-
       this->generator_ = static_cast<ElementType>(1);
     }
   }
@@ -72,13 +69,11 @@ class GaloisFieldPrime : public GaloisFieldBase<ElementType> {
   }
 
   ElementType SetElementValue(const ElementType &value) const override {
-
     return static_cast<ElementType>(static_cast<uint64_t>(value) %
                                     static_cast<uint64_t>(p_));
   }
 
   ElementType SetElementValue(const std::string &value_str) const override {
-
     if (value_str.find("g^") == 0) {
       try {
         ElementType value = utils::ParsePowerString(value_str, *this);
@@ -151,7 +146,6 @@ class GaloisFieldPrime : public GaloisFieldBase<ElementType> {
     uint32_t current_exp = exp;
 
     if (current_base == 0) {
-
       return (exp == 0) ? static_cast<ElementType>(1)
                         : static_cast<ElementType>(0);
     }
@@ -226,7 +220,6 @@ class GaloisFieldPrime : public GaloisFieldBase<ElementType> {
   }
 
   ElementType MultiplicativeGenerator() const override {
-
     if (this->generator_ != 0 && this->p_ > 2) {
       return this->generator_;
     }
@@ -332,7 +325,6 @@ class GaloisFieldPrime : public GaloisFieldBase<ElementType> {
             uint64_t power = Log(a, this->generator_);
             os << "g^" << power;
           } catch (const std::domain_error &) {
-
             os << static_cast<uint64_t>(a);
           }
         }
@@ -366,7 +358,6 @@ class GaloisFieldPrime : public GaloisFieldBase<ElementType> {
   ElementType p_;
   FieldRepresentation representation_;
   ElementType generator_;
-
 };
 
 template <typename ElementType = uint32_t>
@@ -376,7 +367,6 @@ class GaloisFieldPrimeTable : public GaloisFieldPrime<ElementType> {
       "ElementType must be at most 32 bits to prevent overflow issues.");
 
  public:
-
   explicit GaloisFieldPrimeTable(ElementType prime,
                                  const std::string &rep = "int",
                                  bool prime_testing = false)
@@ -385,9 +375,7 @@ class GaloisFieldPrimeTable : public GaloisFieldPrime<ElementType> {
   }
 
  private:
-
   void InitializeTables() {
-
     if (this->p_ == 2) {
       alpha_pow_.resize(this->p_);
       log_alpha_.resize(this->p_);
@@ -408,14 +396,12 @@ class GaloisFieldPrimeTable : public GaloisFieldPrime<ElementType> {
 
     alpha_pow_[0] = static_cast<ElementType>(1);
     for (uint64_t i = 1; i < static_cast<uint64_t>(this->p_); ++i) {
-
       alpha_pow_[i] = GaloisFieldPrime<ElementType>::Mul(alpha_pow_[i - 1],
                                                          this->generator_);
     }
 
     std::fill(log_alpha_.begin(), log_alpha_.end(), this->p_ - 1);
-    for (uint64_t i = 0; i < static_cast<uint64_t>(this->p_) - 1;
-         ++i) {
+    for (uint64_t i = 0; i < static_cast<uint64_t>(this->p_) - 1; ++i) {
       if (alpha_pow_[i] < this->p_) {
         log_alpha_[alpha_pow_[i]] = static_cast<ElementType>(i);
       } else {
@@ -426,7 +412,6 @@ class GaloisFieldPrimeTable : public GaloisFieldPrime<ElementType> {
   }
 
  public:
-
   inline ElementType Mul(const ElementType &a,
                          const ElementType &b) const override {
     if (a == 0 || b == 0) {
@@ -520,7 +505,6 @@ class GaloisFieldPrimeTable : public GaloisFieldPrime<ElementType> {
 
       return static_cast<uint32_t>(this->log_alpha_[a]);
     } else {
-
       return GaloisFieldPrime<ElementType>::Log(a, generator);
     }
   }
@@ -541,7 +525,6 @@ class GaloisFieldPrimeTable : public GaloisFieldPrime<ElementType> {
 
   ElementType MultiplicativeGenerator() const override {
     if (this->p_ <= 2) {
-
       if (this->p_ == 2) {
         return static_cast<ElementType>(1);
       }
@@ -638,6 +621,6 @@ using GFP = GaloisFieldPrime<ElementType>;
 template <typename ElementType = uint32_t>
 using GFPLOG = GaloisFieldPrimeTable<ElementType>;
 
-}
+}  // namespace xg
 
 #endif

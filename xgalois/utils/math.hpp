@@ -26,7 +26,6 @@ inline T Lcm(T a, T b) {
 
 template <typename T>
 std::pair<T, std::pair<T, T>> ExtendedGcd(T a, T b) {
-
   T s = 0;
   T old_s = 1;
   T t = 1;
@@ -35,7 +34,6 @@ std::pair<T, std::pair<T, T>> ExtendedGcd(T a, T b) {
   T old_r = a;
 
   while (r != 0) {
-
     T q = old_r / r;
 
     T temp_r = r;
@@ -170,7 +168,6 @@ uint64_t PollardsRho(uint64_t n) {
   }
 
   if (d == n || d == 1) {
-
     return n;
   }
 
@@ -202,10 +199,8 @@ std::vector<uint64_t> FactorizePollardsRho(uint64_t n) {
   uint64_t factor = PollardsRho(n);
 
   if (factor == n) {
-
     factors.push_back(n);
   } else {
-
     std::vector<uint64_t> factors1 = FactorizePollardsRho(factor);
     std::vector<uint64_t> factors2 = FactorizePollardsRho(n / factor);
     factors.insert(factors.end(), factors1.begin(), factors1.end());
@@ -227,7 +222,6 @@ std::vector<uint64_t> PrimeFactorize(uint64_t n) {
 
     std::vector<uint64_t> factors;
     for (size_t i = 0; i < result.factors.size(); ++i) {
-
       for (int j = 0; j < result.multiplicities[i]; ++j) {
         factors.push_back(result.factors[i]);
       }
@@ -237,30 +231,24 @@ std::vector<uint64_t> PrimeFactorize(uint64_t n) {
     return factors;
 
   } catch (const std::runtime_error &e) {
-
   }
 
-  const uint64_t kTrialDivisionLimit =
-      10000000;
+  const uint64_t kTrialDivisionLimit = 10000000;
 
   if (n < kTrialDivisionLimit) {
     return TrialDivision(n);
   } else {
-
     return FactorizePollardsRho(n);
   }
-
 }
 
 bool IsPrime(uint64_t n) {
-
   if (n < 2) return false;
   if (n == 2) return true;
   if (n % 2 == 0) return false;
 
   const uint64_t kDirectTestLimit = 1000000;
   if (n <= kDirectTestLimit) {
-
     for (uint64_t i = 3; i * i <= n; i += 2) {
       if (n % i == 0) {
         return false;
@@ -294,7 +282,6 @@ std::pair<uint64_t, uint64_t> DecomposePrimePower(uint64_t n) {
       return {static_cast<uint64_t>(prime), total_exponent};
     }
   } catch (const std::runtime_error &) {
-
   }
 
   std::vector<uint64_t> prime_factors =
@@ -316,7 +303,6 @@ std::pair<uint64_t, uint64_t> DecomposePrimePower(uint64_t n) {
 }
 
 inline uint64_t SafeIntegerPower(uint64_t base, uint64_t exponent) {
-
   if (exponent == 0) {
     return 1;
   }
@@ -334,9 +320,7 @@ inline uint64_t SafeIntegerPower(uint64_t base, uint64_t exponent) {
   uint64_t current_exp = exponent;
 
   while (current_exp > 0) {
-
     if (current_exp & 1) {
-
       if (result > UINT64_MAX / current_base) {
         throw std::overflow_error(
             "Integer power computation would overflow uint64_t");
@@ -359,7 +343,7 @@ inline uint64_t SafeIntegerPower(uint64_t base, uint64_t exponent) {
   return result;
 }
 
-}
-}
+}  // namespace utils
+}  // namespace xg
 
 #endif

@@ -1,9 +1,8 @@
 #ifndef XG_POLYNOMIAL_DENSE_HPP_
 #define XG_POLYNOMIAL_DENSE_HPP_
 
-#include <cassert>
-
 #include <algorithm>
+#include <cassert>
 #include <memory>
 #include <ostream>
 #include <sstream>
@@ -75,7 +74,6 @@ class PolynomialDense {
       throw std::out_of_range("Coefficient index out of bounds.");
     }
     return coefficients_[index];
-
   }
 
   PolynomialDense<GaloisField> operator+(
@@ -184,7 +182,6 @@ class PolynomialDense {
 
   PolynomialDense<GaloisField> operator^(uint64_t exponent) const {
     if (exponent == 0) {
-
       return PolynomialDense<GaloisField>(std::vector<ElementType>{kGfOne},
                                           variable_);
     }
@@ -245,7 +242,6 @@ class PolynomialDense {
   }
 
   bool operator==(const PolynomialDense<GaloisField> &other) const {
-
     return coefficients_ == other.coefficients_;
   }
 
@@ -304,7 +300,6 @@ class PolynomialDense {
         }
       } else if (coeff == kGfOne && i > 0 && first_term &&
                  coefficients_.size() - 1 == i) {
-
       } else if (coeff != kGfOne) {
         os << coeff;
       }
@@ -318,7 +313,6 @@ class PolynomialDense {
       first_term = false;
     }
     if (first_term) {
-
       os << "0";
     }
   }
@@ -331,13 +325,11 @@ class PolynomialDense {
 
     PolynomialDense<GaloisField> quotient(std::vector<ElementType>{kGfZero},
                                           variable_);
-    PolynomialDense<GaloisField> remainder =
-        *this;
+    PolynomialDense<GaloisField> remainder = *this;
 
     int divisor_degree = divisor.Degree();
 
     if (remainder.Degree() < divisor_degree) {
-
       return {std::move(quotient), std::move(remainder)};
     }
 
@@ -374,7 +366,6 @@ class PolynomialDense {
 
   PolynomialDense<GaloisField> Derivative() const {
     if (coefficients_.size() <= 1) {
-
       return PolynomialDense<GaloisField>(std::vector<ElementType>{kGfZero},
                                           variable_);
     }
@@ -383,7 +374,6 @@ class PolynomialDense {
     derivative_coeffs.reserve(coefficients_.size() - 1);
 
     for (size_t i = 1; i < coefficients_.size(); ++i) {
-
       ElementType coeff = coefficients_[i];
 
       ElementType derivative_coeff = kGfZero;
@@ -417,7 +407,6 @@ class PolynomialDense {
   }
 
  private:
-
   std::vector<ElementType> coefficients_;
 
   std::shared_ptr<GaloisField> field_;
@@ -436,6 +425,6 @@ std::ostream &operator<<(std::ostream &os,
   return os;
 }
 
-}
+}  // namespace xg
 
 #endif

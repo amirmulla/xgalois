@@ -19,7 +19,6 @@ class GeneratorMatrixEncoder : public Encoder<GaloisField> {
 
   explicit GeneratorMatrixEncoder(const AbstractCode<GaloisField>* code)
       : Encoder<GaloisField>(code) {
-
     linear_code_ = dynamic_cast<const AbstractLinearCode<GaloisField>*>(code);
     if (!linear_code_) {
       throw std::invalid_argument(
@@ -50,14 +49,13 @@ class GeneratorMatrixEncoder : public Encoder<GaloisField> {
     auto generator = linear_code_->GeneratorMatrix();
 
     if (IsSystematic(generator)) {
-      message_type message = xg::linalg::zeros<GaloisField>({MessageLength()},
-                                                            this->code_->Field());
+      message_type message = xg::linalg::zeros<GaloisField>(
+          {MessageLength()}, this->code_->Field());
       for (size_t i = 0; i < MessageLength(); ++i) {
         message(i) = codeword(i);
       }
       return message;
     } else {
-
       return SolveForMessage(codeword, generator);
     }
   }
@@ -73,12 +71,9 @@ class GeneratorMatrixEncoder : public Encoder<GaloisField> {
  private:
   const AbstractLinearCode<GaloisField>* linear_code_;
 
-  codeword_type ToCodeword(const vector_type& vec) const {
-    return vec;
-  }
+  codeword_type ToCodeword(const vector_type& vec) const { return vec; }
 
   bool IsSystematic(const matrix_type& generator) const {
-
     size_t k = generator.shape(0);
 
     for (size_t i = 0; i < k; ++i) {
@@ -99,7 +94,6 @@ class GeneratorMatrixEncoder : public Encoder<GaloisField> {
 
   message_type SolveForMessage(const codeword_type& codeword,
                                const matrix_type& generator) const {
-
     auto field = this->code_->Field();
     size_t q = field->Order();
     size_t k = MessageLength();
@@ -122,7 +116,7 @@ class GeneratorMatrixEncoder : public Encoder<GaloisField> {
   }
 };
 
-}
-}
+}  // namespace coding
+}  // namespace xg
 
 #endif

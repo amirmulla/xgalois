@@ -184,7 +184,6 @@ std::unique_ptr<Encoder<GaloisField>> AbstractCode<GaloisField>::GetEncoder(
 
   auto cache_it = encoder_cache_.find(encoder_name);
   if (cache_it != encoder_cache_.end()) {
-
     auto it = encoder_registry_.find(encoder_name);
     if (it != encoder_registry_.end()) {
       return it->second(this);
@@ -211,7 +210,6 @@ std::unique_ptr<Decoder<GaloisField>> AbstractCode<GaloisField>::GetDecoder(
 
   auto cache_it = decoder_cache_.find(decoder_name);
   if (cache_it != decoder_cache_.end()) {
-
     auto it = decoder_registry_.find(decoder_name);
     if (it != decoder_registry_.end()) {
       return it->second(this);
@@ -297,7 +295,7 @@ size_t AbstractCode<GaloisField>::Weight(const codeword_type& word) const {
   return weight;
 }
 
-}
-}
+}  // namespace coding
+}  // namespace xg
 
 #endif

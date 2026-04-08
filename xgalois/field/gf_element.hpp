@@ -226,7 +226,6 @@ class GaloisFieldElement : public GaloisFieldElementBase<GaloisField> {
       : Base(other.Value(), other.Field()) {}
 
  private:
-
   inline void ValidateField(const GaloisFieldElement &other) const {
     if (this->field_ != other.Field()) {
       throw std::invalid_argument(
@@ -235,7 +234,6 @@ class GaloisFieldElement : public GaloisFieldElementBase<GaloisField> {
   }
 
  public:
-
   inline GaloisFieldElement operator+(const GaloisFieldElement &other) const {
     ValidateField(other);
     return {this->field_->Add(this->value_, other.value_), this->field_};
@@ -340,6 +338,6 @@ inline std::istream &operator>>(std::istream &is,
   return is;
 }
 
-}
+}  // namespace xg
 
 #endif

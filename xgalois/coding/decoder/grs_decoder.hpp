@@ -20,7 +20,6 @@ class GRSDecoder : public Decoder<GaloisField> {
 
   explicit GRSDecoder(const AbstractCode<GaloisField>* code)
       : Decoder<GaloisField>(code) {
-
     grs_code_ =
         dynamic_cast<const GeneralizedReedSolomonCode<GaloisField>*>(code);
     if (!grs_code_) {
@@ -112,8 +111,8 @@ class GRSDecoder : public Decoder<GaloisField> {
     for (size_t t = 1; t <= max_errors_; ++t) {
       if (2 * t > syndrome.size()) continue;
 
-      std::vector<std::vector<element_type>> matrix(t,
-                                                    std::vector<element_type>(t));
+      std::vector<std::vector<element_type>> matrix(
+          t, std::vector<element_type>(t));
       std::vector<element_type> rhs(t);
 
       for (size_t i = 0; i < t; ++i) {
@@ -126,7 +125,6 @@ class GRSDecoder : public Decoder<GaloisField> {
       auto solution = SolveLinearSystem(matrix, rhs);
 
       if (!solution.empty()) {
-
         std::vector<element_type> coeffs(t + 1);
         coeffs[0] = element_type(1, field);
         for (size_t i = 0; i < t; ++i) {
@@ -250,7 +248,6 @@ class GRSDecoder : public Decoder<GaloisField> {
     }
 
     for (size_t i = 0; i < n; ++i) {
-
       size_t pivot = i;
       for (size_t j = i + 1; j < n; ++j) {
         if (augmented[j][i].Value() != 0) {
@@ -293,7 +290,7 @@ class GRSDecoder : public Decoder<GaloisField> {
   }
 };
 
-}
-}
+}  // namespace coding
+}  // namespace xg
 
 #endif

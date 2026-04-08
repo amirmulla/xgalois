@@ -3,7 +3,6 @@
 
 #include <cassert>
 #include <cstdint>
-
 #include <sstream>
 #include <stdexcept>
 #include <vector>
@@ -46,7 +45,6 @@ class GaloisFieldExtension
             base_field_, irreducible_poly, prime_exp.second)),
         representation_(utils::ConvertRepresentation(rep)),
         variable_name_(poly_var) {
-
     assert(prime_exp.first >= 2 && "Prime must be at least 2.");
     assert(prime_exp.second >= 1 && "Exponent must be at least 1.");
     assert(irreducible_poly_.Degree() > 0 &&
@@ -71,9 +69,7 @@ class GaloisFieldExtension
                                 bool check_irreducible = false,
                                 bool prime_testing = false)
       : GaloisFieldExtension(DecomposeOrderToPrimeExp(order), irreducible_poly,
-                             rep, poly_var, check_irreducible, prime_testing) {
-
-  }
+                             rep, poly_var, check_irreducible, prime_testing) {}
 
   uint32_t Characteristic() const override {
     return base_field_.Characteristic();
@@ -128,7 +124,6 @@ class GaloisFieldExtension
   }
 
   PolynomialType Pow(const PolynomialType &base, uint32_t exp) const override {
-
     if (exp == 0) {
       return MultiplicativeIdentity();
     }
@@ -151,25 +146,23 @@ class GaloisFieldExtension
     return result;
   }
 
-  PolynomialType Sqrt(const PolynomialType & ) const override {
+  PolynomialType Sqrt(const PolynomialType &) const override {
     throw std::logic_error(
         "Sqrt not implemented for generic Galois field extensions");
   }
 
-  uint32_t Log(const PolynomialType & ) const override {
+  uint32_t Log(const PolynomialType &) const override {
     throw std::logic_error(
         "Log not implemented for generic Galois field extensions");
   }
 
-  uint32_t Log(const PolynomialType & ,
-               const PolynomialType & ) const override {
+  uint32_t Log(const PolynomialType &, const PolynomialType &) const override {
     throw std::logic_error(
         "Log with generator not implemented for generic "
         "Galois field extensions");
   }
 
   PolynomialType Random() const override {
-
     auto base_field_ptr = std::make_shared<BaseField>(base_field_);
     std::vector<BaseFieldElement> coeffs(irreducible_poly_.Degree());
     for (size_t i = 0; i < irreducible_poly_.Degree(); ++i) {
@@ -177,10 +170,8 @@ class GaloisFieldExtension
     }
 
     if (coeffs.empty() && irreducible_poly_.Degree() > 0) {
-
     }
     if (coeffs.empty()) {
-
       BaseFieldElement kGfZero(base_field_.AdditiveIdentity(), base_field_ptr);
       return PolynomialType({kGfZero}, variable_name_);
     }
@@ -205,11 +196,9 @@ class GaloisFieldExtension
   }
 
   PolynomialType SetElementValue(const PolynomialType &value) const override {
-
     return value % irreducible_poly_;
   }
   PolynomialType SetElementValue(const std::string &value_str) const override {
-
     if (value_str.find("g^") == 0) {
       try {
         PolynomialType value = utils::ParsePowerString(value_str, *this);
@@ -256,8 +245,7 @@ class GaloisFieldExtension
        << irreducible_poly_.Degree() << ")";
     os << " over GF(" << base_field_.Order() << ")";
     os << " with modulus " << irreducible_poly_;
-    os << " (elements are polynomials in " << variable_name_
-       << ")";
+    os << " (elements are polynomials in " << variable_name_ << ")";
 
     switch (representation_) {
       case FieldRepresentation::POLY:
@@ -284,15 +272,12 @@ class GaloisFieldExtension
   }
 
   void SetRepresentation(FieldRepresentation rep) override {
-
     representation_ = rep;
   }
 
  private:
-
   static std::pair<uint64_t, uint64_t> DecomposeOrderToPrimeExp(
       uint64_t order) {
-
     if (order < 2) {
       throw std::invalid_argument("Order of finite field must be at least 2");
     }
@@ -314,7 +299,6 @@ class GaloisFieldExtension
       const BaseField &base_field, const std::string &irreducible_poly_str,
       uint64_t degree) {
     if (!irreducible_poly_str.empty()) {
-
       return utils::ParsePolynomial<BaseField>(
           std::make_shared<BaseField>(base_field), irreducible_poly_str);
     }
@@ -326,7 +310,6 @@ class GaloisFieldExtension
       return utils::ParsePolynomial<BaseField>(
           std::make_shared<BaseField>(base_field), conway_poly);
     } catch (const std::runtime_error &) {
-
       try {
         std::string irreducible_poly = databases::GetIrreduciblePolynomial(
             static_cast<int>(base_field.Characteristic()),
@@ -353,6 +336,6 @@ class GaloisFieldExtension
 template <typename BaseFieldElementType = uint32_t>
 using GFPX = GaloisFieldExtension<BaseFieldElementType>;
 
-}
+}  // namespace xg
 
 #endif
