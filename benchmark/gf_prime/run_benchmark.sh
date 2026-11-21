@@ -1,15 +1,20 @@
 #!/bin/bash
 
 # Prime Field Implementation Benchmark Runner
-# Compares 2 different implementation classes across field sizes
+# Compares GaloisFieldPrime (Barrett) vs GaloisFieldPrimeTable (Log Tables)
 
-set -e
+set -euo pipefail
+
+SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
+REPO_ROOT="$(cd "${SCRIPT_DIR}/../.." && pwd)"
+RESULTS_DIR="${SCRIPT_DIR}/results"
+BAZEL_BIN="${BAZEL:-bazel}"
 
 echo "================================================="
 echo "GF(p) Prime Field Implementation Benchmark"
 echo "================================================="
 echo "Comparing 2 implementation classes:"
-echo "1. GaloisFieldPrime (Standard)"
+echo "1. GaloisFieldPrime (Barrett)"
 echo "2. GaloisFieldPrimeTable (Logarithm Tables)"
 echo "================================================="
 
@@ -23,10 +28,9 @@ NC='\033[0m' # No Color
 # Default values
 BENCHMARK_TIME="1.0"
 OUTPUT_FORMAT="csv"
-RESULTS_DIR="benchmark/gf_prime/results"
+OUTPUT_FILE=""
 BENCHMARK_FILTER=""
 
-# Function to print usage
 print_usage() {
     echo -e "${GREEN}GF Prime Field Benchmark Runner${NC}"
     echo ""
@@ -47,84 +51,78 @@ print_usage() {
     echo "  12 - Performance comparison by implementation"
     echo "  13 - Standard implementation only"
     echo "  14 - Table implementation only"
+    echo "  15 - 32-bit and 64-bit Barrett primes only"
     echo ""
     echo -e "${YELLOW}OPTIONS:${NC}"
     echo "  --time=X        Set benchmark time per test (default: 1.0s)"
     echo "  --format=FORMAT Output format: console, json, csv (default: csv)"
-    echo "  --output=FILE   Save results to file"
+    echo "  --output=FILE   Save results to file under ${RESULTS_DIR}/"
     echo "  --filter=REGEX  Custom benchmark filter"
-    echo "  --help         Show this help message"
-    echo ""
-    echo -e "${YELLOW}EXAMPLES:${NC}"
-    echo "  $0                    # Run all benchmarks"
-    echo "  $0 2                  # Run small field tests only"
-    echo "  $0 6                  # Run multiplication tests only"
-    echo "  $0 10                 # Quick test run"
-    echo "  $0 13                 # Standard implementation only"
-    echo "  $0 14                 # Table implementation only"
-    echo "  $0 --time=0.5         # Run all with 0.5s per benchmark"
-    echo "  $0 --format=json --output=results.json  # JSON output to file"
-    echo "  $0 --filter='.*Small.*'                 # Custom filter"
+    echo "  --help          Show this help message"
 }
 
-# Function to create results directory
 create_results_dir() {
-    if [ ! -d "$RESULTS_DIR" ]; then
-        mkdir -p "$RESULTS_DIR"
-        echo -e "${GREEN}Created results directory: $RESULTS_DIR${NC}"
+    if [[ ! -d "${RESULTS_DIR}" ]]; then
+        mkdir -p "${RESULTS_DIR}"
+        echo -e "${GREEN}Created results directory: ${RESULTS_DIR}${NC}"
     fi
 }
 
-# Function to build the benchmark
 build_benchmark() {
-    echo -e "${BLUE}Building GF Prime benchmark...${NC}"
-    cd "$(dirname "$0")/../.."
-    bazel build //benchmark/gf_prime/src:gf_prime_benchmark
-    if [ $? -eq 0 ]; then
-        echo -e "${GREEN}Build successful!${NC}"
-    else
-        echo -e "${RED}Build failed!${NC}"
-        exit 1
-    fi
+    echo -e "${BLUE}Building GF Prime benchmark (-c opt)...${NC}"
+    (
+        cd "${REPO_ROOT}"
+        "${BAZEL_BIN}" build -c opt //benchmark/gf_prime/src:gf_prime_benchmark
+    )
+    echo -e "${GREEN}Build successful!${NC}"
 }
 
-# Function to run benchmark with given parameters
 run_benchmark() {
     local filter="$1"
     local output_file="$2"
 
-    echo -e "${BLUE}Running benchmark with filter: $filter${NC}"
-    if [ -n "$output_file" ]; then
-        echo -e "${BLUE}Output file: $output_file${NC}"
+    echo -e "${BLUE}Running benchmark with filter: ${filter}${NC}"
+    if [[ -n "${output_file}" ]]; then
+        echo -e "${BLUE}Output file: ${output_file}${NC}"
     fi
 
-    local cmd="bazel run //benchmark/gf_prime/src:gf_prime_benchmark --"
+    local cmd=(
+        "${BAZEL_BIN}" run -c opt //benchmark/gf_prime/src:gf_prime_benchmark --
+        "--benchmark_min_time=${BENCHMARK_TIME}s"
+    )
 
-    if [ -n "$filter" ]; then
-        cmd="$cmd --benchmark_filter=\"$filter\""
+    if [[ -n "${filter}" ]]; then
+        cmd+=("--benchmark_filter=${filter}")
     fi
 
-    cmd="$cmd --benchmark_min_time=${BENCHMARK_TIME}s"
-
-    if [ "$OUTPUT_FORMAT" != "console" ]; then
-        cmd="$cmd --benchmark_format=$OUTPUT_FORMAT"
+    if [[ "${OUTPUT_FORMAT}" != "console" ]]; then
+        cmd+=("--benchmark_format=${OUTPUT_FORMAT}")
     fi
 
-    echo -e "${YELLOW}Executing: $cmd${NC}"
+    echo -e "${YELLOW}Executing: ${cmd[*]}${NC}"
 
-    if [ -n "$output_file" ]; then
-        # Ensure the directory exists
-        mkdir -p "$(dirname "$output_file")"
-        eval $cmd > "$output_file"
+    if [[ -n "${output_file}" ]]; then
+        mkdir -p "$(dirname "${output_file}")"
+        local tmp_out
+        tmp_out="$(mktemp)"
+        trap 'rm -f "${tmp_out}"' RETURN
+        (
+            cd "${REPO_ROOT}"
+            "${cmd[@]}" > "${tmp_out}"
+        )
+        mv "${tmp_out}" "${output_file}"
     else
-        eval $cmd
+        (
+            cd "${REPO_ROOT}"
+            "${cmd[@]}"
+        )
     fi
 }
 
 # Parse command line arguments
 TEST_TYPE=1
 while [[ $# -gt 0 ]]; do
-    case $1 in
+    case "$1" in
         --help)
             print_usage
             exit 0
@@ -145,8 +143,8 @@ while [[ $# -gt 0 ]]; do
             BENCHMARK_FILTER="${1#*=}"
             shift
             ;;
-        [1-9]|1[0-4])
-            TEST_TYPE=$1
+        [1-9]|1[0-5])
+            TEST_TYPE="$1"
             shift
             ;;
         *)
@@ -157,16 +155,14 @@ while [[ $# -gt 0 ]]; do
     esac
 done
 
-# Create results directory if needed
-if [ -n "$OUTPUT_FILE" ]; then
+if [[ -n "${OUTPUT_FILE}" ]]; then
     create_results_dir
 fi
 
-# Build the benchmark
 build_benchmark
 
-# Set benchmark filter based on test type
-case $TEST_TYPE in
+FILTER=""
+case "${TEST_TYPE}" in
     1)
         echo -e "${GREEN}Running all benchmarks...${NC}"
         FILTER=""
@@ -226,50 +222,50 @@ case $TEST_TYPE in
         echo -e "${GREEN}Running table implementation only...${NC}"
         FILTER=".*BM_GFPTABLE_.*"
         ;;
+    15)
+        echo -e "${GREEN}Running 32-bit and 64-bit Barrett primes only...${NC}"
+        FILTER=".*Barrett.*"
+        ;;
 esac
 
-# Use custom filter if provided
-if [ -n "$BENCHMARK_FILTER" ]; then
-    FILTER="$BENCHMARK_FILTER"
+if [[ -n "${BENCHMARK_FILTER}" ]]; then
+    FILTER="${BENCHMARK_FILTER}"
 fi
 
-# Prepare output file path
 OUTPUT_FILE_PATH=""
-if [ -n "$OUTPUT_FILE" ]; then
-    OUTPUT_FILE_PATH="$RESULTS_DIR/$OUTPUT_FILE"
+if [[ -n "${OUTPUT_FILE}" ]]; then
+    OUTPUT_FILE_PATH="${RESULTS_DIR}/${OUTPUT_FILE}"
 fi
 
-# Run the benchmark
 echo -e "${BLUE}========================================${NC}"
 echo -e "${BLUE}  GF Prime Field Benchmarks${NC}"
 echo -e "${BLUE}========================================${NC}"
-echo -e "${YELLOW}Test Type: $TEST_TYPE${NC}"
-echo -e "${YELLOW}Benchmark Time: $BENCHMARK_TIME seconds${NC}"
-echo -e "${YELLOW}Output Format: $OUTPUT_FORMAT${NC}"
-if [ -n "$OUTPUT_FILE" ]; then
-    echo -e "${YELLOW}Output File: $OUTPUT_FILE_PATH${NC}"
+echo -e "${YELLOW}Test Type: ${TEST_TYPE}${NC}"
+echo -e "${YELLOW}Benchmark Time: ${BENCHMARK_TIME} seconds${NC}"
+echo -e "${YELLOW}Output Format: ${OUTPUT_FORMAT}${NC}"
+if [[ -n "${OUTPUT_FILE}" ]]; then
+    echo -e "${YELLOW}Output File: ${OUTPUT_FILE_PATH}${NC}"
 fi
 echo -e "${BLUE}========================================${NC}"
 
-run_benchmark "$FILTER" "$OUTPUT_FILE_PATH"
+run_benchmark "${FILTER}" "${OUTPUT_FILE_PATH}"
 
 echo -e "${GREEN}Benchmark completed!${NC}"
-if [ -n "$OUTPUT_FILE" ]; then
-    echo -e "${GREEN}Results saved to: $OUTPUT_FILE_PATH${NC}"
+if [[ -n "${OUTPUT_FILE}" ]]; then
+    echo -e "${GREEN}Results saved to: ${OUTPUT_FILE_PATH}${NC}"
 fi
 
-# Generate basic analysis report if CSV output was used
-if [ "$OUTPUT_FORMAT" == "csv" ] && [ -n "$OUTPUT_FILE_PATH" ] && [ -f "$OUTPUT_FILE_PATH" ]; then
+if [[ "${OUTPUT_FORMAT}" == "csv" && -n "${OUTPUT_FILE_PATH}" && -f "${OUTPUT_FILE_PATH}" ]]; then
     echo -e "${BLUE}Generating basic analysis...${NC}"
-
-    # Create a simple analysis script
-    cat > /tmp/analyze_gf_prime.py << 'EOF'
+    tmp_script="$(mktemp)"
+    trap 'rm -f "${tmp_script}"' EXIT
+    cat > "${tmp_script}" << 'EOF'
 import csv
 import sys
 from collections import defaultdict
 
 if len(sys.argv) != 2:
-    print("Usage: python analyze_gf_prime.py <csv_file>")
+    print("Usage: analyze_gf_prime.py <csv_file>")
     sys.exit(1)
 
 csv_file = sys.argv[1]
@@ -279,10 +275,11 @@ try:
     with open(csv_file, 'r') as f:
         reader = csv.DictReader(f)
         for row in reader:
-            name = row['name']
+            name = row.get('name', '')
+            if not name or not row.get('real_time'):
+                continue
             time = float(row['real_time'])
 
-            # Extract implementation and operation
             if 'BM_GFP_' in name and 'BM_GFPTABLE_' not in name:
                 impl = 'Standard'
             elif 'BM_GFPTABLE_' in name:
@@ -290,20 +287,10 @@ try:
             else:
                 continue
 
-            if 'Addition' in name:
-                op = 'Addition'
-            elif 'Multiplication' in name:
-                op = 'Multiplication'
-            elif 'Division' in name:
-                op = 'Division'
-            elif 'Inversion' in name:
-                op = 'Inversion'
-            elif 'Exponentiation' in name:
-                op = 'Exponentiation'
-            else:
-                continue
-
-            results[(impl, op)].append(time)
+            for op in ('Addition', 'Multiplication', 'Division', 'Inversion', 'Exponentiation'):
+                if op in name:
+                    results[(impl, op)].append(time)
+                    break
 
     print("\n=== GF Prime Field Performance Analysis ===")
     print("Average execution times (nanoseconds):")
@@ -314,7 +301,7 @@ try:
         print(f"{impl:10} {op:15}: {avg_time:8.2f} ns (n={len(times)})")
 
     print("\n=== Implementation Comparison ===")
-    operations = set(op for impl, op in results.keys())
+    operations = set(op for _, op in results.keys())
 
     for op in sorted(operations):
         std_times = results.get(('Standard', op), [])
@@ -324,7 +311,7 @@ try:
             std_avg = sum(std_times) / len(std_times)
             table_avg = sum(table_times) / len(table_times)
 
-            if std_avg > 0:
+            if std_avg > 0 and table_avg > 0:
                 speedup = std_avg / table_avg
                 print(f"{op:15}: Table is {speedup:5.2f}x {'faster' if speedup > 1 else 'slower'} than Standard")
 
@@ -332,6 +319,5 @@ except Exception as e:
     print(f"Error analyzing results: {e}")
 EOF
 
-    python3 /tmp/analyze_gf_prime.py "$OUTPUT_FILE_PATH"
-    rm /tmp/analyze_gf_prime.py
+    python3 "${tmp_script}" "${OUTPUT_FILE_PATH}"
 fi

@@ -1,130 +1,111 @@
-
-
+#include <cstddef>
+#include <cstdint>
 #include <iostream>
 #include <memory>
+#include <random>
+#include <utility>
 
 #include "xgalois/field/gf_element.hpp"
 #include "xgalois/field/gf_extension.hpp"
-#include "xgalois/field/gf_prime.hpp"
 
 using namespace xg;
+
+namespace {
+
+template <typename Field>
+typename Field::ElementType EvaluateOverBase(
+    const Field& field, const typename Field::ElementType& poly_over_fp,
+    const typename Field::ElementType& point) {
+  auto acc = field.AdditiveIdentity();
+  for (int d = poly_over_fp.Degree(); d >= 0; --d) {
+    acc = field.Mul(acc, point);
+    const auto c = poly_over_fp[static_cast<size_t>(d)];
+    if (c != 0) {
+      acc = field.Add(acc, field.FromCoeffs({c}));
+    }
+  }
+  return acc;
+}
+
+}  // namespace
 
 int main() {
   std::cout << "XGalois Extension Field Examples\n";
   std::cout << "================================\n";
-  std::cout
-      << "This example uses GFPX alias and direct constructors (NO factory)\n";
 
-  std::cout << "\n=== Creating Extension Fields with GFPX Alias ===\n";
+  using ExtField = GFPX<uint8_t>;
+  using ExtElem = GaloisFieldElement<ExtField>;
 
-  auto gf9_field = std::make_shared<GFPX<uint8_t>>(std::make_pair(3, 2));
-  std::cout << "Created GF(3^2) = GF(9) using GFPX<uint8_t> alias\n";
-  std::cout << "  Order: " << gf9_field->Order()
-            << ", Characteristic: " << gf9_field->Characteristic() << "\n";
+  std::cout << "\n=== Creating Extension Fields GF(p^m) ===\n";
+  auto gf9 = std::make_shared<ExtField>(std::pair<uint64_t, uint64_t>{3, 2});
+  auto gf25 = std::make_shared<ExtField>(std::pair<uint64_t, uint64_t>{5, 2});
+  auto gf49 = std::make_shared<ExtField>(std::pair<uint64_t, uint64_t>{7, 2});
 
-  auto gf25_field = std::make_shared<GFPX<uint8_t>>(std::make_pair(5, 2));
-  std::cout << "Created GF(5^2) = GF(25) using GFPX<uint8_t> alias\n";
-  std::cout << "  Order: " << gf25_field->Order()
-            << ", Characteristic: " << gf25_field->Characteristic() << "\n";
+  std::cout << "  GF(3^2): order=" << gf9->Order()
+            << ", modulus=" << gf9->ToString(gf9->Modulus()) << "\n";
+  std::cout << "  GF(5^2): order=" << gf25->Order()
+            << ", modulus=" << gf25->ToString(gf25->Modulus()) << "\n";
+  std::cout << "  GF(7^2): order=" << gf49->Order()
+            << ", modulus=" << gf49->ToString(gf49->Modulus()) << "\n";
 
-  auto gf49_field = std::make_shared<GFPX<uint8_t>>(std::make_pair(7, 2));
-  std::cout << "Created GF(7^2) = GF(49) using GFPX<uint8_t> alias\n";
-  std::cout << "  Order: " << gf49_field->Order()
-            << ", Characteristic: " << gf49_field->Characteristic() << "\n";
+  std::cout << "\n=== Arithmetic in GF(3^2) ===\n";
+  ExtElem a("α + 1", gf9);
+  ExtElem b("2*α + 1", gf9);
+  std::cout << "  a = " << a << ", b = " << b << "\n";
+  std::cout << "  a + b  = " << (a + b) << "\n";
+  std::cout << "  a - b  = " << (a - b) << "\n";
+  std::cout << "  a * b  = " << (a * b) << "\n";
+  std::cout << "  a / b  = " << (a / b) << "\n";
+  std::cout << "  a^(-1) = " << a.Inv()
+            << " (check a * a^(-1) = " << (a * a.Inv()) << ")\n";
 
-  std::cout << "\n=== Extension Field Elements (Polynomials) ===\n";
-  std::cout
-      << "Elements in extension fields are polynomials over the base field.\n";
-  std::cout << "For example, in GF(3^2), elements are polynomials a₀ + a₁x "
-               "where a₀, a₁ ∈ GF(3).\n";
-
-  std::cout << "\n=== Creating Polynomial Elements ===\n";
-  std::cout << "In extension fields, we work with polynomial elements created "
-               "through field operations.\n";
-
-  auto poly_zero = gf9_field->AdditiveIdentity();
-  auto poly_one = gf9_field->MultiplicativeIdentity();
-
-  std::cout << "Zero polynomial: " << gf9_field->ToString(poly_zero) << "\n";
-  std::cout << "Unit polynomial: " << gf9_field->ToString(poly_one) << "\n";
-
-  auto random_elem1 = gf9_field->Random();
-  auto random_elem2 = gf9_field->Random();
-
-  std::cout << "Random element 1: " << gf9_field->ToString(random_elem1)
-            << "\n";
-  std::cout << "Random element 2: " << gf9_field->ToString(random_elem2)
-            << "\n";
-
-  std::cout << "\n=== Field Operations ===\n";
-
-  auto sum = gf9_field->Add(random_elem1, poly_one);
-  std::cout << "random1 + 1 = " << gf9_field->ToString(sum) << "\n";
-
-  auto product = gf9_field->Mul(random_elem1, random_elem2);
-  std::cout << "random1 * random2 = " << gf9_field->ToString(product) << "\n";
-
-  std::cout << "\n=== Field Properties ===\n";
-  std::cout << "GF(3^2) characteristics:\n";
-  std::cout << "  Extension degree: " << gf9_field->Modulus().Degree() << "\n";
-  std::cout << "  Base field characteristic: " << gf9_field->Characteristic()
-            << "\n";
-
-  std::cout << "  Irreducible polynomial: "
-            << gf9_field->ToString(gf9_field->Modulus()) << "\n";
-
-  auto random_elem = gf9_field->Random();
-  std::cout << "  Random element: " << gf9_field->ToString(random_elem) << "\n";
-
-  std::cout << "\n=== Multiplicative Group Structure ===\n";
-  std::cout << "The multiplicative group of GF(9) has order 8 (9-1).\n";
-  std::cout << "Note: Primitive element computation is not implemented in this "
-               "version.\n";
-
-  auto non_zero_elem = gf9_field->Random();
-
-  while (non_zero_elem == gf9_field->AdditiveIdentity()) {
-    non_zero_elem = gf9_field->Random();
+  std::cout << "\n=== MultiplicativeGenerator & Discrete Log in GF(3^2) ===\n";
+  ExtElem gen9(gf9->MultiplicativeGenerator(), gf9);
+  std::cout << "  Multiplicative generator g = " << gen9
+            << " (order = " << gen9.MultiplicativeOrder() << ")\n";
+  ExtElem power(gf9->MultiplicativeIdentity(), gf9);
+  for (uint64_t i = 0; i < gf9->Order() - 1; ++i) {
+    std::cout << "    g^" << i << " = " << power << "  (Log = " << power.Log()
+              << ")\n";
+    power *= gen9;
   }
 
-  std::cout << "Powers of element: " << gf9_field->ToString(non_zero_elem)
-            << "\n";
-  auto current = gf9_field->MultiplicativeIdentity();
-  for (int i = 0; i < 8; ++i) {
-    std::cout << "  elem^" << i << " = " << gf9_field->ToString(current)
-              << "\n";
-    if (i < 7) {
-      current = gf9_field->Mul(current, non_zero_elem);
-    }
+  const uint64_t log_a = a.Log();
+  std::cout << "  Log_g(a) = " << log_a
+            << ", check g^Log(a) == a: " << std::boolalpha
+            << (gen9.Pow(log_a) == a) << "\n";
+
+  std::cout << "\n=== Sqrt, Trace, Norm & MinimalPolynomial in GF(5^2) ===\n";
+  ExtElem x("2*α + 3", gf25);
+  ExtElem x_sq = x * x;
+  ExtElem root = x_sq.Sqrt();
+  std::cout << "  x        = " << x << "\n";
+  std::cout << "  x^2      = " << x_sq << "\n";
+  std::cout << "  Sqrt(x^2)= " << root
+            << " (check root^2 == x^2: " << (root * root == x_sq) << ")\n";
+  std::cout << "  Frobenius(x) = " << x.Frobenius() << "\n";
+  std::cout << "  Trace(x)     = " << x.Trace() << "\n";
+  std::cout << "  Norm(x)      = " << x.Norm() << "\n";
+
+  const auto min_poly = gf25->MinimalPolynomial(x.RawValue());
+  const auto eval_min = EvaluateOverBase(*gf25, min_poly, x.RawValue());
+  std::cout << "  MinimalPolynomial(x) = " << gf25->ToString(min_poly)
+            << " (degree " << min_poly.Degree()
+            << ", m_x(x) == 0: " << gf25->IsZero(eval_min) << ")\n";
+
+  std::cout << "\n=== Seeded Random Elements in GF(7^2) ===\n";
+  std::mt19937_64 rng(42);
+  ExtElem rand_u(gf49->Random(rng), gf49);
+  ExtElem rand_v(gf49->Random(rng), gf49);
+  while (rand_v.IsZero()) {
+    rand_v = ExtElem(gf49->Random(rng), gf49);
   }
-
-  std::cout << "\n=== Operations in GF(5^2) = GF(25) ===\n";
-
-  auto elem_2 = gf25_field->Random();
-  auto elem_3x_plus_1 = gf25_field->Random();
-
-  std::cout << "Working with random elements in GF(25):\n";
-  std::cout << "Element 1: " << gf25_field->ToString(elem_2) << "\n";
-  std::cout << "Element 2: " << gf25_field->ToString(elem_3x_plus_1) << "\n";
-
-  auto sum25 = gf25_field->Add(elem_2, elem_3x_plus_1);
-  auto product25 = gf25_field->Mul(elem_2, elem_3x_plus_1);
-
-  std::cout << "Sum: " << gf25_field->ToString(sum25) << "\n";
-  std::cout << "Product: " << gf25_field->ToString(product25) << "\n";
-
-  std::cout << "GF(25) characteristics:\n";
-  std::cout << "  Extension degree: " << gf25_field->Modulus().Degree() << "\n";
-  std::cout << "  Base field characteristic: " << gf25_field->Characteristic()
-            << "\n";
-  std::cout << "  Irreducible polynomial: "
-            << gf25_field->ToString(gf25_field->Modulus()) << "\n";
+  std::cout << "  u = " << rand_u << ", v = " << rand_v << "\n";
+  std::cout << "  u + v = " << (rand_u + rand_v) << "\n";
+  std::cout << "  u * v = " << (rand_u * rand_v) << "\n";
+  std::cout << "  u / v = " << (rand_u / rand_v) << "\n";
+  std::cout << "  Log_g(v) = " << rand_v.Log() << "\n";
 
   std::cout << "\nExtension field examples completed successfully!\n";
-  std::cout << "Note: This example uses direct constructors and type aliases "
-               "(NO factory).\n";
-  std::cout
-      << "Extension fields use polynomial arithmetic over the base field.\n";
-
   return 0;
 }

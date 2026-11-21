@@ -1,205 +1,85 @@
-#ifndef XGALOIS_FIELD_GF_ELEMENT_HPP
-#define XGALOIS_FIELD_GF_ELEMENT_HPP
+#ifndef XGALOIS_FIELD_GF_ELEMENT_HPP_
+#define XGALOIS_FIELD_GF_ELEMENT_HPP_
 
-#include <cassert>
+#include <cstdint>
+#include <functional>
 #include <iostream>
 #include <memory>
 #include <stdexcept>
+#include <string>
+#include <type_traits>
 #include <utility>
 
 namespace xg {
 
 template <typename GaloisField>
-class GaloisFieldElementBase {
+class GaloisFieldElement {
+ private:
+  struct InternalTag {};
+
+  GaloisFieldElement(InternalTag, typename GaloisField::element_type raw_value,
+                     std::shared_ptr<GaloisField> field)
+      : value_(std::move(raw_value)), field_(std::move(field)) {}
+
+  void RequireField() const {
+    if (!field_) {
+      throw std::runtime_error("Field pointer is null");
+    }
+  }
+
+  void ValidateField(const GaloisFieldElement &other) const {
+    if (!field_ || !other.field_) {
+      throw std::invalid_argument("Field pointer is null");
+    }
+    if (field_ != other.field_) {
+      if (field_->Order() != other.field_->Order() ||
+          field_->Characteristic() != other.field_->Characteristic() ||
+          field_->Degree() != other.field_->Degree()) {
+        throw std::invalid_argument(
+            "Operations between elements of different fields are not allowed");
+      }
+      // Distinct instances of the same field type with matching order may
+      // still have different irreducible polynomials; reject distinct pointers
+      // to guarantee mathematical soundness.
+      throw std::invalid_argument(
+          "Operations between elements of different fields are not allowed");
+    }
+  }
+
  public:
   using ElementType = typename GaloisField::element_type;
-
-  GaloisFieldElementBase() = default;
-
-  GaloisFieldElementBase(ElementType value, std::shared_ptr<GaloisField> field)
-      : field_(std::move(field)) {
-    if (!field_) {
-      throw std::invalid_argument("GaloisField pointer cannot be null");
-    }
-    value_ = field_->SetElementValue(value);
-  }
-
-  GaloisFieldElementBase(const std::string &value_str,
-                         std::shared_ptr<GaloisField> field)
-      : field_(std::move(field)) {
-    if (!field_) {
-      throw std::invalid_argument("GaloisField pointer cannot be null");
-    }
-    value_ = field_->SetElementValue(value_str);
-  }
-
-  GaloisFieldElementBase(const GaloisFieldElementBase &) = default;
-  GaloisFieldElementBase &operator=(const GaloisFieldElementBase &) = default;
-  GaloisFieldElementBase(GaloisFieldElementBase &&) noexcept = default;
-  GaloisFieldElementBase &operator=(GaloisFieldElementBase &&) noexcept =
-      default;
-
-  GaloisFieldElementBase &operator=(const std::string &value_str) {
-    if (!field_) {
-      throw std::runtime_error("Field pointer is null");
-    }
-    value_ = field_->SetElementValue(value_str);
-    return *this;
-  }
-
-  GaloisFieldElementBase &operator=(const ElementType &value) {
-    if (!field_) {
-      throw std::runtime_error("Field pointer is null");
-    }
-    value_ = field_->SetElementValue(value);
-    return *this;
-  }
-
-  ElementType Value() const {
-    if (!field_) {
-      throw std::runtime_error("Field pointer is null");
-    }
-    return field_->GetElementValue(value_);
-  }
-
-  std::shared_ptr<GaloisField> Field() const { return field_; }
-
-  inline GaloisFieldElementBase operator+(
-      const GaloisFieldElementBase &other) const {
-    return {field_->Add(value_, other.value_), field_};
-  }
-
-  inline GaloisFieldElementBase operator-(
-      const GaloisFieldElementBase &other) const {
-    return {field_->Sub(value_, other.value_), field_};
-  }
-
-  inline GaloisFieldElementBase operator*(
-      const GaloisFieldElementBase &other) const {
-    return {field_->Mul(value_, other.value_), field_};
-  }
-
-  inline GaloisFieldElementBase operator/(
-      const GaloisFieldElementBase &other) const {
-    return {field_->Div(value_, other.value_), field_};
-  }
-
-  inline GaloisFieldElementBase operator-() const {
-    return {field_->Neg(value_), field_};
-  }
-
-  inline GaloisFieldElementBase operator^(uint64_t exponent) const {
-    return {field_->Pow(value_, exponent), field_};
-  }
-
-  inline GaloisFieldElementBase Inv() const {
-    return {field_->Inv(value_), field_};
-  }
-
-  inline GaloisFieldElementBase Sqrt() const {
-    return {field_->Sqrt(value_), field_};
-  }
-
-  inline GaloisFieldElementBase Pow(uint32_t exponent) const {
-    return {field_->Pow(value_, exponent), field_};
-  }
-
-  inline GaloisFieldElementBase &operator+=(
-      const GaloisFieldElementBase &other) {
-    value_ = field_->Add(value_, other.value_);
-    return *this;
-  }
-
-  inline GaloisFieldElementBase &operator-=(
-      const GaloisFieldElementBase &other) {
-    value_ = field_->Sub(value_, other.value_);
-    return *this;
-  }
-
-  inline GaloisFieldElementBase &operator*=(
-      const GaloisFieldElementBase &other) {
-    value_ = field_->Mul(this->value_, other.value_);
-    return *this;
-  }
-
-  inline GaloisFieldElementBase &operator/=(
-      const GaloisFieldElementBase &other) {
-    value_ = field_->Div(this->value_, other.value_);
-    return *this;
-  }
-
-  inline bool operator==(const GaloisFieldElementBase &other) const {
-    return (value_ == other.value_);
-  }
-
-  inline bool operator!=(const GaloisFieldElementBase &other) const {
-    return !(*this == other);
-  }
-
-  inline bool operator<(const GaloisFieldElementBase &other) const {
-    return value_ < other.value_;
-  }
-
-  inline bool operator>(const GaloisFieldElementBase &other) const {
-    return value_ > other.value_;
-  }
-
-  inline bool operator<=(const GaloisFieldElementBase &other) const {
-    return value_ <= other.value_;
-  }
-
-  inline bool operator>=(const GaloisFieldElementBase &other) const {
-    return value_ >= other.value_;
-  }
-
-  inline void Print(std::ostream &os) const {
-    if (field_) {
-      field_->Print(value_, os);
-    } else {
-      throw std::runtime_error("Cannot print element: field pointer is null");
-    }
-  }
-
- protected:
-  ElementType value_;
-  std::shared_ptr<GaloisField> field_;
-};
-
-template <typename GaloisField>
-inline std::ostream &operator<<(
-    std::ostream &os,
-    const GaloisFieldElementBase<GaloisField> &element) noexcept {
-  element.Print(os);
-  return os;
-}
-
-template <typename GaloisField>
-inline std::istream &operator>>(std::istream &is,
-                                GaloisFieldElementBase<GaloisField> &element) {
-  typename GaloisField::element_type value;
-  is >> value;
-  if (element.Field()) {
-    element = GaloisFieldElementBase<GaloisField>(value, element.Field());
-  } else {
-    is.setstate(std::ios::failbit);
-  }
-  return is;
-}
-
-template <typename GaloisField>
-class GaloisFieldElement : public GaloisFieldElementBase<GaloisField> {
- public:
-  using Base = GaloisFieldElementBase<GaloisField>;
-  using ElementType = typename GaloisField::element_type;
+  using field_type = GaloisField;
 
   GaloisFieldElement() = default;
 
   GaloisFieldElement(ElementType value, std::shared_ptr<GaloisField> field)
-      : Base(value, std::move(field)) {}
+      : field_(std::move(field)) {
+    if (!field_) {
+      throw std::invalid_argument("GaloisField pointer cannot be null");
+    }
+    value_ = field_->SetElementValue(value);
+  }
 
   GaloisFieldElement(const std::string &value_str,
                      std::shared_ptr<GaloisField> field)
-      : Base(value_str, field) {}
+      : field_(std::move(field)) {
+    if (!field_) {
+      throw std::invalid_argument("GaloisField pointer cannot be null");
+    }
+    value_ = field_->SetElementValue(value_str);
+  }
+
+  // Construct directly from a field's internal representation without calling
+  // SetElementValue (critical for Zech-log / Montgomery representations and
+  // avoiding redundant modular reductions).
+  static GaloisFieldElement FromInternal(ElementType raw_value,
+                                         std::shared_ptr<GaloisField> field) {
+    if (!field) {
+      throw std::invalid_argument("GaloisField pointer cannot be null");
+    }
+    return GaloisFieldElement(InternalTag{}, std::move(raw_value),
+                              std::move(field));
+  }
 
   GaloisFieldElement(const GaloisFieldElement &) = default;
   GaloisFieldElement &operator=(const GaloisFieldElement &) = default;
@@ -207,137 +87,243 @@ class GaloisFieldElement : public GaloisFieldElementBase<GaloisField> {
   GaloisFieldElement &operator=(GaloisFieldElement &&) noexcept = default;
 
   GaloisFieldElement &operator=(const std::string &value_str) {
-    if (!this->field_) {
-      throw std::runtime_error("Field pointer is null");
-    }
-    this->value_ = this->field_->SetElementValue(value_str);
+    RequireField();
+    value_ = field_->SetElementValue(value_str);
     return *this;
   }
 
   GaloisFieldElement &operator=(const ElementType &value) {
-    if (!this->field_) {
-      throw std::runtime_error("Field pointer is null");
+    RequireField();
+    value_ = field_->SetElementValue(value);
+    return *this;
+  }
+
+  ElementType Value() const {
+    RequireField();
+    return field_->GetElementValue(value_);
+  }
+
+  const ElementType &RawValue() const {
+    RequireField();
+    return value_;
+  }
+
+  std::shared_ptr<GaloisField> Field() const { return field_; }
+
+  bool HasField() const noexcept { return field_ != nullptr; }
+
+  bool IsZero() const {
+    RequireField();
+    return field_->IsZero(value_);
+  }
+
+  bool IsOne() const {
+    RequireField();
+    return field_->IsOne(value_);
+  }
+
+  GaloisFieldElement operator+(const GaloisFieldElement &other) const {
+    ValidateField(other);
+    return GaloisFieldElement(InternalTag{}, field_->Add(value_, other.value_),
+                              field_);
+  }
+
+  GaloisFieldElement operator-(const GaloisFieldElement &other) const {
+    ValidateField(other);
+    return GaloisFieldElement(InternalTag{}, field_->Sub(value_, other.value_),
+                              field_);
+  }
+
+  GaloisFieldElement operator*(const GaloisFieldElement &other) const {
+    ValidateField(other);
+    return GaloisFieldElement(InternalTag{}, field_->Mul(value_, other.value_),
+                              field_);
+  }
+
+  GaloisFieldElement operator/(const GaloisFieldElement &other) const {
+    ValidateField(other);
+    return GaloisFieldElement(InternalTag{}, field_->Div(value_, other.value_),
+                              field_);
+  }
+
+  GaloisFieldElement operator-() const {
+    RequireField();
+    return GaloisFieldElement(InternalTag{}, field_->Neg(value_), field_);
+  }
+
+  GaloisFieldElement operator^(uint64_t exponent) const {
+    RequireField();
+    return GaloisFieldElement(InternalTag{}, field_->Pow(value_, exponent),
+                              field_);
+  }
+
+  GaloisFieldElement Inv() const {
+    RequireField();
+    return GaloisFieldElement(InternalTag{}, field_->Inv(value_), field_);
+  }
+
+  GaloisFieldElement Sqrt() const {
+    RequireField();
+    return GaloisFieldElement(InternalTag{}, field_->Sqrt(value_), field_);
+  }
+
+  GaloisFieldElement Pow(uint64_t exponent) const {
+    RequireField();
+    return GaloisFieldElement(InternalTag{}, field_->Pow(value_, exponent),
+                              field_);
+  }
+
+  GaloisFieldElement PowSigned(int64_t exponent) const {
+    RequireField();
+    return GaloisFieldElement(InternalTag{},
+                              field_->PowSigned(value_, exponent), field_);
+  }
+
+  GaloisFieldElement Frobenius() const {
+    RequireField();
+    return GaloisFieldElement(InternalTag{}, field_->Frobenius(value_), field_);
+  }
+
+  GaloisFieldElement Trace() const {
+    RequireField();
+    return GaloisFieldElement(InternalTag{}, field_->Trace(value_), field_);
+  }
+
+  GaloisFieldElement Norm() const {
+    RequireField();
+    return GaloisFieldElement(InternalTag{}, field_->Norm(value_), field_);
+  }
+
+  uint64_t Log() const {
+    RequireField();
+    return field_->Log(value_);
+  }
+
+  uint64_t MultiplicativeOrder() const {
+    RequireField();
+    return field_->MultiplicativeOrder(value_);
+  }
+
+  GaloisFieldElement &operator+=(const GaloisFieldElement &other) {
+    ValidateField(other);
+    value_ = field_->Add(value_, other.value_);
+    return *this;
+  }
+
+  GaloisFieldElement &operator-=(const GaloisFieldElement &other) {
+    ValidateField(other);
+    value_ = field_->Sub(value_, other.value_);
+    return *this;
+  }
+
+  GaloisFieldElement &operator*=(const GaloisFieldElement &other) {
+    ValidateField(other);
+    value_ = field_->Mul(value_, other.value_);
+    return *this;
+  }
+
+  GaloisFieldElement &operator/=(const GaloisFieldElement &other) {
+    ValidateField(other);
+    value_ = field_->Div(value_, other.value_);
+    return *this;
+  }
+
+  bool operator==(const GaloisFieldElement &other) const {
+    if (!field_ || !other.field_) {
+      return field_ == other.field_;
     }
-    this->value_ = this->field_->SetElementValue(value);
-    return *this;
-  }
-
-  explicit GaloisFieldElement(const Base &other)
-      : Base(other.Value(), other.Field()) {}
-
- private:
-  inline void ValidateField(const GaloisFieldElement &other) const {
-    if (this->field_ != other.Field()) {
-      throw std::invalid_argument(
-          "Operations between elements of different fields are not allowed");
+    if (field_ != other.field_) {
+      return false;
     }
+    return value_ == other.value_;
   }
 
- public:
-  inline GaloisFieldElement operator+(const GaloisFieldElement &other) const {
-    ValidateField(other);
-    return {this->field_->Add(this->value_, other.value_), this->field_};
-  }
-
-  inline GaloisFieldElement operator-(const GaloisFieldElement &other) const {
-    ValidateField(other);
-    return {this->field_->Sub(this->value_, other.value_), this->field_};
-  }
-
-  inline GaloisFieldElement operator*(const GaloisFieldElement &other) const {
-    ValidateField(other);
-    return {this->field_->Mul(this->value_, other.value_), this->field_};
-  }
-
-  inline GaloisFieldElement operator/(const GaloisFieldElement &other) const {
-    ValidateField(other);
-    return {this->field_->Div(this->value_, other.value_), this->field_};
-  }
-
-  inline GaloisFieldElement &operator+=(const GaloisFieldElement &other) {
-    ValidateField(other);
-    this->value_ = this->field_->Add(this->value_, other.value_);
-    return *this;
-  }
-
-  inline GaloisFieldElement &operator-=(const GaloisFieldElement &other) {
-    ValidateField(other);
-    this->value_ = this->field_->Sub(this->value_, other.value_);
-    return *this;
-  }
-
-  inline GaloisFieldElement &operator*=(const GaloisFieldElement &other) {
-    ValidateField(other);
-    this->value_ = this->field_->Mul(this->value_, other.value_);
-    return *this;
-  }
-
-  inline GaloisFieldElement &operator/=(const GaloisFieldElement &other) {
-    ValidateField(other);
-    this->value_ = this->field_->Div(this->value_, other.value_);
-    return *this;
-  }
-
-  inline GaloisFieldElement operator-() const {
-    return {this->field_->Neg(this->value_), this->field_};
-  }
-
-  inline bool operator==(const GaloisFieldElement &other) const {
-    ValidateField(other);
-    return this->value_ == other.value_;
-  }
-
-  inline bool operator!=(const GaloisFieldElement &other) const {
+  bool operator!=(const GaloisFieldElement &other) const {
     return !(*this == other);
   }
 
-  inline bool operator==(const Base &other) const {
-    return this->value_ == other.Value();
-  }
-
-  inline bool operator!=(const Base &other) const { return !(*this == other); }
-
-  inline bool operator<(const GaloisFieldElement &other) const {
+  bool operator<(const GaloisFieldElement &other) const {
     ValidateField(other);
-    return this->value_ < other.value_;
+    return Value() < other.Value();
   }
 
-  inline bool operator>(const GaloisFieldElement &other) const {
+  bool operator<=(const GaloisFieldElement &other) const {
     ValidateField(other);
-    return this->value_ > other.value_;
+    return Value() <= other.Value();
   }
 
-  inline bool operator<=(const GaloisFieldElement &other) const {
+  bool operator>(const GaloisFieldElement &other) const {
     ValidateField(other);
-    return this->value_ <= other.value_;
+    return Value() > other.Value();
   }
 
-  inline bool operator>=(const GaloisFieldElement &other) const {
+  bool operator>=(const GaloisFieldElement &other) const {
     ValidateField(other);
-    return this->value_ >= other.value_;
+    return Value() >= other.Value();
   }
+
+  void Print(std::ostream &os) const {
+    RequireField();
+    field_->Print(value_, os);
+  }
+
+  std::string ToString() const {
+    RequireField();
+    return field_->ToString(value_);
+  }
+
+ private:
+  ElementType value_{};
+  std::shared_ptr<GaloisField> field_{nullptr};
 };
 
 template <typename GaloisField>
-inline std::ostream &operator<<(
-    std::ostream &os, const GaloisFieldElement<GaloisField> &element) noexcept {
-  element.Print(os);
+inline std::ostream &operator<<(std::ostream &os,
+                                const GaloisFieldElement<GaloisField> &elem) {
+  elem.Print(os);
   return os;
 }
 
 template <typename GaloisField>
 inline std::istream &operator>>(std::istream &is,
-                                GaloisFieldElement<GaloisField> &element) {
-  typename GaloisField::element_type value;
-  is >> value;
-  if (element.Field()) {
-    element = GaloisFieldElement<GaloisField>(value, element.Field());
+                                GaloisFieldElement<GaloisField> &elem) {
+  using ElementType = typename GaloisField::element_type;
+  if constexpr (std::is_same_v<ElementType, uint8_t>) {
+    uint64_t tmp = 0;
+    if (is >> tmp) {
+      elem = static_cast<uint8_t>(tmp % elem.Field()->Order());
+    }
   } else {
-    is.setstate(std::ios::failbit);
+    ElementType val{};
+    if (is >> val) {
+      elem = val;
+    }
   }
   return is;
 }
 
 }  // namespace xg
 
-#endif
+namespace std {
+
+template <typename GaloisField>
+struct hash<xg::GaloisFieldElement<GaloisField>> {
+  size_t operator()(
+      const xg::GaloisFieldElement<GaloisField> &elem) const noexcept {
+    if (!elem.HasField()) {
+      return 0;
+    }
+    const size_t h1 = std::hash<const GaloisField *>{}(elem.Field().get());
+    size_t h2 = 0;
+    if constexpr (std::is_integral_v<typename GaloisField::element_type>) {
+      h2 = std::hash<typename GaloisField::element_type>{}(elem.RawValue());
+    } else {
+      h2 = std::hash<std::string>{}(elem.ToString());
+    }
+    return h1 ^ (h2 + 0x9e3779b97f4a7c15ULL + (h1 << 6) + (h1 >> 2));
+  }
+};
+
+}  // namespace std
+
+#endif  // XGALOIS_FIELD_GF_ELEMENT_HPP_

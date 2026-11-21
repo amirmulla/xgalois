@@ -1,15 +1,15 @@
-
-
 #include "xgalois/utils/poly.hpp"
 
 #include <gtest/gtest.h>
 
+#include <cstdint>
 #include <memory>
 #include <stdexcept>
 #include <vector>
 
 #include "xgalois/field/gf_binary.hpp"
 #include "xgalois/field/gf_element.hpp"
+#include "xgalois/field/gf_extension.hpp"
 #include "xgalois/field/gf_prime.hpp"
 #include "xgalois/poly/poly_dense.hpp"
 
@@ -20,25 +20,25 @@ class PolyUtilsTest : public ::testing::Test {
  protected:
   void SetUp() override {
     gf7 = std::make_shared<GaloisFieldPrime<uint8_t>>(7);
-    zero = GaloisFieldElementBase<GaloisFieldPrime<uint8_t>>(0, gf7);
-    one = GaloisFieldElementBase<GaloisFieldPrime<uint8_t>>(1, gf7);
-    two = GaloisFieldElementBase<GaloisFieldPrime<uint8_t>>(2, gf7);
-    three = GaloisFieldElementBase<GaloisFieldPrime<uint8_t>>(3, gf7);
-    four = GaloisFieldElementBase<GaloisFieldPrime<uint8_t>>(4, gf7);
-    five = GaloisFieldElementBase<GaloisFieldPrime<uint8_t>>(5, gf7);
-    six = GaloisFieldElementBase<GaloisFieldPrime<uint8_t>>(6, gf7);
+    zero = GaloisFieldElement<GaloisFieldPrime<uint8_t>>(0, gf7);
+    one = GaloisFieldElement<GaloisFieldPrime<uint8_t>>(1, gf7);
+    two = GaloisFieldElement<GaloisFieldPrime<uint8_t>>(2, gf7);
+    three = GaloisFieldElement<GaloisFieldPrime<uint8_t>>(3, gf7);
+    four = GaloisFieldElement<GaloisFieldPrime<uint8_t>>(4, gf7);
+    five = GaloisFieldElement<GaloisFieldPrime<uint8_t>>(5, gf7);
+    six = GaloisFieldElement<GaloisFieldPrime<uint8_t>>(6, gf7);
 
     gf2 = std::make_shared<GaloisFieldBinary>();
-    gf2_zero = GaloisFieldElementBase<GaloisFieldBinary>(0, gf2);
-    gf2_one = GaloisFieldElementBase<GaloisFieldBinary>(1, gf2);
+    gf2_zero = GaloisFieldElement<GaloisFieldBinary>(0, gf2);
+    gf2_one = GaloisFieldElement<GaloisFieldBinary>(1, gf2);
   }
 
   std::shared_ptr<GaloisFieldPrime<uint8_t>> gf7;
   std::shared_ptr<GaloisFieldBinary> gf2;
 
-  GaloisFieldElementBase<GaloisFieldPrime<uint8_t>> zero, one, two, three, four,
+  GaloisFieldElement<GaloisFieldPrime<uint8_t>> zero, one, two, three, four,
       five, six;
-  GaloisFieldElementBase<GaloisFieldBinary> gf2_zero, gf2_one;
+  GaloisFieldElement<GaloisFieldBinary> gf2_zero, gf2_one;
 };
 
 TEST_F(PolyUtilsTest, ExtractCoefficientConstantTerm) {
@@ -54,7 +54,9 @@ TEST_F(PolyUtilsTest, ExtractCoefficientVariableTerms) {
   using GF7Field = GaloisFieldPrime<uint8_t>;
 
   EXPECT_EQ(ExtractCoefficient<GF7Field>("3x"), 3);
+  EXPECT_EQ(ExtractCoefficient<GF7Field>("3*x"), 3);
   EXPECT_EQ(ExtractCoefficient<GF7Field>("5x^2"), 5);
+  EXPECT_EQ(ExtractCoefficient<GF7Field>("5*x^2"), 5);
   EXPECT_EQ(ExtractCoefficient<GF7Field>("12x^3"), 12);
 
   EXPECT_EQ(ExtractCoefficient<GF7Field>("x"), 1);
@@ -63,7 +65,6 @@ TEST_F(PolyUtilsTest, ExtractCoefficientVariableTerms) {
 
   EXPECT_EQ(ExtractCoefficient<GF7Field>("+x"), 1);
   EXPECT_EQ(ExtractCoefficient<GF7Field>("+5x"), 5);
-
   EXPECT_EQ(ExtractCoefficient<GF7Field>("-x"), 1);
 }
 
@@ -78,10 +79,13 @@ TEST_F(PolyUtilsTest, ExtractCoefficientUppercaseX) {
 TEST_F(PolyUtilsTest, ExtractCoefficientInvalidTerms) {
   using GF7Field = GaloisFieldPrime<uint8_t>;
 
+  EXPECT_THROW(ExtractCoefficient<GF7Field>(""), std::invalid_argument);
   EXPECT_THROW(ExtractCoefficient<GF7Field>("abc"), std::invalid_argument);
-
-  EXPECT_EQ(ExtractCoefficient<GF7Field>("3.5x"), 3);
+  EXPECT_THROW(ExtractCoefficient<GF7Field>("3.5x"), std::invalid_argument);
   EXPECT_THROW(ExtractCoefficient<GF7Field>("ax"), std::invalid_argument);
+  EXPECT_THROW(ExtractCoefficient<GF7Field>("2abcx"), std::invalid_argument);
+  EXPECT_THROW(ExtractCoefficient<GF7Field>("x2"), std::invalid_argument);
+  EXPECT_THROW(ExtractCoefficient<GF7Field>("*x"), std::invalid_argument);
 }
 
 TEST_F(PolyUtilsTest, ExtractDegreeConstantTerm) {
@@ -95,6 +99,7 @@ TEST_F(PolyUtilsTest, ExtractDegreeLinearTerms) {
   EXPECT_EQ(ExtractDegree("x"), 1);
   EXPECT_EQ(ExtractDegree("X"), 1);
   EXPECT_EQ(ExtractDegree("3x"), 1);
+  EXPECT_EQ(ExtractDegree("3*x"), 1);
   EXPECT_EQ(ExtractDegree("123x"), 1);
   EXPECT_EQ(ExtractDegree("-x"), 1);
   EXPECT_EQ(ExtractDegree("+x"), 1);
@@ -116,18 +121,29 @@ TEST_F(PolyUtilsTest, ExtractDegreeZeroDegree) {
 }
 
 TEST_F(PolyUtilsTest, ExtractDegreeInvalidTerms) {
+  EXPECT_THROW(ExtractDegree(""), std::invalid_argument);
   EXPECT_THROW(ExtractDegree("x^"), std::invalid_argument);
   EXPECT_THROW(ExtractDegree("x^abc"), std::invalid_argument);
-
-  EXPECT_EQ(ExtractDegree("x^3.5"), 3);
+  EXPECT_THROW(ExtractDegree("x^3.5"), std::invalid_argument);
+  EXPECT_THROW(ExtractDegree("x^-2"), std::invalid_argument);
+  EXPECT_THROW(ExtractDegree("x2"), std::invalid_argument);
 }
 
-TEST_F(PolyUtilsTest, ParsePolynomialConstant) {
+TEST_F(PolyUtilsTest, ParsePolynomialConstantAndNegative) {
   auto poly = ParsePolynomial(gf7, "5");
   EXPECT_EQ(poly.Degree(), 0);
   EXPECT_EQ(poly[0], five);
 
+  auto neg_const = ParsePolynomial(gf7, "-5");
+  EXPECT_EQ(neg_const.Degree(), 0);
+  EXPECT_EQ(neg_const[0], two);
+
+  auto neg_large = ParsePolynomial(gf7, "-10");
+  EXPECT_EQ(neg_large.Degree(), 0);
+  EXPECT_EQ(neg_large[0], four);
+
   auto zero_poly = ParsePolynomial(gf7, "0");
+  EXPECT_TRUE(zero_poly.IsZero());
   EXPECT_EQ(zero_poly.Degree(), -1);
   EXPECT_EQ(zero_poly[0], zero);
 }
@@ -142,22 +158,68 @@ TEST_F(PolyUtilsTest, ParsePolynomialLinear) {
   EXPECT_EQ(poly2.Degree(), 1);
   EXPECT_EQ(poly2[0], zero);
   EXPECT_EQ(poly2[1], one);
+
+  auto neg_x = ParsePolynomial(gf7, "-x");
+  EXPECT_EQ(neg_x.Degree(), 1);
+  EXPECT_EQ(neg_x[0], zero);
+  EXPECT_EQ(neg_x[1], six);
+
+  auto neg_10x = ParsePolynomial(gf7, "-10x");
+  EXPECT_EQ(neg_10x.Degree(), 1);
+  EXPECT_EQ(neg_10x[1], four);
 }
 
-TEST_F(PolyUtilsTest, ParsePolynomialQuadratic) {
+TEST_F(PolyUtilsTest, ParsePolynomialQuadraticAndMultiplicationStar) {
   auto poly = ParsePolynomial(gf7, "2x^2 + 3x + 1");
   EXPECT_EQ(poly.Degree(), 2);
   EXPECT_EQ(poly[0], one);
   EXPECT_EQ(poly[1], three);
   EXPECT_EQ(poly[2], two);
+
+  auto star_poly = ParsePolynomial(gf7, "2*x^2 + 3*x + 1");
+  EXPECT_EQ(star_poly, poly);
+
+  auto leading_neg = ParsePolynomial(gf7, "-x^2 + 1");
+  EXPECT_EQ(leading_neg.Degree(), 2);
+  EXPECT_EQ(leading_neg[0], one);
+  EXPECT_EQ(leading_neg[1], zero);
+  EXPECT_EQ(leading_neg[2], six);
 }
 
-TEST_F(PolyUtilsTest, ParsePolynomialWithSubtraction) {
+TEST_F(PolyUtilsTest, ParsePolynomialWithSubtractionAndModularReduction) {
   auto poly = ParsePolynomial(gf7, "x^2 - 3x + 2");
   EXPECT_EQ(poly.Degree(), 2);
   EXPECT_EQ(poly[0], two);
   EXPECT_EQ(poly[1], four);
   EXPECT_EQ(poly[2], one);
+
+  // Coefficient > p before negation: -10 === -(3) === 4 mod 7
+  auto poly2 = ParsePolynomial(gf7, "x^2 - 10x + 1");
+  EXPECT_EQ(poly2.Degree(), 2);
+  EXPECT_EQ(poly2[0], one);
+  EXPECT_EQ(poly2[1], four);
+  EXPECT_EQ(poly2[2], one);
+
+  // Duplicate degree terms accumulate mod p.
+  auto dup = ParsePolynomial(gf7, "x^2 + 3*x^2 - 2x^2 + 5x + 2x");
+  EXPECT_EQ(dup.Degree(), 2);
+  EXPECT_EQ(dup[0], zero);
+  EXPECT_EQ(dup[1], zero);
+  EXPECT_EQ(dup[2], two);
+}
+
+TEST_F(PolyUtilsTest, ParsePolynomialCustomVariable) {
+  auto poly = ParsePolynomial(gf7, "2*t^3 - t + 4", "t");
+  EXPECT_EQ(poly.GetVariable(), "t");
+  EXPECT_EQ(poly.Degree(), 3);
+  EXPECT_EQ(poly[0], four);
+  EXPECT_EQ(poly[1], six);
+  EXPECT_EQ(poly[2], zero);
+  EXPECT_EQ(poly[3], two);
+
+  // Must NOT silently merge 'x' and 't'.
+  EXPECT_THROW(ParsePolynomial(gf7, "x + t", "t"), std::invalid_argument);
+  EXPECT_THROW(ParsePolynomial(gf7, "t^2 + 1", ""), std::invalid_argument);
 }
 
 TEST_F(PolyUtilsTest, ParsePolynomialWithWhitespace) {
@@ -180,157 +242,190 @@ TEST_F(PolyUtilsTest, ParsePolynomialSparseTerms) {
   EXPECT_EQ(poly[5], one);
 }
 
-TEST_F(PolyUtilsTest, ParsePolynomialBinaryField) {
-  auto poly = ParsePolynomial(gf2, "x^2 + x + 1");
-  EXPECT_EQ(poly.Degree(), 2);
+TEST_F(PolyUtilsTest, ParsePolynomialBinaryAndExtensionFields) {
+  auto poly = ParsePolynomial(gf2, "x^4 + x + 1");
+  EXPECT_EQ(poly.Degree(), 4);
   EXPECT_EQ(poly[0], gf2_one);
   EXPECT_EQ(poly[1], gf2_one);
-  EXPECT_EQ(poly[2], gf2_one);
+  EXPECT_EQ(poly[2], gf2_zero);
+  EXPECT_EQ(poly[3], gf2_zero);
+  EXPECT_EQ(poly[4], gf2_one);
+
+  // GF(2^4) with hex and integer coefficients
+  auto gf2_4 = std::make_shared<GaloisFieldBinaryExtension<uint16_t>>(4);
+  auto p_bin_ext = ParsePolynomial(gf2_4, "(0x5)x^2 + 3*x + 0x7");
+  EXPECT_EQ(p_bin_ext.Degree(), 2);
+  EXPECT_EQ(p_bin_ext[0].Value(), 7u);
+  EXPECT_EQ(p_bin_ext[1].Value(), 3u);
+  EXPECT_EQ(p_bin_ext[2].Value(), 5u);
+
+  // GF(3^2) with parenthesized extension coefficients
+  auto gf3_2 =
+      std::make_shared<GaloisFieldExtension<uint32_t>>(std::make_pair(3, 2));
+  auto p_ext = ParsePolynomial(gf3_2, "(α + 1)x^2 - (2α)x + 2");
+  EXPECT_EQ(p_ext.Degree(), 2);
+  EXPECT_EQ(p_ext[0],
+            GaloisFieldElement<GaloisFieldExtension<uint32_t>>("2", gf3_2));
+  EXPECT_EQ(p_ext[1],
+            GaloisFieldElement<GaloisFieldExtension<uint32_t>>("α", gf3_2));
+  EXPECT_EQ(p_ext[2],
+            GaloisFieldElement<GaloisFieldExtension<uint32_t>>("α + 1", gf3_2));
 }
 
 TEST_F(PolyUtilsTest, ParsePolynomialInvalidInput) {
   EXPECT_THROW(ParsePolynomial(gf7, ""), std::invalid_argument);
   EXPECT_THROW(ParsePolynomial(gf7, "   "), std::invalid_argument);
   EXPECT_THROW(ParsePolynomial(gf7, "abc"), std::invalid_argument);
-
-  auto poly = ParsePolynomial(gf7, "3.5x + 2");
-  EXPECT_EQ(poly.Degree(), 1);
-  EXPECT_EQ(poly[1], three);
+  EXPECT_THROW(ParsePolynomial(gf7, "3.5x + 2"), std::invalid_argument);
+  EXPECT_THROW(ParsePolynomial(gf7, "x^3.5"), std::invalid_argument);
+  EXPECT_THROW(ParsePolynomial(gf7, "2abcx"), std::invalid_argument);
+  EXPECT_THROW(ParsePolynomial(gf7, "x2"), std::invalid_argument);
+  EXPECT_THROW(ParsePolynomial(gf7, "x + "), std::invalid_argument);
+  EXPECT_THROW(ParsePolynomial(gf7, "++x"), std::invalid_argument);
+  EXPECT_THROW(ParsePolynomial(gf7, "x + -1"), std::invalid_argument);
+  EXPECT_THROW(ParsePolynomial(gf7, "*x"), std::invalid_argument);
+  EXPECT_THROW(ParsePolynomial(gf7, "()x"), std::invalid_argument);
+  EXPECT_THROW(ParsePolynomial(gf7, "(2x"), std::invalid_argument);
 }
 
-TEST_F(PolyUtilsTest, PolynomialExtendedGcdBasicCase) {
-  std::vector<GaloisFieldElementBase<GaloisFieldPrime<uint8_t>>> coeffs1 = {
-      six, zero, one};
-  std::vector<GaloisFieldElementBase<GaloisFieldPrime<uint8_t>>> coeffs2 = {
-      six, one};
+TEST_F(PolyUtilsTest, BinaryPolynomialToUintTest) {
+  auto z = PolynomialDense<GaloisFieldBinary>::Zero(gf2);
+  EXPECT_EQ(BinaryPolynomialToUint(z), 0ULL);
 
-  PolynomialDense<GaloisFieldPrime<uint8_t>> poly1(coeffs1);
-  PolynomialDense<GaloisFieldPrime<uint8_t>> poly2(coeffs2);
+  auto one_p = PolynomialDense<GaloisFieldBinary>::One(gf2);
+  EXPECT_EQ(BinaryPolynomialToUint(one_p), 1ULL);
+
+  auto conway4 = ParsePolynomial(gf2, "x^4 + x + 1");
+  EXPECT_EQ(BinaryPolynomialToUint(conway4), 0b10011ULL);
+
+  // Degree 63 is valid (bit 63 set); degree 64 must throw.
+  auto deg63 = PolynomialDense<GaloisFieldBinary>::Monomial(gf2, 63, 1);
+  EXPECT_EQ(BinaryPolynomialToUint(deg63), (uint64_t{1} << 63));
+  auto deg64 = PolynomialDense<GaloisFieldBinary>::Monomial(gf2, 64, 1);
+  EXPECT_THROW(BinaryPolynomialToUint(deg64), std::invalid_argument);
+
+  // Non-characteristic-2 field must throw.
+  auto p7 = ParsePolynomial(gf7, "x^2 + 1");
+  EXPECT_THROW(BinaryPolynomialToUint(p7), std::invalid_argument);
+
+  // GF(2^4) with {0, 1} coefficients succeeds; with coeff 2 throws.
+  auto gf2_4 = std::make_shared<GaloisFieldBinaryExtension<uint16_t>>(4);
+  auto bin_ok = ParsePolynomial(gf2_4, "x^3 + x + 1");
+  EXPECT_EQ(BinaryPolynomialToUint(bin_ok), 0b1011ULL);
+  auto bin_bad = ParsePolynomial(gf2_4, "2x + 1");
+  EXPECT_THROW(BinaryPolynomialToUint(bin_bad), std::invalid_argument);
+}
+
+TEST_F(PolyUtilsTest, PolynomialGcdLcmAndExtendedGcd) {
+  PolynomialDense<GaloisFieldPrime<uint8_t>> poly1(
+      {six, zero, one});                                         // x^2 - 1
+  PolynomialDense<GaloisFieldPrime<uint8_t>> poly2({six, one});  // x - 1
+
+  auto g = PolynomialGcd(poly1, poly2);
+  EXPECT_EQ(g, poly2);
+  EXPECT_TRUE(g.IsMonic());
+
+  auto l = PolynomialLcm(poly1, poly2);
+  EXPECT_EQ(l, poly1);
 
   auto [gcd, bezout] = PolynomialDenseExtendedGcd(poly1, poly2);
   auto [s, t] = bezout;
+  EXPECT_EQ(gcd, g);
+  EXPECT_EQ(poly1 * s + poly2 * t, gcd);
+  EXPECT_TRUE(gcd.IsMonic());
 
-  auto left_side = poly1 * s + poly2 * t;
-  EXPECT_EQ(left_side, gcd);
-
-  if (gcd.Degree() >= 0) {
-    EXPECT_EQ(gcd[gcd.Degree()], one);
-  }
+  // Field mismatch must throw.
+  auto gf5 = std::make_shared<GaloisFieldPrime<uint8_t>>(5);
+  auto p5 = ParsePolynomial(gf5, "x + 1");
+  EXPECT_THROW(PolynomialGcd(poly1, p5), std::invalid_argument);
+  EXPECT_THROW(PolynomialLcm(poly1, p5), std::invalid_argument);
+  EXPECT_THROW(PolynomialDenseExtendedGcd(poly1, p5), std::invalid_argument);
 }
 
 TEST_F(PolyUtilsTest, PolynomialExtendedGcdWithZero) {
-  std::vector<GaloisFieldElementBase<GaloisFieldPrime<uint8_t>>> coeffs1 = {
-      two, three};
-  std::vector<GaloisFieldElementBase<GaloisFieldPrime<uint8_t>>> coeffs2 = {
-      zero};
+  PolynomialDense<GaloisFieldPrime<uint8_t>> poly1({two, three});
+  auto poly2 = PolynomialDense<GaloisFieldPrime<uint8_t>>::Zero(gf7);
 
-  PolynomialDense<GaloisFieldPrime<uint8_t>> poly1(coeffs1);
-  PolynomialDense<GaloisFieldPrime<uint8_t>> poly2(coeffs2);
+  auto [gcd1, bezout1] = PolynomialDenseExtendedGcd(poly1, poly2);
+  auto [s1, t1] = bezout1;
+  EXPECT_EQ(gcd1.Degree(), 1);
+  EXPECT_TRUE(gcd1.IsMonic());
+  EXPECT_EQ(poly1 * s1 + poly2 * t1, gcd1);
 
-  auto [gcd, bezout] = PolynomialDenseExtendedGcd(poly1, poly2);
-  auto [s, t] = bezout;
-
-  EXPECT_EQ(gcd.Degree(), 1);
-  EXPECT_EQ(gcd[1], one);
-
-  auto left_side = poly1 * s + poly2 * t;
-  EXPECT_EQ(left_side, gcd);
+  auto [gcd2, bezout2] = PolynomialDenseExtendedGcd(poly2, poly1);
+  auto [s2, t2] = bezout2;
+  EXPECT_EQ(gcd2, gcd1);
+  EXPECT_EQ(poly2 * s2 + poly1 * t2, gcd2);
 }
 
 TEST_F(PolyUtilsTest, PolynomialExtendedGcdCoprimePolynomials) {
-  std::vector<GaloisFieldElementBase<GaloisFieldPrime<uint8_t>>> coeffs1 = {
-      one, zero, one};
-  std::vector<GaloisFieldElementBase<GaloisFieldPrime<uint8_t>>> coeffs2 = {
-      one, one};
-
-  PolynomialDense<GaloisFieldPrime<uint8_t>> poly1(coeffs1);
-  PolynomialDense<GaloisFieldPrime<uint8_t>> poly2(coeffs2);
+  PolynomialDense<GaloisFieldPrime<uint8_t>> poly1({one, zero, one});
+  PolynomialDense<GaloisFieldPrime<uint8_t>> poly2({one, one});
 
   auto [gcd, bezout] = PolynomialDenseExtendedGcd(poly1, poly2);
   auto [s, t] = bezout;
 
   EXPECT_EQ(gcd.Degree(), 0);
   EXPECT_EQ(gcd[0], one);
-
-  auto left_side = poly1 * s + poly2 * t;
-  EXPECT_EQ(left_side, gcd);
+  EXPECT_EQ(poly1 * s + poly2 * t, gcd);
 }
 
-TEST_F(PolyUtilsTest, IsIrreducibleConstantPolynomials) {
-  std::vector<GaloisFieldElementBase<GaloisFieldPrime<uint8_t>>> coeffs_zero = {
-      zero};
-  std::vector<GaloisFieldElementBase<GaloisFieldPrime<uint8_t>>> coeffs_one = {
-      one};
-  std::vector<GaloisFieldElementBase<GaloisFieldPrime<uint8_t>>> coeffs_five = {
-      five};
-
-  PolynomialDense<GaloisFieldPrime<uint8_t>> poly_zero(coeffs_zero);
-  PolynomialDense<GaloisFieldPrime<uint8_t>> poly_one(coeffs_one);
-  PolynomialDense<GaloisFieldPrime<uint8_t>> poly_five(coeffs_five);
+TEST_F(PolyUtilsTest, IsIrreducibleConstantAndLinearPolynomials) {
+  auto poly_zero = PolynomialDense<GaloisFieldPrime<uint8_t>>::Zero(gf7);
+  auto poly_one = PolynomialDense<GaloisFieldPrime<uint8_t>>::One(gf7);
+  PolynomialDense<GaloisFieldPrime<uint8_t>> poly_five({five});
 
   EXPECT_FALSE(IsIrreducible(poly_zero));
   EXPECT_FALSE(IsIrreducible(poly_one));
   EXPECT_FALSE(IsIrreducible(poly_five));
+
+  EXPECT_TRUE(
+      IsIrreducible(PolynomialDense<GaloisFieldPrime<uint8_t>>({one, one})));
+  EXPECT_TRUE(
+      IsIrreducible(PolynomialDense<GaloisFieldPrime<uint8_t>>({two, three})));
+  EXPECT_TRUE(
+      IsIrreducible(PolynomialDense<GaloisFieldPrime<uint8_t>>({zero, one})));
 }
 
-TEST_F(PolyUtilsTest, IsIrreducibleLinearPolynomials) {
-  std::vector<GaloisFieldElementBase<GaloisFieldPrime<uint8_t>>> coeffs1 = {
-      one, one};
-  std::vector<GaloisFieldElementBase<GaloisFieldPrime<uint8_t>>> coeffs2 = {
-      two, three};
-  std::vector<GaloisFieldElementBase<GaloisFieldPrime<uint8_t>>> coeffs3 = {
-      zero, one};
+TEST_F(PolyUtilsTest, IsIrreducibleDegrees1To8OverGF2AndGF3) {
+  // Known Conway / irreducible polynomials over GF(2) for degrees 1..8
+  EXPECT_TRUE(IsIrreducible(ParsePolynomial(gf2, "x + 1")));
+  EXPECT_TRUE(IsIrreducible(ParsePolynomial(gf2, "x^2 + x + 1")));
+  EXPECT_TRUE(IsIrreducible(ParsePolynomial(gf2, "x^3 + x + 1")));
+  EXPECT_TRUE(IsIrreducible(ParsePolynomial(gf2, "x^4 + x + 1")));
+  EXPECT_TRUE(IsIrreducible(ParsePolynomial(gf2, "x^5 + x^2 + 1")));
+  EXPECT_TRUE(IsIrreducible(ParsePolynomial(gf2, "x^6 + x + 1")));
+  EXPECT_TRUE(IsIrreducible(ParsePolynomial(gf2, "x^7 + x + 1")));
+  EXPECT_TRUE(IsIrreducible(ParsePolynomial(gf2, "x^8 + x^4 + x^3 + x^2 + 1")));
 
-  PolynomialDense<GaloisFieldPrime<uint8_t>> poly1(coeffs1);
-  PolynomialDense<GaloisFieldPrime<uint8_t>> poly2(coeffs2);
-  PolynomialDense<GaloisFieldPrime<uint8_t>> poly3(coeffs3);
+  // Reducible polynomials over GF(2) (including products of irreducibles with
+  // no roots in GF(2)!)
+  EXPECT_FALSE(IsIrreducible(ParsePolynomial(gf2, "x^2 + 1")));
+  EXPECT_FALSE(
+      IsIrreducible(ParsePolynomial(gf2, "x^4 + x^2 + 1")));  // (x^2+x+1)^2
+  EXPECT_FALSE(IsIrreducible(
+      ParsePolynomial(gf2, "x^5 + x^4 + 1")));  // (x^2+x+1)(x^3+x+1)
+  EXPECT_FALSE(IsIrreducible(ParsePolynomial(
+      gf2, "x^6 + x^5 + x^4 + x^3 + x^2 + x + 1")));  // (x^3+x+1)(x^3+x^2+1)
 
-  EXPECT_TRUE(IsIrreducible(poly1));
-  EXPECT_TRUE(IsIrreducible(poly2));
-  EXPECT_TRUE(IsIrreducible(poly3));
-}
+  // GF(3): reducible and irreducible cubics
+  auto gf3 = std::make_shared<GaloisFieldPrime<uint8_t>>(3);
+  EXPECT_FALSE(IsIrreducible(ParsePolynomial(gf3, "x^3 - x")));
+  EXPECT_FALSE(IsIrreducible(
+      ParsePolynomial(gf3, "x^3 + x^2 + x + 1")));  // (x+1)(x^2+1)
+  EXPECT_TRUE(IsIrreducible(ParsePolynomial(gf3, "x^3 + 2x + 1")));
+  EXPECT_TRUE(IsIrreducible(ParsePolynomial(gf3, "x^3 + 2x + 2")));
 
-TEST_F(PolyUtilsTest, IsIrreducibleQuadraticPolynomials) {
-  std::vector<GaloisFieldElementBase<GaloisFieldPrime<uint8_t>>>
-      coeffs_irreducible = {one, zero, one};
-  PolynomialDense<GaloisFieldPrime<uint8_t>> poly_irreducible(
-      coeffs_irreducible);
-  EXPECT_TRUE(IsIrreducible(poly_irreducible));
-
-  std::vector<GaloisFieldElementBase<GaloisFieldPrime<uint8_t>>>
-      coeffs_reducible = {six, zero, one};
-  PolynomialDense<GaloisFieldPrime<uint8_t>> poly_reducible(coeffs_reducible);
-  EXPECT_FALSE(IsIrreducible(poly_reducible));
-}
-
-TEST_F(PolyUtilsTest, IsIrreducibleBinaryField) {
-  std::vector<GaloisFieldElementBase<GaloisFieldBinary>> coeffs_irreducible = {
-      gf2_one, gf2_one, gf2_one};
-  PolynomialDense<GaloisFieldBinary> poly_irreducible(coeffs_irreducible);
-  EXPECT_TRUE(IsIrreducible(poly_irreducible));
-
-  std::vector<GaloisFieldElementBase<GaloisFieldBinary>> coeffs_reducible = {
-      gf2_one, gf2_zero, gf2_one};
-  PolynomialDense<GaloisFieldBinary> poly_reducible(coeffs_reducible);
-  EXPECT_FALSE(IsIrreducible(poly_reducible));
-}
-
-TEST_F(PolyUtilsTest, IsIrreducibleInvalidPolynomial) {
-  std::vector<GaloisFieldElementBase<GaloisFieldPrime<uint8_t>>> coeffs = {
-      one, two, zero};
-  PolynomialDense<GaloisFieldPrime<uint8_t>> poly(coeffs);
-
-  EXPECT_TRUE(IsIrreducible(poly));
+  // GF(7): quadratics
+  EXPECT_TRUE(IsIrreducible(ParsePolynomial(gf7, "x^2 + 1")));
+  EXPECT_FALSE(IsIrreducible(ParsePolynomial(gf7, "x^2 - 1")));
 }
 
 TEST_F(PolyUtilsTest, ParseAndEvaluatePolynomial) {
   auto poly = ParsePolynomial(gf7, "2x^2 + 3x + 1");
 
-  auto result = poly(two);
-  EXPECT_EQ(result, one);
-
-  auto result_zero = poly(zero);
-  EXPECT_EQ(result_zero, one);
+  EXPECT_EQ(poly(two), one);
+  EXPECT_EQ(poly(zero), one);
 }
 
 TEST_F(PolyUtilsTest, ParsePolynomialThenExtendedGcd) {
@@ -338,15 +433,9 @@ TEST_F(PolyUtilsTest, ParsePolynomialThenExtendedGcd) {
   auto poly2 = ParsePolynomial(gf7, "x - 1");
 
   auto [gcd, bezout] = PolynomialDenseExtendedGcd(poly1, poly2);
+  auto [s, t] = bezout;
 
   EXPECT_EQ(gcd.Degree(), 1);
   EXPECT_EQ(gcd[1], one);
-}
-
-TEST_F(PolyUtilsTest, ParsePolynomialThenIrreducibilityTest) {
-  auto irreducible_poly = ParsePolynomial(gf7, "x^2 + 1");
-  EXPECT_TRUE(IsIrreducible(irreducible_poly));
-
-  auto reducible_poly = ParsePolynomial(gf7, "x^2 - 1");
-  EXPECT_FALSE(IsIrreducible(reducible_poly));
+  EXPECT_EQ(poly1 * s + poly2 * t, gcd);
 }

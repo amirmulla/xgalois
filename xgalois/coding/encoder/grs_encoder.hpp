@@ -1,159 +1,203 @@
-#ifndef XGALOIS_CODING_GRS_ENCODER_HPP
-#define XGALOIS_CODING_GRS_ENCODER_HPP
+#ifndef XGALOIS_CODING_ENCODER_GRS_ENCODER_HPP_
+#define XGALOIS_CODING_ENCODER_GRS_ENCODER_HPP_
 
-#include <xtensor/containers/xarray.hpp>
+#include <algorithm>
+#include <cstddef>
+#include <span>
+#include <stdexcept>
+#include <string>
+#include <utility>
+#include <vector>
 
 #include "xgalois/coding/encoder/encoder.hpp"
 #include "xgalois/coding/grs.hpp"
 #include "xgalois/poly/poly_dense.hpp"
+#include "xgalois/utils/poly.hpp"
 
 namespace xg {
 namespace coding {
 
+// Polynomial-evaluation encoder for Generalized Reed-Solomon codes:
+//   c_j = v_j * m(alpha_j),  where m(x) = sum_{i=0}^{k-1} m_i x^i.
 template <typename GaloisField>
 class GRSEncoder : public Encoder<GaloisField> {
  public:
-  using element_type = xg::GaloisFieldElement<GaloisField>;
-  using codeword_type = xt::xarray<GaloisField>;
-  using message_type = xt::xarray<GaloisField>;
-  using polynomial_type = xg::PolynomialDense<GaloisField>;
+  using Base = Encoder<GaloisField>;
+  using field_type = GaloisField;
+  using element_type = typename Base::element_type;
+  using storage_type = typename Base::storage_type;
+  using codeword_type = typename Base::codeword_type;
+  using message_type = typename Base::message_type;
+  using polynomial_type = PolynomialDense<GaloisField>;
 
-  explicit GRSEncoder(const AbstractCode<GaloisField>* code)
-      : Encoder<GaloisField>(code) {
+  explicit GRSEncoder(const AbstractCode<GaloisField> &code) : Base(code) {
     grs_code_ =
-        dynamic_cast<const GeneralizedReedSolomonCode<GaloisField>*>(code);
+        dynamic_cast<const GeneralizedReedSolomonCode<GaloisField> *>(&code);
     if (!grs_code_) {
       throw std::invalid_argument(
           "GRSEncoder requires a GeneralizedReedSolomonCode");
     }
   }
 
-  codeword_type Encode(const message_type& message) const override {
-    if (message.size() != MessageLength()) {
-      throw std::invalid_argument("Message length must match code dimension");
+  codeword_type Encode(const message_type &message) const override {
+    const auto field = grs_code_->Field();
+    if (!message.HasField() || message.Field() != field) {
+      throw std::invalid_argument("GRSEncoder::Encode: field mismatch");
+    }
+    if (message.Dimension() != 1 || message.Size() != grs_code_->Dimension()) {
+      throw std::invalid_argument(
+          "GRSEncoder::Encode: message must be 1D with length equal to code "
+          "dimension");
     }
 
-    std::vector<GaloisField> message_vec(message.size());
-    for (size_t i = 0; i < message.size(); ++i) {
-      message_vec[i] = message(i);
-    }
-    polynomial_type message_poly(message_vec, grs_code_->Field());
-
+    const auto msg_span = message.RawSpan();
+    std::vector<storage_type> coeffs(msg_span.begin(), msg_span.end());
+    polynomial_type message_poly =
+        polynomial_type::FromRaw(std::move(coeffs), field);
     return grs_code_->EncodePolynomial(message_poly);
   }
 
-  message_type Unencode(const codeword_type& codeword) const override {
-    if (codeword.size() != this->code_->Length()) {
-      throw std::invalid_argument("Codeword length must match code length");
+  message_type Unencode(const codeword_type &codeword) const override {
+    const auto field = grs_code_->Field();
+    if (!codeword.HasField() || codeword.Field() != field) {
+      throw std::invalid_argument("GRSEncoder::Unencode: field mismatch");
+    }
+    if (codeword.Dimension() != 1 || codeword.Size() != grs_code_->Length()) {
+      throw std::invalid_argument(
+          "GRSEncoder::Unencode: codeword must be 1D with length equal to code "
+          "length");
+    }
+    if (!grs_code_->Contains(codeword)) {
+      throw std::invalid_argument(
+          "GRSEncoder::Unencode: input is not a valid codeword");
     }
 
-    if (!this->code_->Contains(codeword)) {
-      throw std::invalid_argument("Input is not a valid codeword");
+    const polynomial_type poly = grs_code_->InterpolateCodeword(codeword);
+    const std::size_t k = grs_code_->Dimension();
+    using RawArray = typename message_type::raw_array_type;
+    using ShapeType = typename message_type::shape_type;
+    RawArray raw = RawArray::from_shape(ShapeType{k});
+    for (std::size_t i = 0; i < k; ++i) {
+      raw(i) = poly.RawCoeff(i);
     }
-
-    auto poly = grs_code_->DecodeToPolynomial(codeword);
-
-    message_type message = xt::zeros<GaloisField>({MessageLength()});
-    for (size_t i = 0; i < MessageLength(); ++i) {
-      if (i <= poly.Degree()) {
-        message(i) = poly.GetCoefficient(i);
-      } else {
-        message(i) = element_type{};
-      }
-    }
-
-    return message;
+    return message_type::FromRaw(field, std::move(raw));
   }
 
-  size_t MessageLength() const override { return grs_code_->Dimension(); }
-
-  std::string ToString() const override {
-    return "GRS Encoder for [" + std::to_string(this->code_->Length()) + ", " +
-           std::to_string(grs_code_->Dimension()) + "] GRS code";
-  }
-
-  codeword_type EncodePolynomial(const polynomial_type& message_poly) const {
+  codeword_type EncodePolynomial(const polynomial_type &message_poly) const {
     return grs_code_->EncodePolynomial(message_poly);
   }
 
-  codeword_type SystematicEncode(const message_type& message) const {
-    if (message.size() != MessageLength()) {
-      throw std::invalid_argument("Message length must match code dimension");
-    }
+  std::size_t MessageLength() const noexcept { return grs_code_->Dimension(); }
 
-    auto field = grs_code_->Field();
-    auto eval_points = grs_code_->EvaluationPoints();
-    auto multipliers = grs_code_->ColumnMultipliers();
-
-    xt::xarray<GaloisField> points = xt::zeros<GaloisField>({MessageLength()});
-    xt::xarray<GaloisField> values = xt::zeros<GaloisField>({MessageLength()});
-
-    for (size_t i = 0; i < MessageLength(); ++i) {
-      points(i) = eval_points(i);
-      values(i) = field->Div(message(i), multipliers(i));
-    }
-
-    auto message_poly = LagrangeInterpolation(points, values);
-
-    return EncodePolynomial(message_poly);
-  }
+  std::string Name() const override { return "GRS"; }
 
  private:
-  const GeneralizedReedSolomonCode<GaloisField>* grs_code_;
+  const GeneralizedReedSolomonCode<GaloisField> *grs_code_;
+};
 
-  polynomial_type LagrangeInterpolation(
-      const xt::xarray<GaloisField>& points,
-      const xt::xarray<GaloisField>& values) const {
-    if (points.size() != values.size()) {
-      throw std::invalid_argument("Points and values must have same size");
+// Systematic encoder for Generalized Reed-Solomon codes:
+// Places message symbols verbatim at coordinates 0..k-1, interpolates the
+// unique degree < k polynomial f satisfying v_j * f(alpha_j) = m_j (j < k) in
+// O(k^2) via utils::InterpolateRaw, and evaluates parity coordinates j >= k as
+// c_j = v_j * f(alpha_j).
+template <typename GaloisField>
+class GRSSystematicEncoder : public Encoder<GaloisField> {
+ public:
+  using Base = Encoder<GaloisField>;
+  using field_type = GaloisField;
+  using element_type = typename Base::element_type;
+  using storage_type = typename Base::storage_type;
+  using codeword_type = typename Base::codeword_type;
+  using message_type = typename Base::message_type;
+  using polynomial_type = PolynomialDense<GaloisField>;
+
+  explicit GRSSystematicEncoder(const AbstractCode<GaloisField> &code)
+      : Base(code) {
+    grs_code_ =
+        dynamic_cast<const GeneralizedReedSolomonCode<GaloisField> *>(&code);
+    if (!grs_code_) {
+      throw std::invalid_argument(
+          "GRSSystematicEncoder requires a GeneralizedReedSolomonCode");
     }
-
-    auto field = grs_code_->Field();
-    size_t n = points.size();
-    xt::xarray<GaloisField> result_coeffs = xt::zeros<GaloisField>({n});
-
-    for (size_t i = 0; i < n; ++i) {
-      xt::xarray<GaloisField> basis_coeffs = xt::ones<GaloisField>({1});
-
-      for (size_t j = 0; j < n; ++j) {
-        if (i != j) {
-          element_type denominator = field->Sub(points(i), points(j));
-          element_type inv_denom = field->Inv(denominator);
-
-          xt::xarray<GaloisField> new_coeffs =
-              xt::zeros<GaloisField>({basis_coeffs.size() + 1});
-          for (size_t k = 0; k < basis_coeffs.size(); ++k) {
-            new_coeffs(k) =
-                field->Add(new_coeffs(k),
-                           field->Mul(basis_coeffs(k), field->Neg(points(j))));
-            new_coeffs(k + 1) = field->Add(new_coeffs(k + 1), basis_coeffs(k));
-          }
-
-          for (size_t k = 0; k < new_coeffs.size(); ++k) {
-            new_coeffs(k) = field->Mul(new_coeffs(k), inv_denom);
-          }
-
-          basis_coeffs = new_coeffs;
-        }
-      }
-
-      for (size_t k = 0; k < basis_coeffs.size() && k < result_coeffs.size();
-           ++k) {
-        element_type term = field->Mul(values(i), basis_coeffs(k));
-        result_coeffs(k) = field->Add(result_coeffs(k), term);
-      }
-    }
-
-    std::vector<GaloisField> coeffs_vec(result_coeffs.size());
-    for (size_t i = 0; i < result_coeffs.size(); ++i) {
-      coeffs_vec[i] = result_coeffs(i);
-    }
-
-    return polynomial_type(coeffs_vec, field);
   }
+
+  codeword_type Encode(const message_type &message) const override {
+    const auto field = grs_code_->Field();
+    const std::size_t k = grs_code_->Dimension();
+    const std::size_t n = grs_code_->Length();
+    if (!message.HasField() || message.Field() != field) {
+      throw std::invalid_argument(
+          "GRSSystematicEncoder::Encode: field mismatch");
+    }
+    if (message.Dimension() != 1 || message.Size() != k) {
+      throw std::invalid_argument(
+          "GRSSystematicEncoder::Encode: message must be 1D with length equal "
+          "to code dimension");
+    }
+
+    using RawArray = typename codeword_type::raw_array_type;
+    using ShapeType = typename codeword_type::shape_type;
+    RawArray cw_raw = RawArray::from_shape(ShapeType{n});
+    const auto msg_span = message.RawSpan();
+    std::copy(msg_span.begin(), msg_span.end(), cw_raw.data());
+
+    if (k < n) {
+      const auto &mult_invs = grs_code_->ColumnMultiplierInverses();
+      std::vector<storage_type> ys(k);
+      field->MulArray(std::span<storage_type>(ys), msg_span,
+                      std::span<const storage_type>(mult_invs.data(), k));
+
+      const auto eval_span = grs_code_->EvaluationPoints().RawSpan();
+      const polynomial_type poly = utils::InterpolateRaw(
+          field, eval_span.subspan(0, k), std::span<const storage_type>(ys));
+
+      const std::size_t r = n - k;
+      const std::vector<storage_type> parity_evals =
+          poly.EvalBatch(eval_span.subspan(k, r));
+      field->MulArray(std::span<storage_type>(cw_raw.data() + k, r),
+                      std::span<const storage_type>(parity_evals),
+                      grs_code_->ColumnMultipliers().RawSpan().subspan(k, r));
+    }
+
+    return codeword_type::FromRaw(field, std::move(cw_raw));
+  }
+
+  message_type Unencode(const codeword_type &codeword) const override {
+    const auto field = grs_code_->Field();
+    const std::size_t k = grs_code_->Dimension();
+    const std::size_t n = grs_code_->Length();
+    if (!codeword.HasField() || codeword.Field() != field) {
+      throw std::invalid_argument(
+          "GRSSystematicEncoder::Unencode: field mismatch");
+    }
+    if (codeword.Dimension() != 1 || codeword.Size() != n) {
+      throw std::invalid_argument(
+          "GRSSystematicEncoder::Unencode: codeword must be 1D with length "
+          "equal to code length");
+    }
+    if (!grs_code_->Contains(codeword)) {
+      throw std::invalid_argument(
+          "GRSSystematicEncoder::Unencode: input is not a valid codeword");
+    }
+
+    using RawArray = typename message_type::raw_array_type;
+    using ShapeType = typename message_type::shape_type;
+    RawArray msg_raw = RawArray::from_shape(ShapeType{k});
+    const auto cw_span = codeword.RawSpan();
+    std::copy(cw_span.begin(), cw_span.begin() + static_cast<std::ptrdiff_t>(k),
+              msg_raw.data());
+    return message_type::FromRaw(field, std::move(msg_raw));
+  }
+
+  std::size_t MessageLength() const noexcept { return grs_code_->Dimension(); }
+
+  std::string Name() const override { return "GRSSystematic"; }
+
+ private:
+  const GeneralizedReedSolomonCode<GaloisField> *grs_code_;
 };
 
 }  // namespace coding
 }  // namespace xg
 
-#endif
+#endif  // XGALOIS_CODING_ENCODER_GRS_ENCODER_HPP_

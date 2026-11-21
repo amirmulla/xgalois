@@ -1,42 +1,151 @@
 load("@rules_cc//cc:defs.bzl", "cc_library")
-load("@rules_foreign_cc//foreign_cc:defs.bzl", "cmake")
 
 package(default_visibility = ["//visibility:public"])
 
-cmake(
-    name = "xtl",
-    lib_source = "@xtl//:all_srcs",
-    out_headers_only = True,
-)
-
-cmake(
-    name = "xtensor",
-    lib_source = "@xtensor//:all_srcs",
-    out_headers_only = True,
-    deps = [":xtl"],
+cc_library(
+    name = "utils_math",
+    hdrs = ["utils/math.hpp"],
 )
 
 cc_library(
-    name = "xgalois",
-    hdrs = glob([
-        "**/*.hpp",
-    ]),
-    data = glob([
-        "databases/*.db",
-    ]),
-    visibility = ["//visibility:public"],
+    name = "databases",
+    hdrs = glob(["databases/*.hpp"]),
+    data = glob(
+        ["databases/*.db"],
+        allow_empty = True,
+    ),
     deps = [
-        ":xtensor",
+        ":utils_math",
+        "@rules_cc//cc/runfiles",
+    ],
+)
+
+cc_library(
+    name = "field_core",
+    hdrs = [
+        "field/gf_base.hpp",
+        "field/gf_concepts.hpp",
+        "field/gf_element.hpp",
+    ],
+    deps = [
+        ":utils_math",
+    ],
+)
+
+cc_library(
+    name = "gf_array",
+    hdrs = ["field/gf_array.hpp"],
+    deps = [
+        ":field_core",
+        "@xtensor",
+        "@xtl",
+    ],
+)
+
+cc_library(
+    name = "utils_field",
+    hdrs = ["utils/field.hpp"],
+    deps = [
+        ":field_core",
+    ],
+)
+
+cc_library(
+    name = "poly",
+    hdrs = glob(["poly/*.hpp"]),
+    deps = [
+        ":field_core",
+    ],
+)
+
+cc_library(
+    name = "utils_poly",
+    hdrs = ["utils/poly.hpp"],
+    deps = [
+        ":poly",
+    ],
+)
+
+cc_library(
+    name = "utils",
+    deps = [
+        ":utils_field",
+        ":utils_math",
+        ":utils_poly",
+    ],
+)
+
+cc_library(
+    name = "field",
+    hdrs = glob(
+        ["field/*.hpp"],
+        exclude = [
+            "field/gf_array.hpp",
+            "field/gf_base.hpp",
+            "field/gf_concepts.hpp",
+            "field/gf_element.hpp",
+        ],
+    ),
+    deps = [
+        ":databases",
+        ":field_core",
+        ":gf_array",
+        ":utils_field",
+        ":utils_math",
+    ],
+)
+
+cc_library(
+    name = "linalg",
+    hdrs = glob(["linalg/*.hpp"]),
+    deps = [
+        ":field_core",
+        ":gf_array",
+        ":poly",
+        "@xtensor",
+        "@xtl",
+    ],
+)
+
+cc_library(
+    name = "channel",
+    hdrs = glob(["channel/*.hpp"]),
+    deps = [
+        ":field_core",
+        ":gf_array",
+        "@xtensor",
+        "@xtl",
     ],
 )
 
 cc_library(
     name = "coding",
-    hdrs = glob([
-        "coding/**/*.hpp",
-    ]),
-    visibility = ["//visibility:public"],
+    hdrs = glob(["coding/**/*.hpp"]),
     deps = [
-        ":xgalois",
+        ":field",
+        ":field_core",
+        ":gf_array",
+        ":linalg",
+        ":poly",
+        ":utils_math",
+        ":utils_poly",
+        "@xtensor",
+        "@xtl",
+    ],
+)
+
+cc_library(
+    name = "xgalois",
+    deps = [
+        ":channel",
+        ":coding",
+        ":databases",
+        ":field",
+        ":field_core",
+        ":linalg",
+        ":poly",
+        ":utils",
+        "@xtensor",
+        "@xtl",
     ],
 )

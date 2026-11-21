@@ -1,4 +1,4 @@
-sphinx
-furo
-breathe
-exhale
+sphinx>=7.2,<9
+furo>=2024.1
+breathe>=4.35
+exhale>=0.3.6

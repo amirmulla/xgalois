@@ -10,8 +10,8 @@ cc_test(
     srcs = ["field/gf_prime_test.cpp"],
     deps = [
         "//xgalois",
-        "@gtest",
-        "@gtest//:gtest_main",
+        "@googletest//:gtest",
+        "@googletest//:gtest_main",
     ],
 )
 
@@ -23,8 +23,21 @@ cc_test(
     srcs = ["field/gf_binary_test.cpp"],
     deps = [
         "//xgalois",
-        "@gtest",
-        "@gtest//:gtest_main",
+        "@googletest//:gtest",
+        "@googletest//:gtest_main",
+    ],
+)
+
+# Exhaustive & differential oracle tests for all table-backed field implementations
+cc_test(
+    name = "gf_tables_test",
+    size = "large",
+    timeout = "long",
+    srcs = ["field/gf_tables_test.cpp"],
+    deps = [
+        "//xgalois",
+        "@googletest//:gtest",
+        "@googletest//:gtest_main",
     ],
 )
 
@@ -35,8 +48,8 @@ cc_test(
     srcs = ["field/gf_extension_test.cpp"],
     deps = [
         "//xgalois",
-        "@gtest",
-        "@gtest//:gtest_main",
+        "@googletest//:gtest",
+        "@googletest//:gtest_main",
     ],
 )
 
@@ -48,8 +61,8 @@ cc_test(
     srcs = ["field/gf_factory_test.cpp"],
     deps = [
         "//xgalois",
-        "@gtest",
-        "@gtest//:gtest_main",
+        "@googletest//:gtest",
+        "@googletest//:gtest_main",
     ],
 )
 
@@ -61,8 +74,8 @@ cc_test(
     srcs = ["poly/poly_dense_test.cpp"],
     deps = [
         "//xgalois",
-        "@gtest",
-        "@gtest//:gtest_main",
+        "@googletest//:gtest",
+        "@googletest//:gtest_main",
     ],
 )
 
@@ -74,8 +87,8 @@ cc_test(
     srcs = ["field/gf_element_test.cpp"],
     deps = [
         "//xgalois",
-        "@gtest",
-        "@gtest//:gtest_main",
+        "@googletest//:gtest",
+        "@googletest//:gtest_main",
     ],
 )
 
@@ -87,8 +100,8 @@ cc_test(
     srcs = ["databases/interface_test.cpp"],
     deps = [
         "//xgalois",
-        "@gtest",
-        "@gtest//:gtest_main",
+        "@googletest//:gtest",
+        "@googletest//:gtest_main",
     ],
 )
 
@@ -100,8 +113,8 @@ cc_test(
     srcs = ["linalg/linalg_prime_test.cpp"],
     deps = [
         "//xgalois",
-        "@gtest",
-        "@gtest//:gtest_main",
+        "@googletest//:gtest",
+        "@googletest//:gtest_main",
     ],
 )
 
@@ -113,8 +126,34 @@ cc_test(
     srcs = ["linalg/linalg_binary_test.cpp"],
     deps = [
         "//xgalois",
-        "@gtest",
-        "@gtest//:gtest_main",
+        "@googletest//:gtest",
+        "@googletest//:gtest_main",
+    ],
+)
+
+# Test for Linalg class over GF(2) (bit-packed M4RI + GFArray)
+cc_test(
+    name = "linalg_gf2_test",
+    size = "medium",
+    timeout = "moderate",
+    srcs = ["linalg/linalg_gf2_test.cpp"],
+    deps = [
+        "//xgalois",
+        "@googletest//:gtest",
+        "@googletest//:gtest_main",
+    ],
+)
+
+# Test for Linalg class over general extension fields GF(p^m)
+cc_test(
+    name = "linalg_extension_test",
+    size = "medium",
+    timeout = "moderate",
+    srcs = ["linalg/linalg_extension_test.cpp"],
+    deps = [
+        "//xgalois",
+        "@googletest//:gtest",
+        "@googletest//:gtest_main",
     ],
 )
 
@@ -126,8 +165,8 @@ cc_test(
     srcs = ["utils/math_test.cpp"],
     deps = [
         "//xgalois",
-        "@gtest",
-        "@gtest//:gtest_main",
+        "@googletest//:gtest",
+        "@googletest//:gtest_main",
     ],
 )
 
@@ -139,8 +178,8 @@ cc_test(
     srcs = ["utils/field_test.cpp"],
     deps = [
         "//xgalois",
-        "@gtest",
-        "@gtest//:gtest_main",
+        "@googletest//:gtest",
+        "@googletest//:gtest_main",
     ],
 )
 
@@ -152,8 +191,21 @@ cc_test(
     srcs = ["utils/poly_test.cpp"],
     deps = [
         "//xgalois",
-        "@gtest",
-        "@gtest//:gtest_main",
+        "@googletest//:gtest",
+        "@googletest//:gtest_main",
+    ],
+)
+
+# Test for advanced polynomial algorithms (Rabin, Cantor-Zassenhaus, Chien, Interpolation, GF(2^m)/GF(p^m))
+cc_test(
+    name = "poly_algo_test",
+    size = "large",
+    timeout = "long",
+    srcs = ["poly/poly_algo_test.cpp"],
+    deps = [
+        "//xgalois",
+        "@googletest//:gtest",
+        "@googletest//:gtest_main",
     ],
 )
 
@@ -162,26 +214,176 @@ cc_test(
     srcs = ["channel/channel_test.cpp"],
     deps = [
         "//xgalois",
-        "@gtest",
-        "@gtest//:gtest_main",
+        "@googletest//:gtest",
+        "@googletest//:gtest_main",
+    ],
+)
+
+cc_test(
+    name = "coding_test",
+    size = "medium",
+    timeout = "moderate",
+    srcs = ["coding/coding_test.cpp"],
+    deps = [
+        "//xgalois",
+        "@googletest//:gtest",
+        "@googletest//:gtest_main",
+    ],
+)
+
+cc_test(
+    name = "grs_test",
+    size = "large",
+    timeout = "long",
+    srcs = ["coding/grs_test.cpp"],
+    deps = [
+        "//xgalois",
+        "@googletest//:gtest",
+        "@googletest//:gtest_main",
+    ],
+)
+
+cc_test(
+    name = "cyclic_bch_test",
+    size = "large",
+    timeout = "long",
+    srcs = ["coding/cyclic_bch_test.cpp"],
+    deps = [
+        "//xgalois",
+        "@googletest//:gtest",
+        "@googletest//:gtest_main",
+    ],
+)
+
+cc_test(
+    name = "syndrome_linear_test",
+    size = "medium",
+    timeout = "moderate",
+    srcs = ["coding/syndrome_linear_test.cpp"],
+    deps = [
+        "//xgalois",
+        "@googletest//:gtest",
+        "@googletest//:gtest_main",
+    ],
+)
+
+cc_test(
+    name = "algebraic_property_test",
+    size = "large",
+    timeout = "long",
+    srcs = ["property/algebraic_property_test.cpp"],
+    deps = [
+        "//xgalois",
+        "@googletest//:gtest",
+        "@googletest//:gtest_main",
+    ],
+)
+
+cc_test(
+    name = "odr_multi_tu_test",
+    size = "small",
+    timeout = "short",
+    srcs = [
+        "build/odr_tu1.cpp",
+        "build/odr_tu2.cpp",
+    ],
+    deps = [
+        "//xgalois",
+        "@googletest//:gtest",
+        "@googletest//:gtest_main",
+    ],
+)
+
+cc_test(
+    name = "db_integrity_test",
+    size = "large",
+    timeout = "long",
+    srcs = ["databases/db_integrity_test.cpp"],
+    deps = [
+        "//xgalois",
+        "@googletest//:gtest",
+        "@googletest//:gtest_main",
+    ],
+)
+
+cc_test(
+    name = "fuzz_smoke_test",
+    size = "large",
+    timeout = "long",
+    srcs = ["fuzz/fuzz_smoke_test.cpp"],
+    deps = [
+        "//xgalois",
+        "@googletest//:gtest",
+        "@googletest//:gtest_main",
+    ],
+)
+
+cc_test(
+    name = "gf128_test",
+    size = "medium",
+    timeout = "moderate",
+    srcs = ["field/gf128_test.cpp"],
+    deps = [
+        "//xgalois",
+        "@googletest//:gtest",
+        "@googletest//:gtest_main",
+    ],
+)
+
+cc_test(
+    name = "ldpc_polar_test",
+    size = "large",
+    timeout = "long",
+    srcs = ["coding/ldpc_polar_test.cpp"],
+    deps = [
+        "//xgalois",
+        "@googletest//:gtest",
+        "@googletest//:gtest_main",
+    ],
+)
+
+cc_test(
+    name = "guruswami_sudan_test",
+    size = "large",
+    timeout = "long",
+    srcs = ["coding/guruswami_sudan_test.cpp"],
+    deps = [
+        "//xgalois",
+        "@googletest//:gtest",
+        "@googletest//:gtest_main",
     ],
 )
 
 test_suite(
     name = "galois_field_tests",
     tests = [
+        ":algebraic_property_test",
         ":channel_test",
+        ":coding_test",
+        ":cyclic_bch_test",
+        ":db_integrity_test",
         ":field_test",
+        ":fuzz_smoke_test",
+        ":gf128_test",
         ":gf_binary_test",
         ":gf_element_test",
         ":gf_extension_test",
         ":gf_factory_test",
         ":gf_prime_test",
+        ":gf_tables_test",
+        ":grs_test",
+        ":guruswami_sudan_test",
         ":interface_test",
+        ":ldpc_polar_test",
         ":linalg_binary_test",
+        ":linalg_extension_test",
+        ":linalg_gf2_test",
         ":linalg_prime_test",
         ":math_test",
+        ":odr_multi_tu_test",
+        ":poly_algo_test",
         ":poly_dense_test",
         ":poly_test",
+        ":syndrome_linear_test",
     ],
 )

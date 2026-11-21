@@ -3,7 +3,7 @@
 project = "xgalois"
 copyright = "2026, amirmulla"
 author = "amirmulla"
-release = "0.1.0"
+release = "0.2.0"
 
 extensions = [
     "sphinx.ext.autodoc",
@@ -31,7 +31,7 @@ exhale_args = {
 primary_domain = "cpp"
 highlight_language = "cpp"
 
-templates_path = ["_templates"]
+templates_path = []
 exclude_patterns = ["_build", "Thumbs.db", ".DS_Store", "doxyoutput", ".venv"]
 
 # -- HTML Theme ---------------------------------------------------------------

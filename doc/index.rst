@@ -3,15 +3,17 @@
 xgalois Documentation
 =====================
 
-**xgalois** is a high-performance C++ library for computations over
+**xgalois** is a high-performance C++20 library for computations over
 `Galois Fields <https://en.wikipedia.org/wiki/Finite_field>`_ (finite fields),
-providing a comprehensive toolkit for algebraic coding theory, linear algebra,
-and polynomial arithmetic — all natively over :math:`\mathrm{GF}(p^n)`.
+providing a comprehensive toolkit for polynomial algebra, finite-field linear
+algebra, communication channel modeling, and algebraic & modern coding theory —
+all natively over :math:`\mathrm{GF}(p^m)`.
 
 .. note::
 
-   This is the documentation for **xgalois v0.1.0**.
-   The library is under active development; the API may evolve.
+   This is the documentation for **xgalois v0.2.0**.
+   The library targets **C++20** and supports both **Bazel 8/9 (pure Bzlmod)**
+   and **CMake >= 3.20** (``FetchContent`` and ``find_package(xgalois CONFIG REQUIRED)``).
 
 ----
 
@@ -20,15 +22,19 @@ Tutorials & Getting Started
 
 .. topic:: Tutorial
 
-   A hands-on introduction to the xgalois library. Learn how to create
-   finite fields, perform arithmetic, construct codes, and simulate
-   channels — all in a few lines of C++.
+   A hands-on introduction to the xgalois library. Learn how to construct
+   finite fields (including :math:`\mathrm{GF}(2^{128})` with AES-GCM GHASH),
+   work with contiguous ``GFArray`` buffers, factor polynomials, solve linear
+   systems, decode Reed–Solomon codes with errors, erasures, and Guruswami–Sudan
+   list decoding, decode LDPC and Polar codes over AWGN, and run Monte Carlo
+   channel simulations.
 
    :doc:`Go to Tutorial → <tutorial>`
 
 .. topic:: Installation
 
-   Build instructions using Bazel for macOS and Linux.
+   Build, test, install, sanitizer, benchmark, and documentation instructions
+   using Bazel 8/9 (pure Bzlmod) or CMake >= 3.20 on Linux and macOS.
 
    :doc:`Go to Installation Guide → <installation>`
 
@@ -38,44 +44,64 @@ Comprehensive Reference Manual
 -------------------------------
 
 The reference manual contains automatically generated documentation
-for every class, function, and namespace in the xgalois C++ library.
+for every class, function, and namespace in the xgalois C++20 library.
 
-.. topic:: Finite Fields — ``xg::GaloisFieldBase``
+.. topic:: Finite Fields & Contiguous Arrays — ``xg::GaloisFieldBase``, ``xg::GFArray``
 
-   Representations and arithmetic for prime fields :math:`\mathrm{GF}(p)`,
-   binary fields :math:`\mathrm{GF}(2^n)`, and general extension fields
-   :math:`\mathrm{GF}(p^n)`. Includes element representation modes
-   (integer, polynomial, logarithmic, power).
+   Prime fields :math:`\mathrm{GF}(p)` (division-free Barrett reduction,
+   Tonelli–Shanks, BSGS/Pohlig–Hellman, log tables), binary and binary
+   extension fields :math:`\mathrm{GF}(2^m)` up to :math:`\mathrm{GF}(2^{64})`
+   (PCLMULQDQ/SSSE3, optimized log/antilog tables, Zech logarithm tables),
+   dedicated :math:`\mathrm{GF}(2^{128})` (``GF128``, ``UInt128``, Karatsuba
+   PCLMULQDQ, NIST SP 800-38D ``GhashMul``, general carry-less Barrett
+   reduction), general extension fields :math:`\mathrm{GF}(p^m)`, runtime
+   factory ``xg::GF(...)``, and packed ``xg::GFArray`` / ``xg::GFMatrix``
+   containers.
 
-.. topic:: Coding Theory — ``xg::coding``
+.. topic:: Polynomials — ``xg::PolynomialDense``, ``xg::utils``
 
-   Abstract linear codes, Generalized Reed–Solomon (GRS) codes,
-   cyclic codes, encoders and decoders. Provides a rigorous algebraic
-   foundation for error correction.
-
-.. topic:: Communication Channels — ``xg::channels``
-
-   Simulated noisy channels for error-correcting code evaluation.
-   Includes static error-rate channels, erasure channels, and
-   q-ary symmetric channels.
+   Dense polynomials over arbitrary Galois fields with Karatsuba
+   multiplication, Euclidean ``DivRem``, ``PowMod``, formal derivatives,
+   batch evaluation, GCD/Extended GCD, Rabin irreducibility/primitivity tests,
+   Cantor–Zassenhaus factorization, ``FindRoots``, ``ChienSearch``, and
+   :math:`O(k^2)` Newton ``Interpolate``.
 
 .. topic:: Linear Algebra — ``xg::linalg``
 
-   Matrix operations over finite fields: dot products, Kronecker products,
-   row echelon form, RREF, determinants, matrix rank, inversion,
-   and system solving.
+   Contiguous ``GFArray`` matrix operations and a bit-packed ``uint64_t``
+   M4RI engine for :math:`\mathrm{GF}(2)` using strict Google-style
+   ``PascalCase`` naming: ``Dot``, ``Vdot``, ``Outer``, ``Cross``, ``Kron``,
+   ``MatrixPower``, ``RowEchelon``, ``Rref``, ``MatrixRank``, ``Trace``,
+   ``Det``, ``Inv``, ``Solve``, ``Nullspace``, ``LeftNullspace``, ``RowSpace``,
+   ``ColumnSpace``, ``SystematicForm``, ``Plu``, and division-free Berkowitz
+   ``CharacteristicPoly``.
 
-.. topic:: Polynomials — ``xg::PolynomialDense``
+.. topic:: Coding Theory — ``xg::coding``
 
-   Dense polynomial representation over arbitrary Galois fields with
-   full arithmetic (``+``, ``-``, ``*``, ``/``, ``%``, ``^``), Horner
-   evaluation, formal derivatives, and division with remainder.
+   ``LinearCode`` (with Hamming, Extended Hamming, Binary/Extended Binary/Ternary
+   Golay, and Reed–Muller factories), ``CyclicCode``, ``BCHCode`` (binary and
+   non-binary with algebraic BM/Chien/Forney decoding),
+   ``GeneralizedReedSolomonCode`` (GRS/RS/Extended RS) with Berlekamp–Massey,
+   Sugiyama, PGZ (errors-and-erasures), and **Guruswami–Sudan list decoding**
+   (``GuruswamiSudanDecoder`` up to the Johnson bound), plus **LDPC codes**
+   (``LDPCCode``, ``BitFlippingDecoder``, ``BeliefPropagationDecoder`` with
+   Sum-Product and Normalized/Offset Min-Sum) and **Polar codes**
+   (``PolarCode``, ``SuccessiveCancellationDecoder``,
+   ``SuccessiveCancellationListDecoder`` for SC/SCL/CA-SCL).
+
+.. topic:: Communication Channels & Simulation — ``xg::channel``
+
+   Seeded channel models (``BinarySymmetricChannel``, ``QarySymmetricChannel``,
+   ``QaryErasureChannel``, ``BinaryErasureChannel``, ``ErrorErasureChannel``,
+   ``StaticErrorRateChannel``, BPSK ``AWGNChannel`` with exact LLR) and
+   deterministic Monte Carlo BER/SER/FER simulation via
+   ``SimulateCodePerformance``.
 
 .. topic:: Databases — ``xg::databases``
 
-   Built-in lookup tables for prime factorizations, irreducible
-   polynomials, and Conway polynomials — used internally for
-   fast field construction.
+   Embedded and file-backed lookup tables for Conway and irreducible
+   polynomials used for fast canonical field construction (``Fetch``,
+   ``FetchAll``, ``FileExists``, ``GetDbPath``).
 
 .. toctree::
    :maxdepth: 2
@@ -91,8 +117,9 @@ Developer's Guide
 
 .. topic:: Contributing to xgalois
 
-   Guidelines for development setup, coding conventions, testing,
-   and submitting contributions.
+   Guidelines for repository layout, C++20 and strict Google C++ Style
+   conventions, granular Bazel and CMake targets, formatting, sanitizers,
+   testing, and submitting contributions.
 
    :doc:`Go to Developer's Guide → <dev_guide>`
 

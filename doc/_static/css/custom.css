@@ -1,3 +1,5 @@
+@import url('https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&family=JetBrains+Mono:wght@400;500&display=swap');
+
 /* ═══════════════════════════════════════════════════
    xgalois Documentation — Custom Theme Overrides
    Modeled after the SageMath documentation site
@@ -32,9 +34,6 @@
   --font-stack: "Inter", "Segoe UI", "Helvetica Neue", Helvetica, Arial, sans-serif;
   --font-stack--monospace: "JetBrains Mono", "Fira Code", "Consolas", monospace;
 }
-
-/* ── Google Fonts ───────────────────────────────── */
-@import url('https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&family=JetBrains+Mono:wght@400;500&display=swap');
 
 /* ── Base ────────────────────────────────────────── */
 body {

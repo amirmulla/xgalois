@@ -1,127 +1,142 @@
 #include <benchmark/benchmark.h>
 
 #include <chrono>
+#include <cstddef>
+#include <cstdint>
 #include <iostream>
+#include <memory>
 #include <random>
 #include <vector>
 
 #include "xgalois/field/gf_binary.hpp"
 
-using namespace xg;
+using xg::GFBEZechLogTables;
+
+namespace {
+
+std::vector<uint32_t> GenerateRandomZechElements(
+    const GFBEZechLogTables<uint32_t>& field, size_t count,
+    std::mt19937_64& gen) {
+  std::vector<uint32_t> elements;
+  elements.reserve(count);
+  for (size_t i = 0; i < count; ++i) {
+    elements.push_back(field.Random(gen));
+  }
+  return elements;
+}
+
+}  // namespace
 
 int main() {
   constexpr uint8_t m = 20;
+  constexpr size_t kNumElements = size_t{1} << 20;
+  constexpr size_t kNumMask = kNumElements - 1;
+  constexpr size_t kSmallBufSize = 1024;
+  constexpr size_t kSmallBufMask = kSmallBufSize - 1;
 
   std::cout << "Creating GF(2^" << static_cast<int>(m)
-            << ") using Zech Log Tables..." << '\n';
+            << ") using Zech Log Tables...\n";
 
   auto field = std::make_shared<GFBEZechLogTables<uint32_t>>(m);
 
-  std::cout << "Field order: " << field->Order() << std::endl;
-  std::cout << "Field characteristic: " << field->Characteristic() << std::endl;
+  std::cout << "Field order: " << field->Order() << '\n';
+  std::cout << "Field characteristic: " << field->Characteristic() << '\n';
+  std::cout << "Field memory: " << field->MemoryBytes() << " bytes\n";
 
-  std::mt19937 gen(42);
-  std::uniform_int_distribution<uint64_t> dis(0, field->Order() - 2);
-
-  uint64_t num_elements = 1e6;
-  std::vector<uint32_t> log_elements;
-  log_elements.reserve(num_elements);
-
-  std::cout << "Generating " << num_elements << " random field elements..."
-            << '\n';
-  for (size_t i = 0; i < num_elements; ++i) {
-    log_elements.push_back(static_cast<uint32_t>(dis(gen)));
+  // Sanity check Wave 1 SetElementValue / GetElementValue / Mul round-trip.
+  const uint32_t sample_a = field->SetElementValue(2U);
+  const uint32_t sample_b = field->SetElementValue(3U);
+  const uint32_t sample_prod =
+      field->GetElementValue(field->Mul(sample_a, sample_b));
+  if (sample_prod != 6U) {
+    std::cerr << "Sanity check failed for Zech Mul!\n";
+    return 1;
   }
 
-  std::cout << "Measuring multiplication of " << num_elements
-            << " random pairs..." << '\n';
+  std::mt19937_64 gen(42);
+  std::cout << "Generating " << kNumElements << " random field elements...\n";
+  auto log_elements = GenerateRandomZechElements(*field, kNumElements, gen);
+
+  std::cout << "Measuring multiplication of " << kNumElements
+            << " random pairs...\n";
 
   auto start_time = std::chrono::high_resolution_clock::now();
-
-  for (size_t i = 0; i < log_elements.size(); ++i) {
-    uint32_t result = field->Mul(log_elements[i], log_elements[i + 1]);
+  for (size_t i = 0; i < kNumElements; ++i) {
+    uint32_t result =
+        field->Mul(log_elements[i], log_elements[(i + 1) & kNumMask]);
     benchmark::DoNotOptimize(result);
   }
-
   auto end_time = std::chrono::high_resolution_clock::now();
   auto duration = std::chrono::duration_cast<std::chrono::nanoseconds>(
       end_time - start_time);
 
-  double total_time_ms = duration.count() / 1e6;
+  double total_time_ms = static_cast<double>(duration.count()) / 1e6;
   double avg_time_ns =
-      static_cast<double>(duration.count()) / (log_elements.size());
+      static_cast<double>(duration.count()) / static_cast<double>(kNumElements);
   double operations_per_second = 1e9 / avg_time_ns;
 
-  std::cout << "\n=== Multiplication Performance Results ===" << '\n';
-  std::cout << "Total operations: " << (log_elements.size()) << '\n';
-  std::cout << "Total time: " << total_time_ms << " ms" << '\n';
-  std::cout << "Average time per multiplication: " << avg_time_ns << " ns"
-            << '\n';
+  std::cout << "\n=== Multiplication Performance Results ===\n";
+  std::cout << "Total operations: " << kNumElements << '\n';
+  std::cout << "Total time: " << total_time_ms << " ms\n";
+  std::cout << "Average time per multiplication: " << avg_time_ns << " ns\n";
   std::cout << "Operations per second: "
             << static_cast<uint64_t>(operations_per_second) << '\n';
 
-  std::cout << "\n=== Batch Multiplication Test ===" << '\n';
-
-  std::uniform_int_distribution<size_t> index_dis(0, log_elements.size() - 1);
-  uint32_t a = log_elements[index_dis(gen)];
-  uint32_t b = log_elements[index_dis(gen)];
-
-  constexpr uint64_t batch_size = 1000000;
+  std::cout << "\n=== Cache-Resident Batch Multiplication Test ===\n";
+  auto batch_elements = GenerateRandomZechElements(*field, kSmallBufSize, gen);
+  constexpr uint64_t kBatchOps = 1000000;
 
   start_time = std::chrono::high_resolution_clock::now();
-
-  for (uint64_t i = 0; i < batch_size; ++i) {
-    uint32_t result = field->Mul(a, b);
+  for (uint64_t i = 0; i < kBatchOps; ++i) {
+    const size_t idx = static_cast<size_t>(i) & kSmallBufMask;
+    uint32_t result = field->Mul(batch_elements[idx],
+                                 batch_elements[(idx + 1) & kSmallBufMask]);
     benchmark::DoNotOptimize(result);
   }
-
   end_time = std::chrono::high_resolution_clock::now();
   duration = std::chrono::duration_cast<std::chrono::nanoseconds>(end_time -
                                                                   start_time);
 
-  total_time_ms = duration.count() / 1e6;
-  avg_time_ns = static_cast<double>(duration.count()) / batch_size;
+  total_time_ms = static_cast<double>(duration.count()) / 1e6;
+  avg_time_ns =
+      static_cast<double>(duration.count()) / static_cast<double>(kBatchOps);
   operations_per_second = 1e9 / avg_time_ns;
 
-  std::cout << "Batch operations: " << batch_size << '\n';
-  std::cout << "Total time: " << total_time_ms << " ms" << '\n';
-  std::cout << "Average time per multiplication: " << avg_time_ns << " ns"
-            << '\n';
+  std::cout << "Batch operations: " << kBatchOps << '\n';
+  std::cout << "Total time: " << total_time_ms << " ms\n";
+  std::cout << "Average time per multiplication: " << avg_time_ns << " ns\n";
   std::cout << "Operations per second: "
             << static_cast<uint64_t>(operations_per_second) << '\n';
 
-  std::cout << "\n=== Performance Comparison Across Field Sizes ===" << '\n';
-
+  std::cout << "\n=== Performance Comparison Across Field Sizes ===\n";
   for (uint8_t test_m : {4, 6, 8, 10, 12}) {
     auto test_field = std::make_shared<GFBEZechLogTables<uint32_t>>(test_m);
+    auto test_elems =
+        GenerateRandomZechElements(*test_field, kSmallBufSize, gen);
 
-    std::uniform_int_distribution<uint64_t> test_dis(0,
-                                                     test_field->Order() - 2);
-    uint32_t test_a = static_cast<uint32_t>(test_dis(gen));
-    uint32_t test_b = static_cast<uint32_t>(test_dis(gen));
-
-    constexpr uint64_t test_operations = 100000;
-
+    constexpr uint64_t kTestOps = 100000;
     start_time = std::chrono::high_resolution_clock::now();
-
-    for (uint64_t i = 0; i < test_operations; ++i) {
-      uint32_t result = test_field->Mul(test_a, test_b);
+    for (uint64_t i = 0; i < kTestOps; ++i) {
+      const size_t idx = static_cast<size_t>(i) & kSmallBufMask;
+      uint32_t result = test_field->Mul(test_elems[idx],
+                                        test_elems[(idx + 1) & kSmallBufMask]);
       benchmark::DoNotOptimize(result);
     }
-
     end_time = std::chrono::high_resolution_clock::now();
     duration = std::chrono::duration_cast<std::chrono::nanoseconds>(end_time -
                                                                     start_time);
 
-    avg_time_ns = static_cast<double>(duration.count()) / test_operations;
+    avg_time_ns =
+        static_cast<double>(duration.count()) / static_cast<double>(kTestOps);
     operations_per_second = 1e9 / avg_time_ns;
 
     std::cout << "GF(2^" << static_cast<int>(test_m)
-              << ") [Order: " << test_field->Order() << "]: " << avg_time_ns
-              << " ns/op, " << static_cast<uint64_t>(operations_per_second)
-              << " ops/sec" << std::endl;
+              << ") [Order: " << test_field->Order()
+              << ", Bytes: " << test_field->MemoryBytes()
+              << "]: " << avg_time_ns << " ns/op, "
+              << static_cast<uint64_t>(operations_per_second) << " ops/sec\n";
   }
 
-  std::cout << "\nSimulation completed successfully!" << '\n';
+  std::cout << "\nMultiplication simulation completed successfully!\n";
   return 0;
 }
