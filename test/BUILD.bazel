@@ -318,6 +318,42 @@ cc_test(
     ],
 )
 
+cc_test(
+    name = "gf128_test",
+    size = "medium",
+    timeout = "moderate",
+    srcs = ["field/gf128_test.cpp"],
+    deps = [
+        "//xgalois",
+        "@googletest//:gtest",
+        "@googletest//:gtest_main",
+    ],
+)
+
+cc_test(
+    name = "ldpc_polar_test",
+    size = "large",
+    timeout = "long",
+    srcs = ["coding/ldpc_polar_test.cpp"],
+    deps = [
+        "//xgalois",
+        "@googletest//:gtest",
+        "@googletest//:gtest_main",
+    ],
+)
+
+cc_test(
+    name = "guruswami_sudan_test",
+    size = "large",
+    timeout = "long",
+    srcs = ["coding/guruswami_sudan_test.cpp"],
+    deps = [
+        "//xgalois",
+        "@googletest//:gtest",
+        "@googletest//:gtest_main",
+    ],
+)
+
 test_suite(
     name = "galois_field_tests",
     tests = [
@@ -328,6 +364,7 @@ test_suite(
         ":db_integrity_test",
         ":field_test",
         ":fuzz_smoke_test",
+        ":gf128_test",
         ":gf_binary_test",
         ":gf_element_test",
         ":gf_extension_test",
@@ -335,7 +372,9 @@ test_suite(
         ":gf_prime_test",
         ":gf_tables_test",
         ":grs_test",
+        ":guruswami_sudan_test",
         ":interface_test",
+        ":ldpc_polar_test",
         ":linalg_binary_test",
         ":linalg_extension_test",
         ":linalg_gf2_test",
