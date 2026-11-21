@@ -43,7 +43,7 @@ struct MemoryUsage {
 }
 
 // Includes zero operands naturally via seeded field.Random(gen) (works
-// uniformly for standard polynomial representations and Zech-log LOG_ZERO).
+// uniformly for standard polynomial representations and Zech-log kLogZero).
 template <typename FieldType>
 std::vector<typename FieldType::element_type> GenerateRandomElements(
     const FieldType& field, size_t count, uint64_t seed = kDefaultSeed) {

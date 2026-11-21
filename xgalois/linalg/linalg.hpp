@@ -26,27 +26,21 @@ namespace xg {
 // xgalois/field/gf_binary.hpp.
 class GaloisFieldBinary;
 
-template <typename GaloisField>
-using garray = xt::xarray<GaloisFieldElement<GaloisField>>;
-
 namespace linalg {
 
 template <typename GaloisField>
-using garray = xg::garray<GaloisField>;
-
-template <typename GaloisField>
 struct SystematicFormResult {
-  GFArray<GaloisField> G_sys;
+  GFArray<GaloisField> g_sys;
   std::vector<std::size_t> pivot_cols;
   std::vector<std::size_t> free_cols;
   std::vector<std::size_t> col_perm;
 };
 
 template <typename GaloisField>
-struct PLUResult {
-  GFArray<GaloisField> P;
-  GFArray<GaloisField> L;
-  GFArray<GaloisField> U;
+struct PluResult {
+  GFArray<GaloisField> p;
+  GFArray<GaloisField> l;
+  GFArray<GaloisField> u;
   std::vector<std::size_t> perm;
   std::size_t num_swaps = 0;
 };
@@ -205,7 +199,7 @@ inline void UnpackMatrix(const PackedBinaryMatrix &m, uint8_t *dst) noexcept {
 
 // M4RI-style Gray-code 4-bit / 8-bit table-driven bit-packed GF(2) matrix
 // multiplication: C (m x n) = A (m x k) * B (k x n).
-inline void MatMulM4RI(const uint8_t *a_data, std::size_t m, std::size_t k,
+inline void MatMulM4ri(const uint8_t *a_data, std::size_t m, std::size_t k,
                        const uint8_t *b_data, std::size_t n, uint8_t *c_data) {
   if (m == 0 || n == 0) {
     return;
@@ -215,24 +209,24 @@ inline void MatMulM4RI(const uint8_t *a_data, std::size_t m, std::size_t k,
     return;
   }
 
-  const PackedBinaryMatrix A = PackMatrix(a_data, m, k);
-  const PackedBinaryMatrix B = PackMatrix(b_data, k, n);
-  PackedBinaryMatrix C = PackedBinaryMatrix::Zeros(m, n);
-  const std::size_t words_n = B.words_per_row;
+  const PackedBinaryMatrix packed_a = PackMatrix(a_data, m, k);
+  const PackedBinaryMatrix packed_b = PackMatrix(b_data, k, n);
+  PackedBinaryMatrix packed_c = PackedBinaryMatrix::Zeros(m, n);
+  const std::size_t words_n = packed_b.words_per_row;
 
   // For tiny row counts (e.g., 1D * 2D), direct set-bit scan avoids table
   // setup overhead.
   if (m < 4) {
     for (std::size_t i = 0; i < m; ++i) {
-      const uint64_t *a_row = A.RowPtr(i);
-      uint64_t *c_row = C.RowPtr(i);
-      for (std::size_t w_k = 0; w_k < A.words_per_row; ++w_k) {
+      const uint64_t *a_row = packed_a.RowPtr(i);
+      uint64_t *c_row = packed_c.RowPtr(i);
+      for (std::size_t w_k = 0; w_k < packed_a.words_per_row; ++w_k) {
         uint64_t word = a_row[w_k];
         const std::size_t base_k = w_k << 6;
         while (word != 0) {
           const std::size_t bit =
               static_cast<std::size_t>(std::countr_zero(word));
-          const uint64_t *b_row = B.RowPtr(base_k + bit);
+          const uint64_t *b_row = packed_b.RowPtr(base_k + bit);
           for (std::size_t w = 0; w < words_n; ++w) {
             c_row[w] ^= b_row[w];
           }
@@ -240,7 +234,7 @@ inline void MatMulM4RI(const uint8_t *a_data, std::size_t m, std::size_t k,
         }
       }
     }
-    UnpackMatrix(C, c_data);
+    UnpackMatrix(packed_c, c_data);
     return;
   }
 
@@ -262,7 +256,7 @@ inline void MatMulM4RI(const uint8_t *a_data, std::size_t m, std::size_t k,
       const std::size_t diff = g_prev ^ g_curr;
       const std::size_t bit = static_cast<std::size_t>(std::countr_zero(diff));
       const uint64_t *prev_row = table.data() + g_prev * words_n;
-      const uint64_t *b_row = B.RowPtr(k0 + bit);
+      const uint64_t *b_row = packed_b.RowPtr(k0 + bit);
       uint64_t *curr_row = table.data() + g_curr * words_n;
       for (std::size_t w = 0; w < words_n; ++w) {
         curr_row[w] = prev_row[w] ^ b_row[w];
@@ -275,11 +269,11 @@ inline void MatMulM4RI(const uint8_t *a_data, std::size_t m, std::size_t k,
     const uint64_t mask_bits = (uint64_t{1} << b_len) - 1ULL;
     for (std::size_t i = 0; i < m; ++i) {
       const std::size_t idx = static_cast<std::size_t>(
-          (A.RowPtr(i)[word_idx] >> bit_offset) & mask_bits);
+          (packed_a.RowPtr(i)[word_idx] >> bit_offset) & mask_bits);
       if (idx == 0) {
         continue;
       }
-      uint64_t *c_row = C.RowPtr(i);
+      uint64_t *c_row = packed_c.RowPtr(i);
       const uint64_t *t_row = table.data() + idx * words_n;
       for (std::size_t w = 0; w < words_n; ++w) {
         c_row[w] ^= t_row[w];
@@ -287,10 +281,10 @@ inline void MatMulM4RI(const uint8_t *a_data, std::size_t m, std::size_t k,
     }
   }
 
-  UnpackMatrix(C, c_data);
+  UnpackMatrix(packed_c, c_data);
 }
 
-inline void MatVecGF2(const uint8_t *a_data, std::size_t m, std::size_t k,
+inline void MatVecGf2(const uint8_t *a_data, std::size_t m, std::size_t k,
                       const uint8_t *b_data, uint8_t *out) {
   if (m == 0) {
     return;
@@ -299,12 +293,12 @@ inline void MatVecGF2(const uint8_t *a_data, std::size_t m, std::size_t k,
     std::fill(out, out + m, uint8_t{0});
     return;
   }
-  const PackedBinaryMatrix A = PackMatrix(a_data, m, k);
-  const PackedBinaryMatrix b = PackMatrix(b_data, 1, k);
-  const uint64_t *b_row = b.RowPtr(0);
-  const std::size_t words_k = A.words_per_row;
+  const PackedBinaryMatrix packed_a = PackMatrix(a_data, m, k);
+  const PackedBinaryMatrix packed_b = PackMatrix(b_data, 1, k);
+  const uint64_t *b_row = packed_b.RowPtr(0);
+  const std::size_t words_k = packed_a.words_per_row;
   for (std::size_t i = 0; i < m; ++i) {
-    const uint64_t *a_row = A.RowPtr(i);
+    const uint64_t *a_row = packed_a.RowPtr(i);
     uint64_t acc = 0;
     for (std::size_t w = 0; w < words_k; ++w) {
       acc ^= (a_row[w] & b_row[w]);
@@ -468,9 +462,9 @@ inline std::pair<GFArray<GaloisField>, std::vector<std::size_t>> RrefWithPivots(
   using StorageType = typename GaloisField::element_type;
   using RawArray = typename GFArray<GaloisField>::raw_array_type;
 
-  RequireValidArray(a, "rref");
+  RequireValidArray(a, "Rref");
   if (a.Dimension() != 2) {
-    throw std::invalid_argument("rref requires a 2-D array (matrix)");
+    throw std::invalid_argument("Rref requires a 2-D array (matrix)");
   }
 
   auto field = a.Field();
@@ -564,10 +558,10 @@ inline std::pair<GFArray<GaloisField>, std::vector<std::size_t>> RrefWithPivots(
 // ============================================================================
 
 template <typename GaloisField>
-GFArray<GaloisField> eye(const std::shared_ptr<GaloisField> &field,
+GFArray<GaloisField> Eye(const std::shared_ptr<GaloisField> &field,
                          std::size_t n) {
   using RawArray = typename GFArray<GaloisField>::raw_array_type;
-  detail::RequireField(field, "eye");
+  detail::RequireField(field, "Eye");
 
   RawArray raw =
       RawArray::from_shape(typename GFArray<GaloisField>::shape_type{n, n});
@@ -581,60 +575,40 @@ GFArray<GaloisField> eye(const std::shared_ptr<GaloisField> &field,
 }
 
 template <typename GaloisField>
-garray<GaloisField> eye(std::size_t n,
-                        const std::shared_ptr<GaloisField> &field) {
-  return eye(field, n).ToElementArray();
-}
-
-template <typename GaloisField>
-GFArray<GaloisField> zeros(const std::shared_ptr<GaloisField> &field,
+GFArray<GaloisField> Zeros(const std::shared_ptr<GaloisField> &field,
                            const std::vector<std::size_t> &shape) {
-  detail::RequireField(field, "zeros");
+  detail::RequireField(field, "Zeros");
   return GFArray<GaloisField>::Zeros(field, shape);
 }
 
 template <typename GaloisField>
-garray<GaloisField> zeros(const std::vector<std::size_t> &shape,
-                          const std::shared_ptr<GaloisField> &field) {
-  detail::RequireField(field, "zeros");
-  return GFArray<GaloisField>::Zeros(field, shape).ToElementArray();
-}
-
-template <typename GaloisField>
-GFArray<GaloisField> ones(const std::shared_ptr<GaloisField> &field,
+GFArray<GaloisField> Ones(const std::shared_ptr<GaloisField> &field,
                           const std::vector<std::size_t> &shape) {
-  detail::RequireField(field, "ones");
+  detail::RequireField(field, "Ones");
   return GFArray<GaloisField>::Ones(field, shape);
 }
 
 template <typename GaloisField>
-garray<GaloisField> ones(const std::vector<std::size_t> &shape,
-                         const std::shared_ptr<GaloisField> &field) {
-  detail::RequireField(field, "ones");
-  return GFArray<GaloisField>::Ones(field, shape).ToElementArray();
-}
-
-template <typename GaloisField>
-GFArray<GaloisField> random_matrix(const std::shared_ptr<GaloisField> &field,
-                                   const std::vector<std::size_t> &shape,
-                                   std::mt19937_64 &rng) {
-  detail::RequireField(field, "random_matrix");
+GFArray<GaloisField> RandomMatrix(const std::shared_ptr<GaloisField> &field,
+                                  const std::vector<std::size_t> &shape,
+                                  std::mt19937_64 &rng) {
+  detail::RequireField(field, "RandomMatrix");
   return GFArray<GaloisField>::Random(field, shape, rng);
 }
 
 template <typename GaloisField>
-GFArray<GaloisField> random_matrix(const std::shared_ptr<GaloisField> &field,
-                                   const std::vector<std::size_t> &shape) {
-  detail::RequireField(field, "random_matrix");
+GFArray<GaloisField> RandomMatrix(const std::shared_ptr<GaloisField> &field,
+                                  const std::vector<std::size_t> &shape) {
+  detail::RequireField(field, "RandomMatrix");
   return GFArray<GaloisField>::Random(field, shape);
 }
 
 template <typename GaloisField>
-GFArray<GaloisField> transpose(const GFArray<GaloisField> &a) {
+GFArray<GaloisField> Transpose(const GFArray<GaloisField> &a) {
   using RawArray = typename GFArray<GaloisField>::raw_array_type;
-  detail::RequireValidArray(a, "transpose");
+  detail::RequireValidArray(a, "Transpose");
   if (a.Dimension() != 2) {
-    throw std::invalid_argument("transpose requires a 2-D array (matrix)");
+    throw std::invalid_argument("Transpose requires a 2-D array (matrix)");
   }
 
   const std::size_t rows = a.Shape(0);
@@ -664,15 +638,10 @@ GFArray<GaloisField> transpose(const GFArray<GaloisField> &a) {
 }
 
 template <typename GaloisField>
-garray<GaloisField> transpose(const garray<GaloisField> &a) {
-  return transpose(GFArray<GaloisField>::FromElementArray(a)).ToElementArray();
-}
-
-template <typename GaloisField>
-GFArray<GaloisField> hstack(const GFArray<GaloisField> &a,
+GFArray<GaloisField> HStack(const GFArray<GaloisField> &a,
                             const GFArray<GaloisField> &b) {
   using RawArray = typename GFArray<GaloisField>::raw_array_type;
-  detail::RequireSameField(a, b, "hstack");
+  detail::RequireSameField(a, b, "HStack");
 
   if (a.Dimension() == 1 && b.Dimension() == 1) {
     const std::size_t na = a.Shape(0);
@@ -691,7 +660,7 @@ GFArray<GaloisField> hstack(const GFArray<GaloisField> &a,
   if (a.Dimension() == 2 && b.Dimension() == 2) {
     if (a.Shape(0) != b.Shape(0)) {
       throw std::invalid_argument(
-          "hstack: 2-D arrays must have the same number of rows");
+          "HStack: 2-D arrays must have the same number of rows");
     }
     const std::size_t rows = a.Shape(0);
     const std::size_t cols_a = a.Shape(1);
@@ -714,27 +683,19 @@ GFArray<GaloisField> hstack(const GFArray<GaloisField> &a,
     return GFArray<GaloisField>::FromRaw(a.Field(), std::move(out));
   }
 
-  throw std::invalid_argument("hstack requires two 1-D or two 2-D arrays");
+  throw std::invalid_argument("HStack requires two 1-D or two 2-D arrays");
 }
 
 template <typename GaloisField>
-garray<GaloisField> hstack(const garray<GaloisField> &a,
-                           const garray<GaloisField> &b) {
-  return hstack(GFArray<GaloisField>::FromElementArray(a),
-                GFArray<GaloisField>::FromElementArray(b))
-      .ToElementArray();
-}
-
-template <typename GaloisField>
-GFArray<GaloisField> vstack(const GFArray<GaloisField> &a,
+GFArray<GaloisField> VStack(const GFArray<GaloisField> &a,
                             const GFArray<GaloisField> &b) {
   using RawArray = typename GFArray<GaloisField>::raw_array_type;
-  detail::RequireSameField(a, b, "vstack");
+  detail::RequireSameField(a, b, "VStack");
 
   if (a.Dimension() == 1 && b.Dimension() == 1) {
     if (a.Shape(0) != b.Shape(0)) {
       throw std::invalid_argument(
-          "vstack: 1-D arrays must have the same length");
+          "VStack: 1-D arrays must have the same length");
     }
     const std::size_t cols = a.Shape(0);
     RawArray out = RawArray::from_shape(
@@ -750,7 +711,7 @@ GFArray<GaloisField> vstack(const GFArray<GaloisField> &a,
   if (a.Dimension() == 2 && b.Dimension() == 2) {
     if (a.Shape(1) != b.Shape(1)) {
       throw std::invalid_argument(
-          "vstack: 2-D arrays must have the same number of columns");
+          "VStack: 2-D arrays must have the same number of columns");
     }
     const std::size_t rows_a = a.Shape(0);
     const std::size_t rows_b = b.Shape(0);
@@ -769,29 +730,21 @@ GFArray<GaloisField> vstack(const GFArray<GaloisField> &a,
     return GFArray<GaloisField>::FromRaw(a.Field(), std::move(out));
   }
 
-  throw std::invalid_argument("vstack requires two 1-D or two 2-D arrays");
-}
-
-template <typename GaloisField>
-garray<GaloisField> vstack(const garray<GaloisField> &a,
-                           const garray<GaloisField> &b) {
-  return vstack(GFArray<GaloisField>::FromElementArray(a),
-                GFArray<GaloisField>::FromElementArray(b))
-      .ToElementArray();
+  throw std::invalid_argument("VStack requires two 1-D or two 2-D arrays");
 }
 
 // ============================================================================
-// Products: dot, vdot, outer, cross, kron, matrix_power
+// Products: Dot, Vdot, Outer, Cross, Kron, MatrixPower
 // ============================================================================
 
 template <typename GaloisField>
-GFArray<GaloisField> dot(const GFArray<GaloisField> &a,
+GFArray<GaloisField> Dot(const GFArray<GaloisField> &a,
                          const GFArray<GaloisField> &b) {
   using StorageType = typename GaloisField::element_type;
   using RawArray = typename GFArray<GaloisField>::raw_array_type;
   using ShapeType = typename GFArray<GaloisField>::shape_type;
 
-  detail::RequireSameField(a, b, "dot");
+  detail::RequireSameField(a, b, "Dot");
   auto field = a.Field();
 
   // 1D * 1D -> 0-D GFArray
@@ -816,7 +769,7 @@ GFArray<GaloisField> dot(const GFArray<GaloisField> &a,
     const std::size_t n = b.Shape(1);
     RawArray raw = RawArray::from_shape(ShapeType{n});
     if constexpr (std::is_same_v<GaloisField, GaloisFieldBinary>) {
-      detail::MatMulM4RI(a.RawData().data(), 1, k, b.RawData().data(), n,
+      detail::MatMulM4ri(a.RawData().data(), 1, k, b.RawData().data(), n,
                          raw.data());
     } else {
       const StorageType zero = field->AdditiveIdentity();
@@ -847,7 +800,7 @@ GFArray<GaloisField> dot(const GFArray<GaloisField> &a,
     const std::size_t k = a.Shape(1);
     RawArray raw = RawArray::from_shape(ShapeType{m});
     if constexpr (std::is_same_v<GaloisField, GaloisFieldBinary>) {
-      detail::MatVecGF2(a.RawData().data(), m, k, b.RawData().data(),
+      detail::MatVecGf2(a.RawData().data(), m, k, b.RawData().data(),
                         raw.data());
     } else {
       const StorageType *a_data = a.RawData().data();
@@ -872,7 +825,7 @@ GFArray<GaloisField> dot(const GFArray<GaloisField> &a,
     const std::size_t n = b.Shape(1);
     RawArray raw = RawArray::from_shape(ShapeType{m, n});
     if constexpr (std::is_same_v<GaloisField, GaloisFieldBinary>) {
-      detail::MatMulM4RI(a.RawData().data(), m, k, b.RawData().data(), n,
+      detail::MatMulM4ri(a.RawData().data(), m, k, b.RawData().data(), n,
                          raw.data());
     } else {
       const StorageType zero = field->AdditiveIdentity();
@@ -903,20 +856,12 @@ GFArray<GaloisField> dot(const GFArray<GaloisField> &a,
 }
 
 template <typename GaloisField>
-garray<GaloisField> dot(const garray<GaloisField> &a,
-                        const garray<GaloisField> &b) {
-  return dot(GFArray<GaloisField>::FromElementArray(a),
-             GFArray<GaloisField>::FromElementArray(b))
-      .ToElementArray();
-}
-
-template <typename GaloisField>
-GaloisFieldElement<GaloisField> vdot(const GFArray<GaloisField> &a,
+GaloisFieldElement<GaloisField> Vdot(const GFArray<GaloisField> &a,
                                      const GFArray<GaloisField> &b) {
-  detail::RequireSameField(a, b, "vdot");
+  detail::RequireSameField(a, b, "Vdot");
   if (a.Size() != b.Size()) {
     throw std::invalid_argument(
-        "Arrays must have same number of elements for vdot");
+        "Arrays must have same number of elements for Vdot");
   }
   auto field = a.Field();
   auto val = field->DotProduct(a.RawSpan(), b.RawSpan());
@@ -925,21 +870,14 @@ GaloisFieldElement<GaloisField> vdot(const GFArray<GaloisField> &a,
 }
 
 template <typename GaloisField>
-GaloisFieldElement<GaloisField> vdot(const garray<GaloisField> &a,
-                                     const garray<GaloisField> &b) {
-  return vdot(GFArray<GaloisField>::FromElementArray(a),
-              GFArray<GaloisField>::FromElementArray(b));
-}
-
-template <typename GaloisField>
-GFArray<GaloisField> outer(const GFArray<GaloisField> &a,
+GFArray<GaloisField> Outer(const GFArray<GaloisField> &a,
                            const GFArray<GaloisField> &b) {
   using StorageType = typename GaloisField::element_type;
   using RawArray = typename GFArray<GaloisField>::raw_array_type;
 
-  detail::RequireSameField(a, b, "outer");
+  detail::RequireSameField(a, b, "Outer");
   if (a.Dimension() != 1 || b.Dimension() != 1) {
-    throw std::invalid_argument("outer product requires 1-D arrays");
+    throw std::invalid_argument("Outer product requires 1-D arrays");
   }
 
   auto field = a.Field();
@@ -960,27 +898,19 @@ GFArray<GaloisField> outer(const GFArray<GaloisField> &a,
 }
 
 template <typename GaloisField>
-garray<GaloisField> outer(const garray<GaloisField> &a,
-                          const garray<GaloisField> &b) {
-  return outer(GFArray<GaloisField>::FromElementArray(a),
-               GFArray<GaloisField>::FromElementArray(b))
-      .ToElementArray();
-}
-
-template <typename GaloisField>
-GFArray<GaloisField> cross(const GFArray<GaloisField> &a,
+GFArray<GaloisField> Cross(const GFArray<GaloisField> &a,
                            const GFArray<GaloisField> &b) {
   using StorageType = typename GaloisField::element_type;
   using RawArray = typename GFArray<GaloisField>::raw_array_type;
 
-  detail::RequireSameField(a, b, "cross");
+  detail::RequireSameField(a, b, "Cross");
   if (a.Dimension() != 1 || b.Dimension() != 1) {
-    throw std::invalid_argument("cross product requires 1-D arrays (vectors)");
+    throw std::invalid_argument("Cross product requires 1-D arrays (vectors)");
   }
   if ((a.Shape(0) != 2 && a.Shape(0) != 3) ||
       (b.Shape(0) != 2 && b.Shape(0) != 3)) {
     throw std::invalid_argument(
-        "cross product vectors must have 2 or 3 elements");
+        "Cross product vectors must have 2 or 3 elements");
   }
 
   auto field = a.Field();
@@ -1007,22 +937,14 @@ GFArray<GaloisField> cross(const GFArray<GaloisField> &a,
 }
 
 template <typename GaloisField>
-garray<GaloisField> cross(const garray<GaloisField> &a,
-                          const garray<GaloisField> &b) {
-  return cross(GFArray<GaloisField>::FromElementArray(a),
-               GFArray<GaloisField>::FromElementArray(b))
-      .ToElementArray();
-}
-
-template <typename GaloisField>
-GFArray<GaloisField> kron(const GFArray<GaloisField> &a,
+GFArray<GaloisField> Kron(const GFArray<GaloisField> &a,
                           const GFArray<GaloisField> &b) {
   using StorageType = typename GaloisField::element_type;
   using RawArray = typename GFArray<GaloisField>::raw_array_type;
 
-  detail::RequireSameField(a, b, "kron");
+  detail::RequireSameField(a, b, "Kron");
   if (a.Dimension() != 2 || b.Dimension() != 2) {
-    throw std::invalid_argument("kron requires 2-D arrays (matrices)");
+    throw std::invalid_argument("Kron requires 2-D arrays (matrices)");
   }
 
   auto field = a.Field();
@@ -1057,36 +979,28 @@ GFArray<GaloisField> kron(const GFArray<GaloisField> &a,
   return GFArray<GaloisField>::FromRaw(std::move(field), std::move(raw));
 }
 
+// Forward declaration for negative powers in MatrixPower.
 template <typename GaloisField>
-garray<GaloisField> kron(const garray<GaloisField> &a,
-                         const garray<GaloisField> &b) {
-  return kron(GFArray<GaloisField>::FromElementArray(a),
-              GFArray<GaloisField>::FromElementArray(b))
-      .ToElementArray();
-}
-
-// Forward declaration for negative powers in matrix_power.
-template <typename GaloisField>
-GFArray<GaloisField> inv(const GFArray<GaloisField> &a);
+GFArray<GaloisField> Inv(const GFArray<GaloisField> &a);
 
 template <typename GaloisField>
-GFArray<GaloisField> matrix_power(const GFArray<GaloisField> &a, int64_t n) {
-  detail::RequireValidArray(a, "matrix_power");
+GFArray<GaloisField> MatrixPower(const GFArray<GaloisField> &a, int64_t n) {
+  detail::RequireValidArray(a, "MatrixPower");
   if (a.Dimension() != 2 || a.Shape(0) != a.Shape(1)) {
-    throw std::invalid_argument("matrix_power requires a square matrix");
+    throw std::invalid_argument("MatrixPower requires a square matrix");
   }
 
   auto field = a.Field();
   const std::size_t size = a.Shape(0);
 
   if (n == 0) {
-    return eye(field, size);
+    return Eye(field, size);
   }
   if (n == 1) {
     return a;
   }
 
-  GFArray<GaloisField> base = (n < 0) ? inv(a) : a;
+  GFArray<GaloisField> base = (n < 0) ? Inv(a) : a;
   uint64_t exp = (n < 0) ? (static_cast<uint64_t>(-(n + 1)) + 1ULL)
                          : static_cast<uint64_t>(n);
 
@@ -1098,21 +1012,15 @@ GFArray<GaloisField> matrix_power(const GFArray<GaloisField> &a, int64_t n) {
   bool has_result = false;
   while (exp > 0) {
     if ((exp & 1ULL) != 0) {
-      result = has_result ? dot(result, base) : base;
+      result = has_result ? Dot(result, base) : base;
       has_result = true;
     }
     exp >>= 1;
     if (exp > 0) {
-      base = dot(base, base);
+      base = Dot(base, base);
     }
   }
   return result;
-}
-
-template <typename GaloisField>
-garray<GaloisField> matrix_power(const garray<GaloisField> &a, int64_t n) {
-  return matrix_power(GFArray<GaloisField>::FromElementArray(a), n)
-      .ToElementArray();
 }
 
 // ============================================================================
@@ -1120,13 +1028,13 @@ garray<GaloisField> matrix_power(const garray<GaloisField> &a, int64_t n) {
 // ============================================================================
 
 template <typename GaloisField>
-GFArray<GaloisField> row_echelon(const GFArray<GaloisField> &a) {
+GFArray<GaloisField> RowEchelon(const GFArray<GaloisField> &a) {
   using StorageType = typename GaloisField::element_type;
   using RawArray = typename GFArray<GaloisField>::raw_array_type;
 
-  detail::RequireValidArray(a, "row_echelon");
+  detail::RequireValidArray(a, "RowEchelon");
   if (a.Dimension() != 2) {
-    throw std::invalid_argument("row_echelon requires a 2-D array (matrix)");
+    throw std::invalid_argument("RowEchelon requires a 2-D array (matrix)");
   }
 
   auto field = a.Field();
@@ -1204,26 +1112,15 @@ GFArray<GaloisField> row_echelon(const GFArray<GaloisField> &a) {
 }
 
 template <typename GaloisField>
-garray<GaloisField> row_echelon(const garray<GaloisField> &a) {
-  return row_echelon(GFArray<GaloisField>::FromElementArray(a))
-      .ToElementArray();
-}
-
-template <typename GaloisField>
-GFArray<GaloisField> rref(const GFArray<GaloisField> &a) {
+GFArray<GaloisField> Rref(const GFArray<GaloisField> &a) {
   return detail::RrefWithPivots(a).first;
 }
 
 template <typename GaloisField>
-garray<GaloisField> rref(const garray<GaloisField> &a) {
-  return rref(GFArray<GaloisField>::FromElementArray(a)).ToElementArray();
-}
-
-template <typename GaloisField>
-GaloisFieldElement<GaloisField> trace(const GFArray<GaloisField> &a) {
-  detail::RequireValidArray(a, "trace");
+GaloisFieldElement<GaloisField> Trace(const GFArray<GaloisField> &a) {
+  detail::RequireValidArray(a, "Trace");
   if (a.Dimension() != 2 || a.Shape(0) != a.Shape(1)) {
-    throw std::invalid_argument("trace requires a square matrix");
+    throw std::invalid_argument("Trace requires a square matrix");
   }
 
   auto field = a.Field();
@@ -1238,18 +1135,13 @@ GaloisFieldElement<GaloisField> trace(const GFArray<GaloisField> &a) {
 }
 
 template <typename GaloisField>
-GaloisFieldElement<GaloisField> trace(const garray<GaloisField> &a) {
-  return trace(GFArray<GaloisField>::FromElementArray(a));
-}
-
-template <typename GaloisField>
-GaloisFieldElement<GaloisField> det(const GFArray<GaloisField> &a) {
+GaloisFieldElement<GaloisField> Det(const GFArray<GaloisField> &a) {
   using StorageType = typename GaloisField::element_type;
   using RawArray = typename GFArray<GaloisField>::raw_array_type;
 
-  detail::RequireValidArray(a, "det");
+  detail::RequireValidArray(a, "Det");
   if (a.Dimension() != 2 || a.Shape(0) != a.Shape(1)) {
-    throw std::invalid_argument("determinant requires a square matrix");
+    throw std::invalid_argument("Det requires a square matrix");
   }
 
   auto field = a.Field();
@@ -1322,18 +1214,13 @@ GaloisFieldElement<GaloisField> det(const GFArray<GaloisField> &a) {
 }
 
 template <typename GaloisField>
-GaloisFieldElement<GaloisField> det(const garray<GaloisField> &a) {
-  return det(GFArray<GaloisField>::FromElementArray(a));
-}
-
-template <typename GaloisField>
-std::size_t matrix_rank(const GFArray<GaloisField> &a) {
+std::size_t MatrixRank(const GFArray<GaloisField> &a) {
   using StorageType = typename GaloisField::element_type;
   using RawArray = typename GFArray<GaloisField>::raw_array_type;
 
-  detail::RequireValidArray(a, "matrix_rank");
+  detail::RequireValidArray(a, "MatrixRank");
   if (a.Dimension() != 2) {
-    throw std::invalid_argument("matrix_rank requires a 2-D array (matrix)");
+    throw std::invalid_argument("MatrixRank requires a 2-D array (matrix)");
   }
 
   const std::size_t rows = a.Shape(0);
@@ -1397,20 +1284,15 @@ std::size_t matrix_rank(const GFArray<GaloisField> &a) {
 }
 
 template <typename GaloisField>
-std::size_t matrix_rank(const garray<GaloisField> &a) {
-  return matrix_rank(GFArray<GaloisField>::FromElementArray(a));
-}
-
-template <typename GaloisField>
-GFArray<GaloisField> solve(const GFArray<GaloisField> &a,
+GFArray<GaloisField> Solve(const GFArray<GaloisField> &a,
                            const GFArray<GaloisField> &b) {
   using StorageType = typename GaloisField::element_type;
   using RawArray = typename GFArray<GaloisField>::raw_array_type;
   using ShapeType = typename GFArray<GaloisField>::shape_type;
 
-  detail::RequireSameField(a, b, "solve");
+  detail::RequireSameField(a, b, "Solve");
   if (a.Dimension() != 2 || a.Shape(0) != a.Shape(1)) {
-    throw std::invalid_argument("solve requires a square coefficient matrix");
+    throw std::invalid_argument("Solve requires a square coefficient matrix");
   }
 
   const std::size_t n = a.Shape(0);
@@ -1520,22 +1402,14 @@ GFArray<GaloisField> solve(const GFArray<GaloisField> &a,
 }
 
 template <typename GaloisField>
-garray<GaloisField> solve(const garray<GaloisField> &a,
-                          const garray<GaloisField> &b) {
-  return solve(GFArray<GaloisField>::FromElementArray(a),
-               GFArray<GaloisField>::FromElementArray(b))
-      .ToElementArray();
-}
-
-template <typename GaloisField>
-GFArray<GaloisField> inv(const GFArray<GaloisField> &a) {
+GFArray<GaloisField> Inv(const GFArray<GaloisField> &a) {
   using StorageType = typename GaloisField::element_type;
   using RawArray = typename GFArray<GaloisField>::raw_array_type;
   using ShapeType = typename GFArray<GaloisField>::shape_type;
 
-  detail::RequireValidArray(a, "inv");
+  detail::RequireValidArray(a, "Inv");
   if (a.Dimension() != 2 || a.Shape(0) != a.Shape(1)) {
-    throw std::invalid_argument("inv requires a square matrix");
+    throw std::invalid_argument("Inv requires a square matrix");
   }
 
   auto field = a.Field();
@@ -1624,24 +1498,19 @@ GFArray<GaloisField> inv(const GFArray<GaloisField> &a) {
   }
 }
 
-template <typename GaloisField>
-garray<GaloisField> inv(const garray<GaloisField> &a) {
-  return inv(GFArray<GaloisField>::FromElementArray(a)).ToElementArray();
-}
-
 // ============================================================================
 // Fundamental Subspaces, Systematic Form, PLU, Characteristic Polynomial
 // ============================================================================
 
 template <typename GaloisField>
-GFArray<GaloisField> nullspace(const GFArray<GaloisField> &a) {
+GFArray<GaloisField> Nullspace(const GFArray<GaloisField> &a) {
   using StorageType = typename GaloisField::element_type;
   using RawArray = typename GFArray<GaloisField>::raw_array_type;
   using ShapeType = typename GFArray<GaloisField>::shape_type;
 
-  detail::RequireValidArray(a, "nullspace");
+  detail::RequireValidArray(a, "Nullspace");
   if (a.Dimension() != 2) {
-    throw std::invalid_argument("nullspace requires a 2-D array (matrix)");
+    throw std::invalid_argument("Nullspace requires a 2-D array (matrix)");
   }
 
   auto field = a.Field();
@@ -1652,10 +1521,10 @@ GFArray<GaloisField> nullspace(const GFArray<GaloisField> &a) {
     return GFArray<GaloisField>::Zeros(std::move(field), {0, 0});
   }
   if (rows == 0) {
-    return eye(field, cols);
+    return Eye(field, cols);
   }
 
-  auto [R, pivot_cols] = detail::RrefWithPivots(a);
+  auto [rref_mat, pivot_cols] = detail::RrefWithPivots(a);
   std::vector<bool> is_pivot(cols, false);
   for (std::size_t p : pivot_cols) {
     is_pivot[p] = true;
@@ -1679,7 +1548,7 @@ GFArray<GaloisField> nullspace(const GFArray<GaloisField> &a) {
   const StorageType one = field->MultiplicativeIdentity();
   raw.fill(zero);
 
-  const StorageType *r_data = R.RawData().data();
+  const StorageType *r_data = rref_mat.RawData().data();
   StorageType *n_data = raw.data();
   const std::size_t rank = pivot_cols.size();
 
@@ -1699,38 +1568,27 @@ GFArray<GaloisField> nullspace(const GFArray<GaloisField> &a) {
 }
 
 template <typename GaloisField>
-garray<GaloisField> nullspace(const garray<GaloisField> &a) {
-  return nullspace(GFArray<GaloisField>::FromElementArray(a)).ToElementArray();
-}
-
-template <typename GaloisField>
-GFArray<GaloisField> left_nullspace(const GFArray<GaloisField> &a) {
-  detail::RequireValidArray(a, "left_nullspace");
+GFArray<GaloisField> LeftNullspace(const GFArray<GaloisField> &a) {
+  detail::RequireValidArray(a, "LeftNullspace");
   if (a.Dimension() != 2) {
-    throw std::invalid_argument("left_nullspace requires a 2-D array (matrix)");
+    throw std::invalid_argument("LeftNullspace requires a 2-D array (matrix)");
   }
-  return nullspace(transpose(a));
+  return Nullspace(Transpose(a));
 }
 
 template <typename GaloisField>
-garray<GaloisField> left_nullspace(const garray<GaloisField> &a) {
-  return left_nullspace(GFArray<GaloisField>::FromElementArray(a))
-      .ToElementArray();
-}
-
-template <typename GaloisField>
-GFArray<GaloisField> row_space(const GFArray<GaloisField> &a) {
+GFArray<GaloisField> RowSpace(const GFArray<GaloisField> &a) {
   using RawArray = typename GFArray<GaloisField>::raw_array_type;
   using ShapeType = typename GFArray<GaloisField>::shape_type;
 
-  detail::RequireValidArray(a, "row_space");
+  detail::RequireValidArray(a, "RowSpace");
   if (a.Dimension() != 2) {
-    throw std::invalid_argument("row_space requires a 2-D array (matrix)");
+    throw std::invalid_argument("RowSpace requires a 2-D array (matrix)");
   }
 
   auto field = a.Field();
   const std::size_t cols = a.Shape(1);
-  auto [R, pivot_cols] = detail::RrefWithPivots(a);
+  auto [rref_mat, pivot_cols] = detail::RrefWithPivots(a);
   const std::size_t rank = pivot_cols.size();
   if (rank == 0) {
     return GFArray<GaloisField>::Zeros(std::move(field), {0, cols});
@@ -1739,31 +1597,27 @@ GFArray<GaloisField> row_space(const GFArray<GaloisField> &a) {
   RawArray raw = RawArray::from_shape(ShapeType{rank, cols});
   const std::size_t total = rank * cols;
   if (total > 0) {
-    std::copy(R.RawData().data(), R.RawData().data() + total, raw.data());
+    std::copy(rref_mat.RawData().data(), rref_mat.RawData().data() + total,
+              raw.data());
   }
   return GFArray<GaloisField>::FromRaw(std::move(field), std::move(raw));
 }
 
 template <typename GaloisField>
-garray<GaloisField> row_space(const garray<GaloisField> &a) {
-  return row_space(GFArray<GaloisField>::FromElementArray(a)).ToElementArray();
-}
-
-template <typename GaloisField>
-GFArray<GaloisField> column_space(const GFArray<GaloisField> &a) {
+GFArray<GaloisField> ColumnSpace(const GFArray<GaloisField> &a) {
   using RawArray = typename GFArray<GaloisField>::raw_array_type;
   using ShapeType = typename GFArray<GaloisField>::shape_type;
 
-  detail::RequireValidArray(a, "column_space");
+  detail::RequireValidArray(a, "ColumnSpace");
   if (a.Dimension() != 2) {
-    throw std::invalid_argument("column_space requires a 2-D array (matrix)");
+    throw std::invalid_argument("ColumnSpace requires a 2-D array (matrix)");
   }
 
   auto field = a.Field();
   const std::size_t rows = a.Shape(0);
   const std::size_t cols = a.Shape(1);
-  auto [R, pivot_cols] = detail::RrefWithPivots(a);
-  (void)R;
+  auto [rref_mat, pivot_cols] = detail::RrefWithPivots(a);
+  (void)rref_mat;
   const std::size_t rank = pivot_cols.size();
   if (rank == 0) {
     return GFArray<GaloisField>::Zeros(std::move(field), {rows, 0});
@@ -1783,26 +1637,19 @@ GFArray<GaloisField> column_space(const GFArray<GaloisField> &a) {
 }
 
 template <typename GaloisField>
-garray<GaloisField> column_space(const garray<GaloisField> &a) {
-  return column_space(GFArray<GaloisField>::FromElementArray(a))
-      .ToElementArray();
-}
-
-template <typename GaloisField>
-SystematicFormResult<GaloisField> systematic_form(
+SystematicFormResult<GaloisField> SystematicForm(
     const GFArray<GaloisField> &g) {
   using RawArray = typename GFArray<GaloisField>::raw_array_type;
   using ShapeType = typename GFArray<GaloisField>::shape_type;
 
-  detail::RequireValidArray(g, "systematic_form");
+  detail::RequireValidArray(g, "SystematicForm");
   if (g.Dimension() != 2) {
-    throw std::invalid_argument(
-        "systematic_form requires a 2-D array (matrix)");
+    throw std::invalid_argument("SystematicForm requires a 2-D array (matrix)");
   }
 
   auto field = g.Field();
   const std::size_t cols = g.Shape(1);
-  auto [R, pivot_cols] = detail::RrefWithPivots(g);
+  auto [rref_mat, pivot_cols] = detail::RrefWithPivots(g);
 
   std::vector<bool> is_pivot(cols, false);
   for (std::size_t p : pivot_cols) {
@@ -1825,7 +1672,7 @@ SystematicFormResult<GaloisField> systematic_form(
   const std::size_t k = pivot_cols.size();
   RawArray raw = RawArray::from_shape(ShapeType{k, cols});
   if (k > 0 && cols > 0) {
-    const auto *r_data = R.RawData().data();
+    const auto *r_data = rref_mat.RawData().data();
     auto *dst = raw.data();
     for (std::size_t r = 0; r < k; ++r) {
       const auto *r_row = r_data + r * cols;
@@ -1842,20 +1689,14 @@ SystematicFormResult<GaloisField> systematic_form(
 }
 
 template <typename GaloisField>
-SystematicFormResult<GaloisField> systematic_form(
-    const garray<GaloisField> &g) {
-  return systematic_form(GFArray<GaloisField>::FromElementArray(g));
-}
-
-template <typename GaloisField>
-PLUResult<GaloisField> plu(const GFArray<GaloisField> &a) {
+PluResult<GaloisField> Plu(const GFArray<GaloisField> &a) {
   using StorageType = typename GaloisField::element_type;
   using RawArray = typename GFArray<GaloisField>::raw_array_type;
   using ShapeType = typename GFArray<GaloisField>::shape_type;
 
-  detail::RequireValidArray(a, "plu");
+  detail::RequireValidArray(a, "Plu");
   if (a.Dimension() != 2) {
-    throw std::invalid_argument("plu requires a 2-D array (matrix)");
+    throw std::invalid_argument("Plu requires a 2-D array (matrix)");
   }
 
   auto field = a.Field();
@@ -1868,30 +1709,32 @@ PLUResult<GaloisField> plu(const GFArray<GaloisField> &a) {
   std::size_t num_swaps = 0;
 
   if constexpr (std::is_same_v<GaloisField, GaloisFieldBinary>) {
-    detail::PackedBinaryMatrix U =
+    detail::PackedBinaryMatrix packed_u =
         detail::PackMatrix(a.RawData().data(), rows, cols);
-    detail::PackedBinaryMatrix L = detail::PackedBinaryMatrix::Identity(rows);
+    detail::PackedBinaryMatrix packed_l =
+        detail::PackedBinaryMatrix::Identity(rows);
 
     for (std::size_t col = 0; col < k_max; ++col) {
       const std::size_t w_idx = col >> 6;
       const uint64_t bit_mask = uint64_t{1} << (col & 63);
       std::size_t pivot_row = col;
-      while (pivot_row < rows && (U.RowPtr(pivot_row)[w_idx] & bit_mask) == 0) {
+      while (pivot_row < rows &&
+             (packed_u.RowPtr(pivot_row)[w_idx] & bit_mask) == 0) {
         ++pivot_row;
       }
       if (pivot_row == rows) {
         continue;
       }
       if (pivot_row != col) {
-        U.SwapRows(col, pivot_row);
-        L.SwapRowPrefixBits(col, pivot_row, col);
+        packed_u.SwapRows(col, pivot_row);
+        packed_l.SwapRowPrefixBits(col, pivot_row, col);
         std::swap(perm[col], perm[pivot_row]);
         ++num_swaps;
       }
       for (std::size_t r = col + 1; r < rows; ++r) {
-        if ((U.RowPtr(r)[w_idx] & bit_mask) != 0) {
-          L.SetBit(r, col);
-          U.XorRow(r, col, w_idx);
+        if ((packed_u.RowPtr(r)[w_idx] & bit_mask) != 0) {
+          packed_l.SetBit(r, col);
+          packed_u.XorRow(r, col, w_idx);
         }
       }
     }
@@ -1903,10 +1746,10 @@ PLUResult<GaloisField> plu(const GFArray<GaloisField> &a) {
     }
     RawArray l_raw = RawArray::from_shape(ShapeType{rows, rows});
     RawArray u_raw = RawArray::from_shape(ShapeType{rows, cols});
-    detail::UnpackMatrix(L, l_raw.data());
-    detail::UnpackMatrix(U, u_raw.data());
+    detail::UnpackMatrix(packed_l, l_raw.data());
+    detail::UnpackMatrix(packed_u, u_raw.data());
 
-    return PLUResult<GaloisField>{
+    return PluResult<GaloisField>{
         GFArray<GaloisField>::FromRaw(field, std::move(p_raw)),
         GFArray<GaloisField>::FromRaw(field, std::move(l_raw)),
         GFArray<GaloisField>::FromRaw(field, std::move(u_raw)), std::move(perm),
@@ -1980,7 +1823,7 @@ PLUResult<GaloisField> plu(const GFArray<GaloisField> &a) {
       p_data[i * rows + perm[i]] = one;
     }
 
-    return PLUResult<GaloisField>{
+    return PluResult<GaloisField>{
         GFArray<GaloisField>::FromRaw(field, std::move(p_raw)),
         GFArray<GaloisField>::FromRaw(field, std::move(l_raw)),
         GFArray<GaloisField>::FromRaw(field, std::move(u_raw)), std::move(perm),
@@ -1988,21 +1831,16 @@ PLUResult<GaloisField> plu(const GFArray<GaloisField> &a) {
   }
 }
 
-template <typename GaloisField>
-PLUResult<GaloisField> plu(const garray<GaloisField> &a) {
-  return plu(GFArray<GaloisField>::FromElementArray(a));
-}
-
 // Exact division-free Berkowitz algorithm for det(xI - A) over ANY finite
 // field of ANY characteristic (including characteristic 2 and small primes).
 template <typename GaloisField>
-PolynomialDense<GaloisField> characteristic_poly(const GFArray<GaloisField> &a,
-                                                 const std::string &var = "x") {
+PolynomialDense<GaloisField> CharacteristicPoly(const GFArray<GaloisField> &a,
+                                                const std::string &var = "x") {
   using StorageType = typename GaloisField::element_type;
 
-  detail::RequireValidArray(a, "characteristic_poly");
+  detail::RequireValidArray(a, "CharacteristicPoly");
   if (a.Dimension() != 2 || a.Shape(0) != a.Shape(1)) {
-    throw std::invalid_argument("characteristic_poly requires a square matrix");
+    throw std::invalid_argument("CharacteristicPoly requires a square matrix");
   }
 
   auto field = a.Field();
@@ -2082,12 +1920,6 @@ PolynomialDense<GaloisField> characteristic_poly(const GFArray<GaloisField> &a,
   }
   return PolynomialDense<GaloisField>::FromRaw(std::move(raw_coeffs),
                                                std::move(field), var);
-}
-
-template <typename GaloisField>
-PolynomialDense<GaloisField> characteristic_poly(const garray<GaloisField> &a,
-                                                 const std::string &var = "x") {
-  return characteristic_poly(GFArray<GaloisField>::FromElementArray(a), var);
 }
 
 }  // namespace linalg

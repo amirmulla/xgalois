@@ -58,7 +58,7 @@ class LinearCode : public AbstractLinearCode<GaloisField> {
           "LinearCode::FromGeneratorMatrix: row count cannot exceed column "
           "count");
     }
-    if (k > 0 && linalg::matrix_rank(generator) != k) {
+    if (k > 0 && linalg::MatrixRank(generator) != k) {
       throw std::invalid_argument(
           "LinearCode::FromGeneratorMatrix: generator matrix must have full "
           "row rank");
@@ -99,10 +99,9 @@ class LinearCode : public AbstractLinearCode<GaloisField> {
     }
 
     const std::size_t rows = parity_check.Shape(0);
-    const std::size_t rank =
-        (rows == 0) ? 0 : linalg::matrix_rank(parity_check);
+    const std::size_t rank = (rows == 0) ? 0 : linalg::MatrixRank(parity_check);
     matrix_type H_canonical =
-        (rank == rows) ? parity_check : linalg::row_space(parity_check);
+        (rank == rows) ? parity_check : linalg::RowSpace(parity_check);
     matrix_type G = Base::ComputeGeneratorFromParityCheck(H_canonical);
     return LinearCode(std::move(field), std::move(G), std::move(H_canonical),
                       metric, known_min_distance);
@@ -129,7 +128,7 @@ class LinearCode : public AbstractLinearCode<GaloisField> {
   }
 
   matrix_type SystematicGeneratorMatrix() const override {
-    return linalg::systematic_form(generator_matrix_).G_sys;
+    return linalg::SystematicForm(generator_matrix_).g_sys;
   }
 
   LinearCode DualCode() const {
@@ -138,7 +137,7 @@ class LinearCode : public AbstractLinearCode<GaloisField> {
   }
 
   // Puncturing deletes coordinate col_idx from every codeword:
-  // generator matrix is row_space(G without column col_idx).
+  // generator matrix is RowSpace(G without column col_idx).
   LinearCode Punctured(std::size_t col_idx) const {
     if (this->length_ <= 1) {
       throw std::invalid_argument(
@@ -150,7 +149,7 @@ class LinearCode : public AbstractLinearCode<GaloisField> {
     }
     matrix_type G_drop = DeleteColumn(generator_matrix_, col_idx);
     matrix_type G_basis =
-        (G_drop.Shape(0) == 0) ? std::move(G_drop) : linalg::row_space(G_drop);
+        (G_drop.Shape(0) == 0) ? std::move(G_drop) : linalg::RowSpace(G_drop);
     return FromGeneratorMatrix(this->field_, G_basis, this->metric_);
   }
 

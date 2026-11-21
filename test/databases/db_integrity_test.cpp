@@ -92,7 +92,7 @@ PolynomialDense<GFP<uint16_t>> BuildPrimePolyFromResult(
 
 void VerifyPrimeFactorization(const databases::PrimeFactorsDatabase &db,
                               uint64_t n) {
-  const auto res = db.fetch(n);
+  const auto res = db.Fetch(n);
   ASSERT_EQ(res.factors.size(), res.multiplicities.size()) << "n=" << n;
   ASSERT_FALSE(res.factors.empty()) << "n=" << n;
 
@@ -249,7 +249,7 @@ TEST(DbIntegrityTest, ConwayPolyDatabaseSampledEntriesAreIrreducible) {
 
   // Binary Conway entries via ConwayPolyDatabase.
   for (int d : {2, 4, 8, 12, 16, 20, 24}) {
-    const auto res = db.fetch(2, d);
+    const auto res = db.Fetch(2, d);
     const auto poly = BuildBinaryPolyFromResult(gf2, d, res);
     EXPECT_EQ(poly.Degree(), d);
     EXPECT_TRUE(utils::IsIrreducible(poly))
@@ -266,7 +266,7 @@ TEST(DbIntegrityTest, ConwayPolyDatabaseSampledEntriesAreIrreducible) {
   };
   for (const auto &[p, d] : prime_samples) {
     auto gfp = std::make_shared<GFP<uint16_t>>(static_cast<uint16_t>(p));
-    const auto res = db.fetch(p, d);
+    const auto res = db.Fetch(p, d);
     const auto poly = BuildPrimePolyFromResult(gfp, d, res);
     EXPECT_EQ(poly.Degree(), d);
     EXPECT_TRUE(poly.IsMonic());
@@ -285,20 +285,20 @@ TEST(DbIntegrityTest, IrreduciblePolyDatabaseSampledEntriesAreIrreducible) {
                                     10, 12, 16, 20, 24, 31, 32};
   size_t total_checked = 0;
   for (int d : degrees) {
-    const auto first = db.fetch(2, d);
+    const auto first = db.Fetch(2, d);
     const auto first_poly = BuildBinaryPolyFromResult(gf2, d, first);
     EXPECT_EQ(first_poly.Degree(), d);
     EXPECT_TRUE(utils::IsIrreducible(first_poly))
-        << "IrreduciblePolyDatabase::fetch(2, " << d << ") not irreducible";
+        << "IrreduciblePolyDatabase::Fetch(2, " << d << ") not irreducible";
 
-    const auto all = db.fetch_all(2, d);
+    const auto all = db.FetchAll(2, d);
     ASSERT_FALSE(all.empty());
     const size_t limit = std::min<size_t>(all.size(), 5);
     for (size_t i = 0; i < limit; ++i) {
       const auto poly = BuildBinaryPolyFromResult(gf2, d, all[i]);
       EXPECT_EQ(poly.Degree(), d);
       EXPECT_TRUE(utils::IsIrreducible(poly))
-          << "IrreduciblePolyDatabase::fetch_all(2, " << d << ")[" << i
+          << "IrreduciblePolyDatabase::FetchAll(2, " << d << ")[" << i
           << "] not irreducible";
       ++total_checked;
     }
@@ -328,7 +328,7 @@ TEST(DbIntegrityTest, PrimeFactorsDatabase500NumbersAndRegressions) {
   };
   for (const auto &rc : regressions) {
     VerifyPrimeFactorization(db, rc.n);
-    const auto res = db.fetch(rc.n);
+    const auto res = db.Fetch(rc.n);
     EXPECT_EQ(res.factors, rc.factors) << "n=" << rc.n;
     EXPECT_EQ(res.multiplicities, rc.mults) << "n=" << rc.n;
     EXPECT_EQ(res.composite, 1) << "n=" << rc.n;

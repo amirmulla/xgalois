@@ -56,29 +56,29 @@ class AbstractLinearCode : public AbstractCode<GaloisField> {
 
   // Compute exact parity-check matrix H (shape {(n-k), n}) satisfying G*H^T = 0
   // from any full-row-rank (or rank-deficient) generator matrix G using
-  // linalg::nullspace.
+  // linalg::Nullspace.
   static matrix_type ComputeParityCheckFromGenerator(
       const matrix_type &generator) {
     if (!generator.HasField() || generator.Dimension() != 2) {
       throw std::invalid_argument(
           "ComputeParityCheckFromGenerator: generator must be a 2D matrix");
     }
-    return linalg::nullspace(generator);
+    return linalg::Nullspace(generator);
   }
 
   // Compute exact generator matrix G (shape {k, n}) satisfying G*H^T = 0
-  // from any parity-check matrix H using linalg::nullspace.
+  // from any parity-check matrix H using linalg::Nullspace.
   static matrix_type ComputeGeneratorFromParityCheck(
       const matrix_type &parity_check) {
     if (!parity_check.HasField() || parity_check.Dimension() != 2) {
       throw std::invalid_argument(
           "ComputeGeneratorFromParityCheck: parity_check must be a 2D matrix");
     }
-    return linalg::nullspace(parity_check);
+    return linalg::Nullspace(parity_check);
   }
 
   virtual matrix_type SystematicGeneratorMatrix() const {
-    return linalg::systematic_form(GeneratorMatrix()).G_sys;
+    return linalg::SystematicForm(GeneratorMatrix()).g_sys;
   }
 
   bool IsSystematic() const {
@@ -111,7 +111,7 @@ class AbstractLinearCode : public AbstractCode<GaloisField> {
     if (H.Shape(0) == 0) {
       return GFArray<GaloisField>::Zeros(this->field_, {0});
     }
-    return linalg::dot(H, word);
+    return linalg::Dot(H, word);
   }
 
   bool Contains(const codeword_type &word) const override {
@@ -133,7 +133,7 @@ class AbstractLinearCode : public AbstractCode<GaloisField> {
       return codeword_type::Zeros(this->field_, {this->length_});
     }
     auto msg = message_type::Random(this->field_, {dimension_});
-    return linalg::dot(msg, GeneratorMatrix());
+    return linalg::Dot(msg, GeneratorMatrix());
   }
 
   codeword_type RandomCodeword(std::mt19937_64 &rng) const override {
@@ -141,7 +141,7 @@ class AbstractLinearCode : public AbstractCode<GaloisField> {
       return codeword_type::Zeros(this->field_, {this->length_});
     }
     auto msg = message_type::Random(this->field_, {dimension_}, rng);
-    return linalg::dot(msg, GeneratorMatrix());
+    return linalg::Dot(msg, GeneratorMatrix());
   }
 
   codeword_type LinearCombination(const codeword_type &c1,
@@ -190,7 +190,7 @@ class AbstractLinearCode : public AbstractCode<GaloisField> {
         codewords.push_back(
             codeword_type::Zeros(this->field_, {this->length_}));
       } else {
-        codewords.push_back(linalg::dot(msg, G));
+        codewords.push_back(linalg::Dot(msg, G));
       }
       // Increment base-q counter.
       for (std::size_t j = 0; j < dimension_; ++j) {

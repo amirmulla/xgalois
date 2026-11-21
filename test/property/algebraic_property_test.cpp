@@ -13,6 +13,7 @@
 
 #include "xgalois/channel/channel.hpp"
 #include "xgalois/coding/coding.hpp"
+#include "xgalois/field/gf128.hpp"
 #include "xgalois/field/gf_array.hpp"
 #include "xgalois/field/gf_binary.hpp"
 #include "xgalois/field/gf_concepts.hpp"
@@ -480,11 +481,11 @@ GFArray<FieldType> RandomInvertibleMatrix(
     const std::shared_ptr<FieldType> &field, size_t n, std::mt19937_64 &rng) {
   for (int attempt = 0; attempt < 256; ++attempt) {
     auto mat = GFArray<FieldType>::Random(field, {n, n}, rng);
-    if (!linalg::det(mat).IsZero()) {
+    if (!linalg::Det(mat).IsZero()) {
       return mat;
     }
   }
-  return linalg::eye(field, n);
+  return linalg::Eye(field, n);
 }
 
 template <typename FieldType>
@@ -492,60 +493,60 @@ void VerifyLinalgAxioms(const std::shared_ptr<FieldType> &field,
                         uint64_t seed) {
   std::mt19937_64 rng(seed);
   const size_t n = 5;
-  const auto I = linalg::eye(field, n);
+  const auto I = linalg::Eye(field, n);
 
   for (int trial = 0; trial < 8; ++trial) {
     const auto A = RandomInvertibleMatrix(field, n, rng);
     const auto B = GFArray<FieldType>::Random(field, {n, n}, rng);
 
     // 1. A * A^{-1} == I and A^{-1} * A == I.
-    const auto A_inv = linalg::inv(A);
-    EXPECT_EQ(linalg::dot(A, A_inv), I);
-    EXPECT_EQ(linalg::dot(A_inv, A), I);
+    const auto A_inv = linalg::Inv(A);
+    EXPECT_EQ(linalg::Dot(A, A_inv), I);
+    EXPECT_EQ(linalg::Dot(A_inv, A), I);
 
-    // 2. det(A * B) == det(A) * det(B).
-    const auto AB = linalg::dot(A, B);
-    EXPECT_EQ(linalg::det(AB), linalg::det(A) * linalg::det(B));
+    // 2. Det(A * B) == Det(A) * Det(B).
+    const auto AB = linalg::Dot(A, B);
+    EXPECT_EQ(linalg::Det(AB), linalg::Det(A) * linalg::Det(B));
 
     // 3. Linear solve: A * x == b.
     const auto b_vec = GFArray<FieldType>::Random(field, {n}, rng);
-    const auto x_vec = linalg::solve(A, b_vec);
-    EXPECT_EQ(linalg::dot(A, x_vec), b_vec);
+    const auto x_vec = linalg::Solve(A, b_vec);
+    EXPECT_EQ(linalg::Dot(A, x_vec), b_vec);
 
-    // 4. RREF idempotence: rref(rref(M)) == rref(M).
+    // 4. RREF idempotence: Rref(Rref(M)) == Rref(M).
     const auto rect = GFArray<FieldType>::Random(field, {4, 6}, rng);
-    const auto r1 = linalg::rref(rect);
-    const auto r2 = linalg::rref(r1);
+    const auto r1 = linalg::Rref(rect);
+    const auto r2 = linalg::Rref(r1);
     EXPECT_EQ(r1, r2);
 
-    // 5. Nullspace orthogonality: M * nullspace(M)^T == 0 and rank-nullity.
-    const auto N = linalg::nullspace(rect);
-    const size_t rank = linalg::matrix_rank(rect);
+    // 5. Nullspace orthogonality: M * Nullspace(M)^T == 0 and rank-nullity.
+    const auto N = linalg::Nullspace(rect);
+    const size_t rank = linalg::MatrixRank(rect);
     EXPECT_EQ(rank + N.Shape(0), rect.Shape(1));
     if (N.Shape(0) > 0) {
-      const auto prod = linalg::dot(rect, linalg::transpose(N));
-      EXPECT_EQ(prod, linalg::zeros(field, {rect.Shape(0), N.Shape(0)}));
-      EXPECT_EQ(linalg::matrix_rank(N), N.Shape(0));
+      const auto prod = linalg::Dot(rect, linalg::Transpose(N));
+      EXPECT_EQ(prod, linalg::Zeros(field, {rect.Shape(0), N.Shape(0)}));
+      EXPECT_EQ(linalg::MatrixRank(N), N.Shape(0));
     }
 
     // 6. PLU decomposition: P * A == L * U.
-    const auto plu_res = linalg::plu(B);
-    EXPECT_EQ(linalg::dot(plu_res.P, B), linalg::dot(plu_res.L, plu_res.U));
+    const auto plu_res = linalg::Plu(B);
+    EXPECT_EQ(linalg::Dot(plu_res.p, B), linalg::Dot(plu_res.l, plu_res.u));
     // Verify unit lower-triangular L and upper-triangular U.
     for (size_t i = 0; i < n; ++i) {
-      EXPECT_TRUE(field->IsOne(plu_res.L.Raw(i, i)));
+      EXPECT_TRUE(field->IsOne(plu_res.l.Raw(i, i)));
       for (size_t j = i + 1; j < n; ++j) {
-        EXPECT_TRUE(field->IsZero(plu_res.L.Raw(i, j)));
+        EXPECT_TRUE(field->IsZero(plu_res.l.Raw(i, j)));
       }
       for (size_t j = 0; j < i; ++j) {
-        EXPECT_TRUE(field->IsZero(plu_res.U.Raw(i, j)));
+        EXPECT_TRUE(field->IsZero(plu_res.u.Raw(i, j)));
       }
     }
 
     // 7. Cayley-Hamilton theorem: p_B(B) == 0.
-    const auto char_poly = linalg::characteristic_poly(B);
+    const auto char_poly = linalg::CharacteristicPoly(B);
     ASSERT_EQ(char_poly.Degree(), static_cast<int>(n));
-    auto eval = linalg::zeros(field, {n, n});
+    auto eval = linalg::Zeros(field, {n, n});
     auto B_pow = I;
     for (size_t d = 0; d <= n; ++d) {
       const auto coeff = char_poly[d];
@@ -553,10 +554,10 @@ void VerifyLinalgAxioms(const std::shared_ptr<FieldType> &field,
         eval = eval + (B_pow * coeff);
       }
       if (d < n) {
-        B_pow = linalg::dot(B_pow, B);
+        B_pow = linalg::Dot(B_pow, B);
       }
     }
-    EXPECT_EQ(eval, linalg::zeros(field, {n, n}));
+    EXPECT_EQ(eval, linalg::Zeros(field, {n, n}));
   }
 }
 
@@ -581,8 +582,8 @@ void VerifyLinearCodeAxioms(const CodeType &code, uint64_t seed,
 
   // G * H^T == 0.
   if (k > 0 && n > k) {
-    const auto ght = linalg::dot(G, linalg::transpose(H));
-    EXPECT_EQ(ght, linalg::zeros(field, {k, n - k}));
+    const auto ght = linalg::Dot(G, linalg::Transpose(H));
+    EXPECT_EQ(ght, linalg::Zeros(field, {k, n - k}));
   }
 
   // Encode / Contains / Syndrome / Unencode round-trip.
@@ -652,6 +653,112 @@ TEST(FieldAxiomsRandomized, GF2X64) {
 TEST(FieldAxiomsRandomized, GFPX5_2) {
   VerifyFieldAxiomsRandomized(
       std::make_shared<GFPX<uint8_t>>(std::make_pair(5ULL, 2ULL)), 505);
+}
+
+TEST(FieldAxiomsRandomized, GF128) {
+  static_assert(FiniteField<GF128>,
+                "GF128 must satisfy the FiniteField concept");
+  auto field = std::make_shared<GF128>();
+  EXPECT_EQ(field->Characteristic(), 2ULL);
+  EXPECT_EQ(field->Degree(), 128U);
+  EXPECT_EQ(field->Order(), 0ULL);
+
+  const UInt128 zero = field->AdditiveIdentity();
+  const UInt128 one = field->MultiplicativeIdentity();
+  const UInt128 gen = field->MultiplicativeGenerator();
+  const UInt128 group_order{~uint64_t{0}, ~uint64_t{0}};
+
+  EXPECT_TRUE(field->IsZero(zero));
+  EXPECT_TRUE(field->IsOne(one));
+  EXPECT_THROW((void)field->Inv(zero), std::domain_error);
+  EXPECT_THROW((void)field->Div(one, zero), std::domain_error);
+  EXPECT_THROW((void)field->Log(zero), std::domain_error);
+  EXPECT_EQ(field->MultiplicativeOrder128(gen), group_order);
+
+  std::mt19937_64 rng(606);
+  std::vector<UInt128> samples;
+  samples.reserve(35);
+  samples.push_back(zero);
+  samples.push_back(one);
+  samples.push_back(gen);
+  for (size_t i = 0; i < 32; ++i) {
+    samples.push_back(field->Random(rng));
+  }
+
+  std::vector<UInt128> nonzero;
+  nonzero.reserve(samples.size());
+  for (const UInt128 &a : samples) {
+    EXPECT_EQ(field->Add(a, zero), a);
+    EXPECT_EQ(field->Mul(a, one), a);
+    EXPECT_EQ(field->Mul(a, zero), zero);
+    EXPECT_EQ(field->Add(a, field->Neg(a)), zero);
+    EXPECT_EQ(field->Sub(a, a), zero);
+    EXPECT_EQ(field->Frobenius(a), field->Mul(a, a));
+
+    // Trace & Norm land in prime subfield GF(2).
+    const UInt128 tr_a = field->Trace(a);
+    const UInt128 nm_a = field->Norm(a);
+    EXPECT_EQ(field->Frobenius(tr_a), tr_a);
+    EXPECT_EQ(field->Frobenius(nm_a), nm_a);
+
+    // Sqrt(a)^2 == a in characteristic 2.
+    const UInt128 sq = field->Sqrt(a);
+    EXPECT_EQ(field->Mul(sq, sq), a);
+
+    if (!field->IsZero(a)) {
+      nonzero.push_back(a);
+      const UInt128 inv_a = field->Inv(a);
+      EXPECT_EQ(field->Mul(a, inv_a), one);
+      EXPECT_EQ(field->Mul(inv_a, a), one);
+      // Fermat's Little Theorem: a^(2^128 - 1) == 1.
+      EXPECT_EQ(field->Pow128(a, group_order), one);
+    }
+  }
+
+  // Pairwise, triple, Frobenius, Trace, Norm, and GHASH ring axioms.
+  for (size_t i = 0; i < samples.size(); ++i) {
+    const UInt128 &a = samples[i];
+    const UInt128 &b = samples[(i * 7 + 3) % samples.size()];
+    const UInt128 &c = samples[(i * 13 + 5) % samples.size()];
+
+    const UInt128 sum_ab = field->Add(a, b);
+    const UInt128 prod_ab = field->Mul(a, b);
+    EXPECT_EQ(sum_ab, field->Add(b, a));
+    EXPECT_EQ(prod_ab, field->Mul(b, a));
+    EXPECT_EQ(field->Sub(a, b), field->Add(a, field->Neg(b)));
+    if (!field->IsZero(b)) {
+      EXPECT_EQ(field->Mul(field->Div(a, b), b), a);
+    }
+    EXPECT_EQ(field->Add(sum_ab, c), field->Add(a, field->Add(b, c)));
+    EXPECT_EQ(field->Mul(prod_ab, c), field->Mul(a, field->Mul(b, c)));
+    EXPECT_EQ(field->Mul(a, field->Add(b, c)),
+              field->Add(prod_ab, field->Mul(a, c)));
+    EXPECT_EQ(field->Frobenius(sum_ab),
+              field->Add(field->Frobenius(a), field->Frobenius(b)));
+    EXPECT_EQ(field->Trace(sum_ab),
+              field->Add(field->Trace(a), field->Trace(b)));
+    EXPECT_EQ(field->Norm(prod_ab), field->Mul(field->Norm(a), field->Norm(b)));
+
+    // GHASH multiplication satisfies commutativity, associativity,
+    // distributivity.
+    const UInt128 gh_ab = field->GhashMul(a, b);
+    EXPECT_EQ(gh_ab, field->GhashMul(b, a));
+    EXPECT_EQ(field->GhashMul(gh_ab, c),
+              field->GhashMul(a, field->GhashMul(b, c)));
+    EXPECT_EQ(field->GhashMul(a, b ^ c), gh_ab ^ field->GhashMul(a, c));
+  }
+
+  // BatchInv + GaloisFieldElement<GF128> wrapper verification.
+  std::vector<UInt128> invs(nonzero.size());
+  field->BatchInv(std::span<UInt128>(invs), std::span<const UInt128>(nonzero));
+  for (size_t i = 0; i < nonzero.size(); ++i) {
+    EXPECT_EQ(field->Mul(invs[i], nonzero[i]), one);
+  }
+  const GaloisFieldElement<GF128> elem_a =
+      GaloisFieldElement<GF128>::FromInternal(nonzero[0], field);
+  const GaloisFieldElement<GF128> elem_b =
+      GaloisFieldElement<GF128>::FromInternal(nonzero[1], field);
+  EXPECT_EQ((elem_a * elem_b) / elem_b, elem_a);
 }
 
 // ============================================================================
@@ -765,9 +872,9 @@ TEST(CodingPropertySuite, GeneratorParityAndEncodeUnencodeAllCodeFamilies) {
     std::mt19937_64 rng(3013);
     const auto msg = GFArray<GF2XLOG<uint8_t>>::Random(gf256, {223}, rng);
     const auto cw = ccsds_rs.Encode(msg);
-    channel::StaticErrorRateChannel<GF2XLOG<uint8_t>> ch(
-        gf256, 255, 16, std::optional<uint64_t>{3014ULL});
-    const auto rx = ch.transmit(cw);
+    auto ch = channel::StaticErrorRateChannel<GF2XLOG<uint8_t>>::Fixed(
+        gf256, 255, 16, 3014ULL);
+    const auto rx = ch.Transmit(cw);
     const auto res = ccsds_rs.DecodeWithResult(rx);
     ASSERT_TRUE(res.Ok()) << res.error_message;
     EXPECT_EQ(res.codeword, cw);
@@ -791,7 +898,9 @@ TEST(CodingChannelSimulation, BCHOverBinarySymmetricChannel) {
       bch, bsc_clean, channel::SimulationConfig{40, 0, 4001});
   EXPECT_EQ(clean_stats.frames_sent, 40U);
   EXPECT_EQ(clean_stats.frame_errors, 0U);
-  EXPECT_DOUBLE_EQ(clean_stats.FER(), 0.0);
+  EXPECT_DOUBLE_EQ(clean_stats.Fer(), 0.0);
+  EXPECT_DOUBLE_EQ(clean_stats.Ser(), 0.0);
+  EXPECT_DOUBLE_EQ(clean_stats.Ber(), 0.0);
 
   // Heavy noise -> positive FER, and deterministic across identical seeds.
   channel::BinarySymmetricChannel bsc_noisy_a(gf2, bch.Length(), 0.22, 4002);
@@ -800,7 +909,7 @@ TEST(CodingChannelSimulation, BCHOverBinarySymmetricChannel) {
       bch, bsc_noisy_a, channel::SimulationConfig{60, 0, 4002});
   const auto noisy_b = channel::SimulateCodePerformance(
       bch, bsc_noisy_b, channel::SimulationConfig{60, 0, 4002});
-  EXPECT_GT(noisy_a.FER(), 0.0);
+  EXPECT_GT(noisy_a.Fer(), 0.0);
   EXPECT_EQ(noisy_a.frames_sent, noisy_b.frames_sent);
   EXPECT_EQ(noisy_a.frame_errors, noisy_b.frame_errors);
   EXPECT_EQ(noisy_a.bit_errors, noisy_b.bit_errors);
@@ -823,7 +932,7 @@ TEST(CodingChannelSimulation, RS31_23OverErrorErasureChannelCapacityBoundary) {
         rs, ch, channel::SimulationConfig{30, 0, 5100 + e * 10 + s});
     EXPECT_EQ(stats.frames_sent, 30U);
     EXPECT_EQ(stats.frame_errors, 0U) << "Failed for e=" << e << ", s=" << s;
-    EXPECT_DOUBLE_EQ(stats.FER(), 0.0) << "Failed for e=" << e << ", s=" << s;
+    EXPECT_DOUBLE_EQ(stats.Fer(), 0.0) << "Failed for e=" << e << ", s=" << s;
     EXPECT_EQ(stats.decoding_failures, 0U);
   }
 
@@ -839,7 +948,7 @@ TEST(CodingChannelSimulation, RS31_23OverErrorErasureChannelCapacityBoundary) {
                                                       6000 + e * 10 + s);
     const auto stats = channel::SimulateCodePerformance(
         rs, ch, channel::SimulationConfig{25, 0, 6100 + e * 10 + s});
-    EXPECT_GT(stats.FER(), 0.0)
+    EXPECT_GT(stats.Fer(), 0.0)
         << "Expected positive FER for over-capacity e=" << e << ", s=" << s;
   }
 }

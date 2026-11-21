@@ -20,25 +20,25 @@ class PolyUtilsTest : public ::testing::Test {
  protected:
   void SetUp() override {
     gf7 = std::make_shared<GaloisFieldPrime<uint8_t>>(7);
-    zero = GaloisFieldElementBase<GaloisFieldPrime<uint8_t>>(0, gf7);
-    one = GaloisFieldElementBase<GaloisFieldPrime<uint8_t>>(1, gf7);
-    two = GaloisFieldElementBase<GaloisFieldPrime<uint8_t>>(2, gf7);
-    three = GaloisFieldElementBase<GaloisFieldPrime<uint8_t>>(3, gf7);
-    four = GaloisFieldElementBase<GaloisFieldPrime<uint8_t>>(4, gf7);
-    five = GaloisFieldElementBase<GaloisFieldPrime<uint8_t>>(5, gf7);
-    six = GaloisFieldElementBase<GaloisFieldPrime<uint8_t>>(6, gf7);
+    zero = GaloisFieldElement<GaloisFieldPrime<uint8_t>>(0, gf7);
+    one = GaloisFieldElement<GaloisFieldPrime<uint8_t>>(1, gf7);
+    two = GaloisFieldElement<GaloisFieldPrime<uint8_t>>(2, gf7);
+    three = GaloisFieldElement<GaloisFieldPrime<uint8_t>>(3, gf7);
+    four = GaloisFieldElement<GaloisFieldPrime<uint8_t>>(4, gf7);
+    five = GaloisFieldElement<GaloisFieldPrime<uint8_t>>(5, gf7);
+    six = GaloisFieldElement<GaloisFieldPrime<uint8_t>>(6, gf7);
 
     gf2 = std::make_shared<GaloisFieldBinary>();
-    gf2_zero = GaloisFieldElementBase<GaloisFieldBinary>(0, gf2);
-    gf2_one = GaloisFieldElementBase<GaloisFieldBinary>(1, gf2);
+    gf2_zero = GaloisFieldElement<GaloisFieldBinary>(0, gf2);
+    gf2_one = GaloisFieldElement<GaloisFieldBinary>(1, gf2);
   }
 
   std::shared_ptr<GaloisFieldPrime<uint8_t>> gf7;
   std::shared_ptr<GaloisFieldBinary> gf2;
 
-  GaloisFieldElementBase<GaloisFieldPrime<uint8_t>> zero, one, two, three, four,
+  GaloisFieldElement<GaloisFieldPrime<uint8_t>> zero, one, two, three, four,
       five, six;
-  GaloisFieldElementBase<GaloisFieldBinary> gf2_zero, gf2_one;
+  GaloisFieldElement<GaloisFieldBinary> gf2_zero, gf2_one;
 };
 
 TEST_F(PolyUtilsTest, ExtractCoefficientConstantTerm) {

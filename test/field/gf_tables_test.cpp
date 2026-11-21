@@ -455,13 +455,13 @@ TEST(GFTablesDifferentialTest, ZechStringAndPrintAndRandomCompliance) {
     }
   }
 
-  // Verify Zech Random() only returns valid internal values {LOG_ZERO, 0..14}
+  // Verify Zech Random() only returns valid internal values {kLogZero, 0..14}
   // and never returns OOB group_order_ (15).
   std::mt19937_64 rng(777);
   std::set<uint8_t> external_seen;
   for (int i = 0; i < 400; ++i) {
     const uint8_t z = zech->Random(rng);
-    EXPECT_TRUE(z == GFBEZechLogTables<uint8_t>::LOG_ZERO || z < 15);
+    EXPECT_TRUE(z == GFBEZechLogTables<uint8_t>::kLogZero || z < 15);
     const uint8_t ext = zech->GetElementValue(z);
     EXPECT_LT(ext, 16);
     external_seen.insert(ext);

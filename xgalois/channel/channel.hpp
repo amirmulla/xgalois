@@ -7,13 +7,11 @@
 #include <concepts>
 #include <cstddef>
 #include <cstdint>
-#include <functional>
-#include <iomanip>
-#include <iostream>
 #include <limits>
 #include <memory>
 #include <numeric>
 #include <optional>
+#include <ostream>
 #include <random>
 #include <sstream>
 #include <stdexcept>
@@ -25,7 +23,6 @@
 
 #include "xgalois/field/gf_array.hpp"
 #include "xgalois/field/gf_base.hpp"
-#include "xgalois/field/gf_element.hpp"
 #include "xtensor/containers/xarray.hpp"
 
 namespace xg {
@@ -43,7 +40,7 @@ inline uint64_t GenerateRandomSeed() {
 
 // Numerically stable binomial PMF P(X = k) for X ~ Binomial(n, p),
 // computed in log-space via std::lgamma to avoid overflow / inf*0 = NaN.
-inline double BinomialPMF(size_t n, size_t k, double p) {
+inline double BinomialPmf(size_t n, size_t k, double p) {
   if (k > n) {
     return 0.0;
   }
@@ -62,19 +59,19 @@ inline double BinomialPMF(size_t n, size_t k, double p) {
   return std::exp(log_prob);
 }
 
-inline double BinomialCDF(size_t n, size_t k, double p) {
+inline double BinomialCdf(size_t n, size_t k, double p) {
   if (k >= n) {
     return 1.0;
   }
   double prob = 0.0;
   for (size_t i = 0; i <= k; ++i) {
-    prob += BinomialPMF(n, i, p);
+    prob += BinomialPmf(n, i, p);
   }
   return std::min(prob, 1.0);
 }
 
 template <typename GaloisField>
-size_t BitsPerSymbol(const GaloisField &field) {
+size_t BitsPerSymbol(const GaloisField& field) {
   const uint64_t order = field.Order();
   if (order == 0) {
     return 64;  // GF(2^64)
@@ -86,9 +83,9 @@ size_t BitsPerSymbol(const GaloisField &field) {
 }
 
 template <typename GaloisField>
-size_t CountSymbolBitErrors(const GaloisField &field,
-                            const typename GaloisField::element_type &a,
-                            const typename GaloisField::element_type &b,
+size_t CountSymbolBitErrors(const GaloisField& field,
+                            const typename GaloisField::element_type& a,
+                            const typename GaloisField::element_type& b,
                             size_t bits_per_symbol) {
   using Storage = typename GaloisField::element_type;
   if (a == b) {
@@ -98,7 +95,7 @@ size_t CountSymbolBitErrors(const GaloisField &field,
     const uint64_t va = static_cast<uint64_t>(field.GetElementValue(a));
     const uint64_t vb = static_cast<uint64_t>(field.GetElementValue(b));
     return static_cast<size_t>(std::popcount(va ^ vb));
-  } else if constexpr (requires(const GaloisField &f, const Storage &x) {
+  } else if constexpr (requires(const GaloisField& f, const Storage& x) {
                          { f.ToInt(x) } -> std::convertible_to<uint64_t>;
                        }) {
     const uint64_t va = static_cast<uint64_t>(field.ToInt(a));
@@ -119,7 +116,7 @@ struct ErasureTransmission {
   xt::xarray<bool> erasure_mask;
 };
 
-// Structured result returned by AWGNChannel::transmit_detailed().
+// Structured result returned by AWGNChannel::TransmitDetailed().
 template <typename BinaryField = GaloisFieldBinary>
 struct AWGNTransmission {
   std::vector<double> soft_received;
@@ -133,8 +130,6 @@ class Channel {
   using field_type = GaloisField;
   using storage_type = typename GaloisField::element_type;
   using ArrayType = GFArray<GaloisField>;
-  using ElementType = GaloisFieldElementBase<GaloisField>;
-  using VectorType = xt::xarray<ElementType>;
 
   Channel(std::shared_ptr<GaloisField> field, size_t input_size,
           size_t output_size = 0, std::optional<uint64_t> seed = std::nullopt)
@@ -149,56 +144,30 @@ class Channel {
 
   virtual ~Channel() = default;
 
-  std::shared_ptr<GaloisField> field() const { return field_; }
   std::shared_ptr<GaloisField> Field() const { return field_; }
 
-  size_t input_size() const noexcept { return input_size_; }
   size_t InputSize() const noexcept { return input_size_; }
 
-  size_t output_size() const noexcept { return output_size_; }
   size_t OutputSize() const noexcept { return output_size_; }
 
   void SetSeed(uint64_t seed) { rng_.seed(seed); }
-  void set_seed(uint64_t seed) { rng_.seed(seed); }
 
-  // Primary GFArray API (zero per-element shared_ptr overhead).
-  ArrayType transmit(const ArrayType &message) {
+  ArrayType Transmit(const ArrayType& message) {
     ValidateMessage(message);
-    return transmit_unsafe(message);
+    return TransmitUnsafe(message);
   }
 
-  ArrayType Transmit(const ArrayType &message) { return transmit(message); }
+  virtual ArrayType TransmitUnsafe(const ArrayType& message) = 0;
 
-  virtual ArrayType transmit_unsafe(const ArrayType &message) = 0;
+  ArrayType operator()(const ArrayType& message) { return Transmit(message); }
 
-  ArrayType operator()(const ArrayType &message) { return transmit(message); }
+  virtual void Print(std::ostream& os) const = 0;
 
-  // Backwards-compatible legacy xt::xarray<GaloisFieldElement<GaloisField>> API
-  // delegating cleanly to the GFArray core.
-  VectorType transmit(const VectorType &message) {
-    ValidateLegacyMessageSize(message);
-    return transmit_unsafe(ToGFArray(message)).ToElementArray();
-  }
-
-  VectorType Transmit(const VectorType &message) { return transmit(message); }
-
-  VectorType transmit_unsafe(const VectorType &message) {
-    return transmit_unsafe(ToGFArray(message)).ToElementArray();
-  }
-
-  VectorType operator()(const VectorType &message) { return transmit(message); }
-
-  virtual void print(std::ostream &os) const = 0;
-
-  void Print(std::ostream &os) const { print(os); }
-
-  virtual std::string to_string() const {
+  virtual std::string ToString() const {
     std::ostringstream oss;
-    print(oss);
+    Print(oss);
     return oss.str();
   }
-
-  std::string ToString() const { return to_string(); }
 
  protected:
   std::shared_ptr<GaloisField> field_;
@@ -206,7 +175,7 @@ class Channel {
   size_t output_size_;
   std::mt19937_64 rng_;
 
-  void ValidateMessage(const ArrayType &message) const {
+  void ValidateMessage(const ArrayType& message) const {
     if (!message.HasField() || message.Field() != field_) {
       throw std::invalid_argument(
           "Channel: message field does not match channel field");
@@ -219,38 +188,10 @@ class Channel {
     }
   }
 
-  void ValidateLegacyMessageSize(const VectorType &message) const {
-    if (message.size() != input_size_) {
-      throw std::invalid_argument("Message size (" +
-                                  std::to_string(message.size()) +
-                                  ") does not match channel input size (" +
-                                  std::to_string(input_size_) + ")");
-    }
-  }
-
-  ArrayType ToGFArray(const VectorType &message) const {
-    if (message.size() == 0) {
-      return ArrayType::Zeros(field_, {0});
-    }
-    typename ArrayType::raw_array_type raw =
-        ArrayType::raw_array_type::from_shape(message.shape());
-    const auto *src = message.data();
-    auto *dst = raw.data();
-    const size_t n = message.size();
-    for (size_t i = 0; i < n; ++i) {
-      if (!src[i].HasField() || src[i].Field() != field_) {
-        throw std::invalid_argument(
-            "Channel: message element field does not match channel field");
-      }
-      dst[i] = src[i].RawValue();
-    }
-    return ArrayType::FromRaw(field_, std::move(raw));
-  }
-
   // O(1) deterministic uniform non-zero field element sampler.
   // Adding the returned offset e to any symbol x produces a symbol uniformly
   // distributed over F_q \ {x} without rejection sampling.
-  storage_type sample_nonzero_error() {
+  storage_type SampleNonzeroError() {
     const uint64_t order = field_->Order();
     // For GF(2^64), Order() returns 0; non-zero external values span
     // [1, UINT64_MAX].
@@ -267,7 +208,7 @@ class Channel {
       std::uniform_int_distribution<uint64_t> dist(1, max_k);
       const uint64_t k = dist(rng_);
       return field_->SetElementValue(static_cast<storage_type>(k));
-    } else if constexpr (requires(const GaloisField &f, uint64_t v) {
+    } else if constexpr (requires(const GaloisField& f, uint64_t v) {
                            {
                              f.FromInt(v)
                            } -> std::convertible_to<storage_type>;
@@ -291,7 +232,7 @@ class Channel {
   // O(count) time and memory when count << input_size_ (Floyd's algorithm +
   // O(count) permutation shuffle), falling back to partial Fisher-Yates when
   // count is a substantial fraction of input_size_.
-  std::vector<size_t> sample_distinct_positions(size_t count) {
+  std::vector<size_t> SampleDistinctPositions(size_t count) {
     if (count > input_size_) {
       throw std::invalid_argument(
           "Number of positions cannot exceed input size");
@@ -335,26 +276,22 @@ class Channel {
     return result;
   }
 
-  std::vector<size_t> generate_error_positions(size_t num_errors) {
-    return sample_distinct_positions(num_errors);
+  std::vector<size_t> GenerateErrorPositions(size_t num_errors) {
+    return SampleDistinctPositions(num_errors);
   }
 
-  ArrayType generate_error_array(const std::vector<size_t> &error_positions) {
+  ArrayType GenerateErrorArray(const std::vector<size_t>& error_positions) {
     ArrayType error_array = ArrayType::Zeros(field_, {input_size_});
     auto span = error_array.RawSpan();
     for (size_t pos : error_positions) {
       if (pos < input_size_) {
-        span[pos] = sample_nonzero_error();
+        span[pos] = SampleNonzeroError();
       }
     }
     return error_array;
   }
 
-  VectorType generate_error_vector(const std::vector<size_t> &error_positions) {
-    return generate_error_array(error_positions).ToElementArray();
-  }
-
-  std::string format_interval(size_t min_val, size_t max_val) const {
+  std::string FormatInterval(size_t min_val, size_t max_val) const {
     if (min_val == max_val) {
       return std::to_string(min_val);
     }
@@ -362,10 +299,10 @@ class Channel {
            std::to_string(max_val);
   }
 
-  void print_field(std::ostream &os) const {
+  void PrintField(std::ostream& os) const {
     if constexpr (std::is_base_of_v<GaloisFieldBase<storage_type>,
                                     GaloisField>) {
-      static_cast<const GaloisFieldBase<storage_type> &>(*field_).Print(os);
+      static_cast<const GaloisFieldBase<storage_type>&>(*field_).Print(os);
     } else {
       field_->Print(os);
     }
@@ -376,19 +313,15 @@ template <typename GaloisField>
 class StaticErrorRateChannel : public Channel<GaloisField> {
  public:
   using ArrayType = GFArray<GaloisField>;
-  using ElementType = GaloisFieldElementBase<GaloisField>;
-  using VectorType = xt::xarray<ElementType>;
 
   using Channel<GaloisField>::operator();
-  using Channel<GaloisField>::transmit;
   using Channel<GaloisField>::Transmit;
-  using Channel<GaloisField>::transmit_unsafe;
+  using Channel<GaloisField>::TransmitUnsafe;
 
   StaticErrorRateChannel(std::shared_ptr<GaloisField> field, size_t input_size,
-                         size_t num_errors,
-                         std::optional<uint64_t> seed = std::nullopt)
+                         size_t num_errors)
       : StaticErrorRateChannel(std::move(field), input_size, num_errors,
-                               num_errors, seed) {}
+                               num_errors, std::nullopt) {}
 
   StaticErrorRateChannel(std::shared_ptr<GaloisField> field, size_t input_size,
                          size_t min_errors, size_t max_errors,
@@ -407,11 +340,18 @@ class StaticErrorRateChannel : public Channel<GaloisField> {
     }
   }
 
-  std::pair<size_t, size_t> number_errors() const noexcept {
+  static StaticErrorRateChannel Fixed(
+      std::shared_ptr<GaloisField> field, size_t input_size, size_t num_errors,
+      std::optional<uint64_t> seed = std::nullopt) {
+    return StaticErrorRateChannel(std::move(field), input_size, num_errors,
+                                  num_errors, seed);
+  }
+
+  std::pair<size_t, size_t> NumberErrors() const noexcept {
     return {min_errors_, max_errors_};
   }
 
-  ArrayType transmit_unsafe(const ArrayType &message) override {
+  ArrayType TransmitUnsafe(const ArrayType& message) override {
     size_t num_errors = min_errors_;
     if (min_errors_ != max_errors_) {
       std::uniform_int_distribution<size_t> dist(min_errors_, max_errors_);
@@ -424,24 +364,23 @@ class StaticErrorRateChannel : public Channel<GaloisField> {
     }
 
     const size_t clamped_errors = std::min(num_errors, this->input_size_);
-    const auto error_positions =
-        this->sample_distinct_positions(clamped_errors);
+    const auto error_positions = this->SampleDistinctPositions(clamped_errors);
     auto span = result.RawSpan();
     const size_t msg_len = span.size();
     for (size_t pos : error_positions) {
       if (pos < msg_len) {
-        span[pos] = this->field_->Add(span[pos], this->sample_nonzero_error());
+        span[pos] = this->field_->Add(span[pos], this->SampleNonzeroError());
       }
     }
     return result;
   }
 
-  void print(std::ostream &os) const override {
+  void Print(std::ostream& os) const override {
     os << "Static error rate channel creating "
-       << this->format_interval(min_errors_, max_errors_)
+       << this->FormatInterval(min_errors_, max_errors_)
        << " errors, of input and output space vector of dimension "
        << this->input_size_ << " over ";
-    this->print_field(os);
+    this->PrintField(os);
   }
 
  private:
@@ -453,13 +392,10 @@ template <typename GaloisField>
 class ErrorErasureChannel : public Channel<GaloisField> {
  public:
   using ArrayType = GFArray<GaloisField>;
-  using ElementType = GaloisFieldElementBase<GaloisField>;
-  using VectorType = xt::xarray<ElementType>;
 
   using Channel<GaloisField>::operator();
-  using Channel<GaloisField>::transmit;
   using Channel<GaloisField>::Transmit;
-  using Channel<GaloisField>::transmit_unsafe;
+  using Channel<GaloisField>::TransmitUnsafe;
 
   ErrorErasureChannel(std::shared_ptr<GaloisField> field, size_t input_size,
                       size_t num_errors, size_t num_erasures,
@@ -496,29 +432,22 @@ class ErrorErasureChannel : public Channel<GaloisField> {
     }
   }
 
-  std::pair<size_t, size_t> number_errors() const noexcept {
+  std::pair<size_t, size_t> NumberErrors() const noexcept {
     return {min_errors_, max_errors_};
   }
 
-  std::pair<size_t, size_t> number_erasures() const noexcept {
+  std::pair<size_t, size_t> NumberErasures() const noexcept {
     return {min_erasures_, max_erasures_};
   }
 
-  // Primary safe GFArray API returning {received, erasure_positions,
-  // erasure_mask}.
-  ErasureTransmission<GaloisField> transmit_with_erasures(
-      const ArrayType &message) {
-    this->ValidateMessage(message);
-    return transmit_unsafe_with_erasures(message);
-  }
-
   ErasureTransmission<GaloisField> TransmitWithErasures(
-      const ArrayType &message) {
-    return transmit_with_erasures(message);
+      const ArrayType& message) {
+    this->ValidateMessage(message);
+    return TransmitUnsafeWithErasures(message);
   }
 
-  ErasureTransmission<GaloisField> transmit_unsafe_with_erasures(
-      const ArrayType &message) {
+  ErasureTransmission<GaloisField> TransmitUnsafeWithErasures(
+      const ArrayType& message) {
     const size_t n = this->input_size_;
     size_t num_errors = min_errors_;
     if (min_errors_ != max_errors_) {
@@ -535,7 +464,7 @@ class ErrorErasureChannel : public Channel<GaloisField> {
     const size_t first = std::min(num_errors, n);
     const size_t last = first + std::min(num_erasures, n - first);
 
-    const auto chosen = this->sample_distinct_positions(last);
+    const auto chosen = this->SampleDistinctPositions(last);
 
     ArrayType received = message;
     auto span = received.RawSpan();
@@ -544,7 +473,7 @@ class ErrorErasureChannel : public Channel<GaloisField> {
     for (size_t i = 0; i < first; ++i) {
       const size_t pos = chosen[i];
       if (pos < msg_len) {
-        span[pos] = this->field_->Add(span[pos], this->sample_nonzero_error());
+        span[pos] = this->field_->Add(span[pos], this->SampleNonzeroError());
       }
     }
 
@@ -571,31 +500,17 @@ class ErrorErasureChannel : public Channel<GaloisField> {
                                             std::move(erasure_mask)};
   }
 
-  // Legacy xt::xarray<GaloisFieldElement<GaloisField>> overloads.
-  std::pair<VectorType, xt::xarray<bool>> transmit_with_erasures(
-      const VectorType &message) {
-    this->ValidateLegacyMessageSize(message);
-    auto res = transmit_unsafe_with_erasures(this->ToGFArray(message));
-    return {res.received.ToElementArray(), std::move(res.erasure_mask)};
+  ArrayType TransmitUnsafe(const ArrayType& message) override {
+    return TransmitUnsafeWithErasures(message).received;
   }
 
-  std::pair<VectorType, xt::xarray<bool>> transmit_unsafe_with_erasures(
-      const VectorType &message) {
-    auto res = transmit_unsafe_with_erasures(this->ToGFArray(message));
-    return {res.received.ToElementArray(), std::move(res.erasure_mask)};
-  }
-
-  ArrayType transmit_unsafe(const ArrayType &message) override {
-    return transmit_unsafe_with_erasures(message).received;
-  }
-
-  void print(std::ostream &os) const override {
+  void Print(std::ostream& os) const override {
     os << "Error-and-erasure channel creating "
-       << this->format_interval(min_errors_, max_errors_) << " errors and "
-       << this->format_interval(min_erasures_, max_erasures_)
+       << this->FormatInterval(min_errors_, max_errors_) << " errors and "
+       << this->FormatInterval(min_erasures_, max_erasures_)
        << " erasures of input space vector of dimension " << this->input_size_
        << " over ";
-    this->print_field(os);
+    this->PrintField(os);
   }
 
  private:
@@ -609,13 +524,10 @@ template <typename GaloisField>
 class QarySymmetricChannel : public Channel<GaloisField> {
  public:
   using ArrayType = GFArray<GaloisField>;
-  using ElementType = GaloisFieldElementBase<GaloisField>;
-  using VectorType = xt::xarray<ElementType>;
 
   using Channel<GaloisField>::operator();
-  using Channel<GaloisField>::transmit;
   using Channel<GaloisField>::Transmit;
-  using Channel<GaloisField>::transmit_unsafe;
+  using Channel<GaloisField>::TransmitUnsafe;
 
   QarySymmetricChannel(std::shared_ptr<GaloisField> field, size_t input_size,
                        double epsilon,
@@ -628,17 +540,17 @@ class QarySymmetricChannel : public Channel<GaloisField> {
     }
   }
 
-  double error_probability() const noexcept { return epsilon_; }
+  double ErrorRate() const noexcept { return epsilon_; }
 
-  double probability_of_exactly_t_errors(size_t t) const {
-    return detail::BinomialPMF(this->input_size_, t, epsilon_);
+  double ProbabilityOfExactlyTErrors(size_t t) const {
+    return detail::BinomialPmf(this->input_size_, t, epsilon_);
   }
 
-  double probability_of_at_most_t_errors(size_t t) const {
-    return detail::BinomialCDF(this->input_size_, t, epsilon_);
+  double ProbabilityOfAtMostTErrors(size_t t) const {
+    return detail::BinomialCdf(this->input_size_, t, epsilon_);
   }
 
-  ArrayType transmit_unsafe(const ArrayType &message) override {
+  ArrayType TransmitUnsafe(const ArrayType& message) override {
     ArrayType result = message;
     if (epsilon_ == 0.0) {
       return result;
@@ -647,7 +559,7 @@ class QarySymmetricChannel : public Channel<GaloisField> {
     auto span = result.RawSpan();
     if (epsilon_ == 1.0) {
       for (size_t i = 0; i < span.size(); ++i) {
-        span[i] = this->field_->Add(span[i], this->sample_nonzero_error());
+        span[i] = this->field_->Add(span[i], this->SampleNonzeroError());
       }
       return result;
     }
@@ -655,17 +567,17 @@ class QarySymmetricChannel : public Channel<GaloisField> {
     std::bernoulli_distribution error_dist(epsilon_);
     for (size_t i = 0; i < span.size(); ++i) {
       if (error_dist(this->rng_)) {
-        span[i] = this->field_->Add(span[i], this->sample_nonzero_error());
+        span[i] = this->field_->Add(span[i], this->SampleNonzeroError());
       }
     }
     return result;
   }
 
-  void print(std::ostream &os) const override {
+  void Print(std::ostream& os) const override {
     os << "q-ary symmetric channel with error probability " << epsilon_
        << ", of input and output space vector of dimension "
        << this->input_size_ << " over ";
-    this->print_field(os);
+    this->PrintField(os);
   }
 
  private:
@@ -677,13 +589,10 @@ template <typename BinaryField = GaloisFieldBinary>
 class BasicBinarySymmetricChannel : public Channel<BinaryField> {
  public:
   using ArrayType = GFArray<BinaryField>;
-  using ElementType = GaloisFieldElementBase<BinaryField>;
-  using VectorType = xt::xarray<ElementType>;
 
   using Channel<BinaryField>::operator();
-  using Channel<BinaryField>::transmit;
   using Channel<BinaryField>::Transmit;
-  using Channel<BinaryField>::transmit_unsafe;
+  using Channel<BinaryField>::TransmitUnsafe;
 
   BasicBinarySymmetricChannel(std::shared_ptr<BinaryField> field,
                               size_t input_size, double crossover_prob,
@@ -705,11 +614,10 @@ class BasicBinarySymmetricChannel : public Channel<BinaryField> {
       : BasicBinarySymmetricChannel(std::make_shared<BinaryField>(), input_size,
                                     crossover_prob, seed) {}
 
-  double crossover_probability() const noexcept { return p_; }
-  double error_probability() const noexcept { return p_; }
+  double ErrorRate() const noexcept { return p_; }
 
   // Exact Shannon capacity C(p) = 1 - H_2(p) in bits per channel use.
-  double capacity() const {
+  double Capacity() const {
     if (p_ == 0.0 || p_ == 1.0) {
       return 1.0;
     }
@@ -717,15 +625,15 @@ class BasicBinarySymmetricChannel : public Channel<BinaryField> {
     return std::max(0.0, 1.0 - h2);
   }
 
-  double probability_of_exactly_t_errors(size_t t) const {
-    return detail::BinomialPMF(this->input_size_, t, p_);
+  double ProbabilityOfExactlyTErrors(size_t t) const {
+    return detail::BinomialPmf(this->input_size_, t, p_);
   }
 
-  double probability_of_at_most_t_errors(size_t t) const {
-    return detail::BinomialCDF(this->input_size_, t, p_);
+  double ProbabilityOfAtMostTErrors(size_t t) const {
+    return detail::BinomialCdf(this->input_size_, t, p_);
   }
 
-  ArrayType transmit_unsafe(const ArrayType &message) override {
+  ArrayType TransmitUnsafe(const ArrayType& message) override {
     ArrayType result = message;
     if (p_ == 0.0) {
       return result;
@@ -749,11 +657,11 @@ class BasicBinarySymmetricChannel : public Channel<BinaryField> {
     return result;
   }
 
-  void print(std::ostream &os) const override {
+  void Print(std::ostream& os) const override {
     os << "Binary symmetric channel with crossover probability " << p_
        << ", of input and output space vector of dimension "
        << this->input_size_ << " over ";
-    this->print_field(os);
+    this->PrintField(os);
   }
 
  private:
@@ -767,13 +675,10 @@ template <typename GaloisField>
 class QaryErasureChannel : public Channel<GaloisField> {
  public:
   using ArrayType = GFArray<GaloisField>;
-  using ElementType = GaloisFieldElementBase<GaloisField>;
-  using VectorType = xt::xarray<ElementType>;
 
   using Channel<GaloisField>::operator();
-  using Channel<GaloisField>::transmit;
   using Channel<GaloisField>::Transmit;
-  using Channel<GaloisField>::transmit_unsafe;
+  using Channel<GaloisField>::TransmitUnsafe;
 
   QaryErasureChannel(std::shared_ptr<GaloisField> field, size_t input_size,
                      double epsilon,
@@ -786,29 +691,24 @@ class QaryErasureChannel : public Channel<GaloisField> {
     }
   }
 
-  double erasure_probability() const noexcept { return epsilon_; }
+  double ErasureRate() const noexcept { return epsilon_; }
 
-  double probability_of_exactly_s_erasures(size_t s) const {
-    return detail::BinomialPMF(this->input_size_, s, epsilon_);
+  double ProbabilityOfExactlyTErasures(size_t t) const {
+    return detail::BinomialPmf(this->input_size_, t, epsilon_);
   }
 
-  double probability_of_at_most_s_erasures(size_t s) const {
-    return detail::BinomialCDF(this->input_size_, s, epsilon_);
-  }
-
-  ErasureTransmission<GaloisField> transmit_with_erasures(
-      const ArrayType &message) {
-    this->ValidateMessage(message);
-    return transmit_unsafe_with_erasures(message);
+  double ProbabilityOfAtMostTErasures(size_t t) const {
+    return detail::BinomialCdf(this->input_size_, t, epsilon_);
   }
 
   ErasureTransmission<GaloisField> TransmitWithErasures(
-      const ArrayType &message) {
-    return transmit_with_erasures(message);
+      const ArrayType& message) {
+    this->ValidateMessage(message);
+    return TransmitUnsafeWithErasures(message);
   }
 
-  ErasureTransmission<GaloisField> transmit_unsafe_with_erasures(
-      const ArrayType &message) {
+  ErasureTransmission<GaloisField> TransmitUnsafeWithErasures(
+      const ArrayType& message) {
     ArrayType received = message;
     auto span = received.RawSpan();
     const size_t n = span.size();
@@ -841,28 +741,15 @@ class QaryErasureChannel : public Channel<GaloisField> {
                                             std::move(erasure_mask)};
   }
 
-  std::pair<VectorType, xt::xarray<bool>> transmit_with_erasures(
-      const VectorType &message) {
-    this->ValidateLegacyMessageSize(message);
-    auto res = transmit_unsafe_with_erasures(this->ToGFArray(message));
-    return {res.received.ToElementArray(), std::move(res.erasure_mask)};
+  ArrayType TransmitUnsafe(const ArrayType& message) override {
+    return TransmitUnsafeWithErasures(message).received;
   }
 
-  std::pair<VectorType, xt::xarray<bool>> transmit_unsafe_with_erasures(
-      const VectorType &message) {
-    auto res = transmit_unsafe_with_erasures(this->ToGFArray(message));
-    return {res.received.ToElementArray(), std::move(res.erasure_mask)};
-  }
-
-  ArrayType transmit_unsafe(const ArrayType &message) override {
-    return transmit_unsafe_with_erasures(message).received;
-  }
-
-  void print(std::ostream &os) const override {
+  void Print(std::ostream& os) const override {
     os << "q-ary erasure channel with erasure probability " << epsilon_
        << ", of input and output space vector of dimension "
        << this->input_size_ << " over ";
-    this->print_field(os);
+    this->PrintField(os);
   }
 
  private:
@@ -880,13 +767,10 @@ template <typename BinaryField = GaloisFieldBinary>
 class BasicAWGNChannel : public Channel<BinaryField> {
  public:
   using ArrayType = GFArray<BinaryField>;
-  using ElementType = GaloisFieldElementBase<BinaryField>;
-  using VectorType = xt::xarray<ElementType>;
 
   using Channel<BinaryField>::operator();
-  using Channel<BinaryField>::transmit;
   using Channel<BinaryField>::Transmit;
-  using Channel<BinaryField>::transmit_unsafe;
+  using Channel<BinaryField>::TransmitUnsafe;
 
   BasicAWGNChannel(std::shared_ptr<BinaryField> field, size_t input_size,
                    double snr_db, double code_rate = 1.0,
@@ -946,21 +830,21 @@ class BasicAWGNChannel : public Channel<BinaryField> {
                             input_size, sigma, seed);
   }
 
-  double sigma() const noexcept { return sigma_; }
-  double noise_variance() const noexcept { return sigma_ * sigma_; }
-  double snr_db() const noexcept { return snr_db_; }
-  double code_rate() const noexcept { return code_rate_; }
+  double Sigma() const noexcept { return sigma_; }
+  double NoiseVariance() const noexcept { return sigma_ * sigma_; }
+  double SnrDb() const noexcept { return snr_db_; }
+  double CodeRate() const noexcept { return code_rate_; }
 
   // Exact uncoded BPSK BER over AWGN: Q(1 / sigma) = 0.5 * erfc(1 / (sigma *
   // sqrt(2))).
-  double theoretical_ber() const {
+  double TheoreticalBer() const {
     if (sigma_ == 0.0) {
       return 0.0;
     }
     return 0.5 * std::erfc(1.0 / (sigma_ * std::sqrt(2.0)));
   }
 
-  static std::vector<double> ModulateBPSK(const ArrayType &bits) {
+  static std::vector<double> ModulateBPSK(const ArrayType& bits) {
     if (!bits.HasField()) {
       throw std::invalid_argument("ModulateBPSK: input GFArray has null field");
     }
@@ -974,7 +858,7 @@ class BasicAWGNChannel : public Channel<BinaryField> {
   }
 
   std::vector<double> ComputeLLR(
-      const std::vector<double> &soft_received) const {
+      const std::vector<double>& soft_received) const {
     std::vector<double> llr(soft_received.size());
     const double var = sigma_ * sigma_;
     if (var == 0.0) {
@@ -996,7 +880,7 @@ class BasicAWGNChannel : public Channel<BinaryField> {
     return llr;
   }
 
-  ArrayType HardDecision(const std::vector<double> &soft_or_llr) const {
+  ArrayType HardDecision(const std::vector<double>& soft_or_llr) const {
     ArrayType hard = ArrayType::Zeros(this->field_, {soft_or_llr.size()});
     auto span = hard.RawSpan();
     const auto zero = this->field_->AdditiveIdentity();
@@ -1007,33 +891,33 @@ class BasicAWGNChannel : public Channel<BinaryField> {
     return hard;
   }
 
-  std::vector<double> transmit_soft(const ArrayType &message) {
-    this->ValidateMessage(message);
-    return transmit_soft_unsafe(message);
+  std::vector<double> TransmitSoft(const ArrayType& codeword) {
+    this->ValidateMessage(codeword);
+    return TransmitSoftUnsafe(codeword);
   }
 
-  std::vector<double> transmit_llr(const ArrayType &message) {
-    return ComputeLLR(transmit_soft(message));
+  std::vector<double> TransmitLlr(const ArrayType& codeword) {
+    return ComputeLLR(TransmitSoft(codeword));
   }
 
-  AWGNTransmission<BinaryField> transmit_detailed(const ArrayType &message) {
-    this->ValidateMessage(message);
-    auto soft = transmit_soft_unsafe(message);
+  AWGNTransmission<BinaryField> TransmitDetailed(const ArrayType& codeword) {
+    this->ValidateMessage(codeword);
+    auto soft = TransmitSoftUnsafe(codeword);
     auto llr = ComputeLLR(soft);
     auto hard = HardDecision(soft);
     return AWGNTransmission<BinaryField>{std::move(soft), std::move(llr),
                                          std::move(hard)};
   }
 
-  ArrayType transmit_unsafe(const ArrayType &message) override {
-    return HardDecision(transmit_soft_unsafe(message));
+  ArrayType TransmitUnsafe(const ArrayType& message) override {
+    return HardDecision(TransmitSoftUnsafe(message));
   }
 
-  void print(std::ostream &os) const override {
+  void Print(std::ostream& os) const override {
     os << "AWGN channel (BPSK, sigma=" << sigma_ << ", snr_db=" << snr_db_
        << ", rate=" << code_rate_ << ") of dimension " << this->input_size_
        << " over ";
-    this->print_field(os);
+    this->PrintField(os);
   }
 
  private:
@@ -1074,13 +958,13 @@ class BasicAWGNChannel : public Channel<BinaryField> {
     return 10.0 * std::log10(1.0 / (2.0 * sigma * sigma));
   }
 
-  std::vector<double> transmit_soft_unsafe(const ArrayType &message) {
+  std::vector<double> TransmitSoftUnsafe(const ArrayType& message) {
     auto soft = ModulateBPSK(message);
     if (sigma_ == 0.0) {
       return soft;
     }
     std::normal_distribution<double> noise_dist(0.0, sigma_);
-    for (double &y : soft) {
+    for (double& y : soft) {
       y += noise_dist(this->rng_);
     }
     return soft;
@@ -1110,19 +994,19 @@ struct SimulationStats {
   size_t bit_errors = 0;
   size_t decoding_failures = 0;
 
-  double FER() const noexcept {
+  double Fer() const noexcept {
     return frames_sent == 0 ? 0.0
                             : static_cast<double>(frame_errors) /
                                   static_cast<double>(frames_sent);
   }
 
-  double SER() const noexcept {
+  double Ser() const noexcept {
     return symbols_sent == 0 ? 0.0
                              : static_cast<double>(symbol_errors) /
                                    static_cast<double>(symbols_sent);
   }
 
-  double BER() const noexcept {
+  double Ber() const noexcept {
     return bits_sent == 0 ? 0.0
                           : static_cast<double>(bit_errors) /
                                 static_cast<double>(bits_sent);
@@ -1132,10 +1016,10 @@ struct SimulationStats {
 namespace detail {
 
 template <typename GaloisField>
-void TallyMessageErrors(const GaloisField &field,
-                        const GFArray<GaloisField> &expected,
-                        const GFArray<GaloisField> &actual,
-                        size_t bits_per_symbol, SimulationStats &stats) {
+void TallyMessageErrors(const GaloisField& field,
+                        const GFArray<GaloisField>& expected,
+                        const GFArray<GaloisField>& actual,
+                        size_t bits_per_symbol, SimulationStats& stats) {
   const size_t k = expected.Size();
   if (!actual.HasField() || actual.Size() != k) {
     ++stats.frame_errors;
@@ -1171,8 +1055,8 @@ void TallyMessageErrors(const GaloisField &field,
 template <typename GaloisField, typename EncodeFn, typename ChannelFn,
           typename DecodeFn>
 SimulationStats SimulateCodePerformance(
-    const std::shared_ptr<GaloisField> &field, size_t message_length,
-    EncodeFn &&encode_fn, ChannelFn &&channel_fn, DecodeFn &&decode_fn,
+    const std::shared_ptr<GaloisField>& field, size_t message_length,
+    EncodeFn&& encode_fn, ChannelFn&& channel_fn, DecodeFn&& decode_fn,
     SimulationConfig config = {}) {
   if (!field) {
     throw std::invalid_argument(
@@ -1199,7 +1083,7 @@ SimulationStats SimulateCodePerformance(
     stats.symbols_sent += message_length;
     stats.bits_sent += message_length * bits_per_symbol;
 
-    if constexpr (requires(const DecodedType &d) {
+    if constexpr (requires(const DecodedType& d) {
                     { d.Ok() } -> std::convertible_to<bool>;
                     d.message;
                   }) {
@@ -1212,7 +1096,7 @@ SimulationStats SimulateCodePerformance(
         detail::TallyMessageErrors(*field, message, decoded.message,
                                    bits_per_symbol, stats);
       }
-    } else if constexpr (requires(const DecodedType &d) {
+    } else if constexpr (requires(const DecodedType& d) {
                            { d.has_value() } -> std::convertible_to<bool>;
                            *d;
                          }) {
@@ -1242,8 +1126,8 @@ SimulationStats SimulateCodePerformance(
 template <typename GaloisField, typename EncodeFn, typename ChannelFn,
           typename DecodeFn>
 SimulationStats SimulateCodePerformance(
-    const std::shared_ptr<GaloisField> &field, size_t message_length,
-    EncodeFn &&encode_fn, ChannelFn &&channel_fn, DecodeFn &&decode_fn,
+    const std::shared_ptr<GaloisField>& field, size_t message_length,
+    EncodeFn&& encode_fn, ChannelFn&& channel_fn, DecodeFn&& decode_fn,
     size_t max_frames, size_t target_frame_errors, uint64_t seed = 42) {
   return SimulateCodePerformance(
       field, message_length, std::forward<EncodeFn>(encode_fn),
@@ -1253,7 +1137,7 @@ SimulationStats SimulateCodePerformance(
 
 // Convenience overload integrating any AbstractCode-like object and Channel.
 template <typename Code, typename ChannelType>
-SimulationStats SimulateCodePerformance(const Code &code, ChannelType &channel,
+SimulationStats SimulateCodePerformance(const Code& code, ChannelType& channel,
                                         SimulationConfig config = {}) {
   using FieldType = typename Code::field_type;
   const auto field = code.Field();
@@ -1262,21 +1146,21 @@ SimulationStats SimulateCodePerformance(const Code &code, ChannelType &channel,
   // Derive a deterministic, independent channel seed from config.seed.
   channel.SetSeed(config.seed ^ 0x9e3779b97f4a7c15ULL);
 
-  auto encode_fn = [&code](const GFArray<FieldType> &msg) {
+  auto encode_fn = [&code](const GFArray<FieldType>& msg) {
     return code.Encode(msg);
   };
 
-  if constexpr (requires(ChannelType &ch, const GFArray<FieldType> &cw,
-                         const Code &c, const std::vector<size_t> &pos) {
-                  ch.transmit_with_erasures(cw);
+  if constexpr (requires(ChannelType& ch, const GFArray<FieldType>& cw,
+                         const Code& c, const std::vector<size_t>& pos) {
+                  ch.TransmitWithErasures(cw);
                   c.DecodeWithErasures(cw, pos);
                 }) {
-    auto channel_fn = [&channel](const GFArray<FieldType> &cw) {
-      return channel.transmit_with_erasures(cw);
+    auto channel_fn = [&channel](const GFArray<FieldType>& cw) {
+      return channel.TransmitWithErasures(cw);
     };
-    auto decode_fn = [&code, k](const ErasureTransmission<FieldType> &tx) {
+    auto decode_fn = [&code, k](const ErasureTransmission<FieldType>& tx) {
       auto res = code.DecodeWithErasures(tx.received, tx.erasure_positions);
-      if constexpr (requires(const Code &c, const GFArray<FieldType> &cw) {
+      if constexpr (requires(const Code& c, const GFArray<FieldType>& cw) {
                       c.Unencode(cw);
                     }) {
         if (res.Ok() && (!res.message.HasField() || res.message.Size() != k)) {
@@ -1288,12 +1172,12 @@ SimulationStats SimulateCodePerformance(const Code &code, ChannelType &channel,
     return SimulateCodePerformance(field, k, encode_fn, channel_fn, decode_fn,
                                    config);
   } else {
-    auto channel_fn = [&channel](const GFArray<FieldType> &cw) {
-      return channel.transmit(cw);
+    auto channel_fn = [&channel](const GFArray<FieldType>& cw) {
+      return channel.Transmit(cw);
     };
-    auto decode_fn = [&code, k](const GFArray<FieldType> &rx) {
+    auto decode_fn = [&code, k](const GFArray<FieldType>& rx) {
       auto res = code.DecodeWithResult(rx);
-      if constexpr (requires(const Code &c, const GFArray<FieldType> &cw) {
+      if constexpr (requires(const Code& c, const GFArray<FieldType>& cw) {
                       c.Unencode(cw);
                     }) {
         if (res.Ok() && (!res.message.HasField() || res.message.Size() != k)) {
@@ -1308,24 +1192,23 @@ SimulationStats SimulateCodePerformance(const Code &code, ChannelType &channel,
 }
 
 template <typename GaloisField>
-std::ostream &operator<<(std::ostream &os,
-                         const Channel<GaloisField> &channel) {
-  channel.print(os);
+std::ostream& operator<<(std::ostream& os,
+                         const Channel<GaloisField>& channel) {
+  channel.Print(os);
   return os;
 }
 
 template <typename GaloisField>
 std::shared_ptr<StaticErrorRateChannel<GaloisField>>
-CreateStaticErrorRateChannel(const std::shared_ptr<GaloisField> &field,
-                             size_t input_size, size_t num_errors,
-                             std::optional<uint64_t> seed = std::nullopt) {
+CreateStaticErrorRateChannel(const std::shared_ptr<GaloisField>& field,
+                             size_t input_size, size_t num_errors) {
   return std::make_shared<StaticErrorRateChannel<GaloisField>>(
-      field, input_size, num_errors, seed);
+      field, input_size, num_errors);
 }
 
 template <typename GaloisField>
 std::shared_ptr<StaticErrorRateChannel<GaloisField>>
-CreateStaticErrorRateChannel(const std::shared_ptr<GaloisField> &field,
+CreateStaticErrorRateChannel(const std::shared_ptr<GaloisField>& field,
                              size_t input_size, size_t min_errors,
                              size_t max_errors,
                              std::optional<uint64_t> seed = std::nullopt) {
@@ -1335,7 +1218,7 @@ CreateStaticErrorRateChannel(const std::shared_ptr<GaloisField> &field,
 
 template <typename GaloisField>
 std::shared_ptr<ErrorErasureChannel<GaloisField>> CreateErrorErasureChannel(
-    const std::shared_ptr<GaloisField> &field, size_t input_size,
+    const std::shared_ptr<GaloisField>& field, size_t input_size,
     size_t num_errors, size_t num_erasures,
     std::optional<uint64_t> seed = std::nullopt) {
   return std::make_shared<ErrorErasureChannel<GaloisField>>(
@@ -1344,7 +1227,7 @@ std::shared_ptr<ErrorErasureChannel<GaloisField>> CreateErrorErasureChannel(
 
 template <typename GaloisField>
 std::shared_ptr<ErrorErasureChannel<GaloisField>> CreateErrorErasureChannel(
-    const std::shared_ptr<GaloisField> &field, size_t input_size,
+    const std::shared_ptr<GaloisField>& field, size_t input_size,
     size_t min_errors, size_t max_errors, size_t min_erasures,
     size_t max_erasures, std::optional<uint64_t> seed = std::nullopt) {
   return std::make_shared<ErrorErasureChannel<GaloisField>>(
@@ -1354,7 +1237,7 @@ std::shared_ptr<ErrorErasureChannel<GaloisField>> CreateErrorErasureChannel(
 
 template <typename GaloisField>
 std::shared_ptr<QarySymmetricChannel<GaloisField>> CreateQarySymmetricChannel(
-    const std::shared_ptr<GaloisField> &field, size_t input_size,
+    const std::shared_ptr<GaloisField>& field, size_t input_size,
     double epsilon, std::optional<uint64_t> seed = std::nullopt) {
   return std::make_shared<QarySymmetricChannel<GaloisField>>(field, input_size,
                                                              epsilon, seed);
@@ -1362,7 +1245,7 @@ std::shared_ptr<QarySymmetricChannel<GaloisField>> CreateQarySymmetricChannel(
 
 template <typename BinaryField = GaloisFieldBinary>
 std::shared_ptr<BasicBinarySymmetricChannel<BinaryField>>
-CreateBinarySymmetricChannel(const std::shared_ptr<BinaryField> &field,
+CreateBinarySymmetricChannel(const std::shared_ptr<BinaryField>& field,
                              size_t input_size, double crossover_prob,
                              std::optional<uint64_t> seed = std::nullopt) {
   return std::make_shared<BasicBinarySymmetricChannel<BinaryField>>(
@@ -1379,7 +1262,7 @@ CreateBinarySymmetricChannel(size_t input_size, double crossover_prob,
 
 template <typename GaloisField>
 std::shared_ptr<QaryErasureChannel<GaloisField>> CreateQaryErasureChannel(
-    const std::shared_ptr<GaloisField> &field, size_t input_size,
+    const std::shared_ptr<GaloisField>& field, size_t input_size,
     double epsilon, std::optional<uint64_t> seed = std::nullopt) {
   return std::make_shared<QaryErasureChannel<GaloisField>>(field, input_size,
                                                            epsilon, seed);
@@ -1387,7 +1270,7 @@ std::shared_ptr<QaryErasureChannel<GaloisField>> CreateQaryErasureChannel(
 
 template <typename BinaryField = GaloisFieldBinary>
 std::shared_ptr<BasicAWGNChannel<BinaryField>> CreateAWGNChannel(
-    const std::shared_ptr<BinaryField> &field, size_t input_size, double snr_db,
+    const std::shared_ptr<BinaryField>& field, size_t input_size, double snr_db,
     double code_rate = 1.0, std::optional<uint64_t> seed = std::nullopt) {
   return std::make_shared<BasicAWGNChannel<BinaryField>>(
       field, input_size, snr_db, code_rate, seed);
@@ -1403,7 +1286,7 @@ std::shared_ptr<BasicAWGNChannel<BinaryField>> CreateAWGNChannel(
 
 template <typename BinaryField = GaloisFieldBinary>
 std::shared_ptr<BasicAWGNChannel<BinaryField>> CreateAWGNChannelFromSigma(
-    const std::shared_ptr<BinaryField> &field, size_t input_size, double sigma,
+    const std::shared_ptr<BinaryField>& field, size_t input_size, double sigma,
     std::optional<uint64_t> seed = std::nullopt) {
   return std::make_shared<BasicAWGNChannel<BinaryField>>(
       BasicAWGNChannel<BinaryField>::FromSigma(field, input_size, sigma, seed));
@@ -1418,10 +1301,6 @@ std::shared_ptr<BasicAWGNChannel<BinaryField>> CreateAWGNChannelFromSigma(
 }
 
 }  // namespace channel
-
-// Backwards-compatibility alias for existing `xg::channels::*` callers.
-namespace channels = channel;
-
 }  // namespace xg
 
 #endif  // XGALOIS_CHANNEL_CHANNEL_HPP_

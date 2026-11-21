@@ -44,7 +44,7 @@ class GeneratorMatrixEncoder : public Encoder<GaloisField> {
           "GeneratorMatrixEncoder: generator matrix shape must be (k, n)");
     }
 
-    auto sys = linalg::systematic_form(G);
+    auto sys = linalg::SystematicForm(G);
     if (sys.pivot_cols.size() != k_) {
       throw std::invalid_argument(
           "GeneratorMatrixEncoder: generator matrix must have full row rank");
@@ -71,7 +71,7 @@ class GeneratorMatrixEncoder : public Encoder<GaloisField> {
       }
       matrix_type G_P =
           matrix_type::FromRaw(this->code_->Field(), std::move(gp_raw));
-      inv_gp_ = linalg::inv(G_P);
+      inv_gp_ = linalg::Inv(G_P);
     }
   }
 
@@ -89,7 +89,7 @@ class GeneratorMatrixEncoder : public Encoder<GaloisField> {
     if (k_ == 0) {
       return codeword_type::Zeros(field, {n_});
     }
-    return linalg::dot(message, linear_code_->GeneratorMatrix());
+    return linalg::Dot(message, linear_code_->GeneratorMatrix());
   }
 
   message_type Unencode(const codeword_type &codeword) const override {
@@ -129,7 +129,7 @@ class GeneratorMatrixEncoder : public Encoder<GaloisField> {
     }
     message_type c_p =
         message_type::FromRaw(std::move(field), std::move(c_p_raw));
-    return linalg::dot(c_p, inv_gp_);
+    return linalg::Dot(c_p, inv_gp_);
   }
 
   std::string Name() const override { return "GeneratorMatrix"; }

@@ -562,8 +562,8 @@ class GaloisFieldBinaryElementTest : public ::testing::Test {
 };
 
 TEST_F(GaloisFieldBinaryElementTest, ElementConstruction) {
-  GaloisFieldElementBase<GaloisFieldBinary> elem_0(0, gf2);
-  GaloisFieldElementBase<GaloisFieldBinary> elem_1(1, gf2);
+  GaloisFieldElement<GaloisFieldBinary> elem_0(0, gf2);
+  GaloisFieldElement<GaloisFieldBinary> elem_1(1, gf2);
 
   EXPECT_EQ(elem_0.Value(), 0);
   EXPECT_EQ(elem_1.Value(), 1);
@@ -572,18 +572,18 @@ TEST_F(GaloisFieldBinaryElementTest, ElementConstruction) {
 }
 
 TEST_F(GaloisFieldBinaryElementTest, StringConstructorNotSupported) {
-  EXPECT_THROW(GaloisFieldElementBase<GaloisFieldBinary>("0", gf2),
+  EXPECT_THROW(GaloisFieldElement<GaloisFieldBinary>("0", gf2),
                std::invalid_argument);
-  EXPECT_THROW(GaloisFieldElementBase<GaloisFieldBinary>("1", gf2),
+  EXPECT_THROW(GaloisFieldElement<GaloisFieldBinary>("1", gf2),
                std::invalid_argument);
-  EXPECT_THROW(GaloisFieldElementBase<GaloisFieldBinary>("α", gf2),
+  EXPECT_THROW(GaloisFieldElement<GaloisFieldBinary>("α", gf2),
                std::invalid_argument);
-  EXPECT_THROW(GaloisFieldElementBase<GaloisFieldBinary>("g^1", gf2),
+  EXPECT_THROW(GaloisFieldElement<GaloisFieldBinary>("g^1", gf2),
                std::invalid_argument);
 }
 
 TEST_F(GaloisFieldBinaryElementTest, NumericAssignmentOperatorReducesMod2) {
-  GaloisFieldElementBase<GaloisFieldBinary> elem(0, gf2);
+  GaloisFieldElement<GaloisFieldBinary> elem(0, gf2);
 
   elem = static_cast<uint8_t>(1);
   EXPECT_EQ(elem.Value(), 1);
@@ -603,7 +603,7 @@ TEST_F(GaloisFieldBinaryElementTest, NumericAssignmentOperatorReducesMod2) {
 }
 
 TEST_F(GaloisFieldBinaryElementTest, StringAssignmentNotSupported) {
-  GaloisFieldElementBase<GaloisFieldBinary> elem(0, gf2);
+  GaloisFieldElement<GaloisFieldBinary> elem(0, gf2);
 
   EXPECT_THROW(elem = "0", std::invalid_argument);
   EXPECT_THROW(elem = "1", std::invalid_argument);
@@ -612,48 +612,48 @@ TEST_F(GaloisFieldBinaryElementTest, StringAssignmentNotSupported) {
 }
 
 TEST_F(GaloisFieldBinaryElementTest, ElementCopyAssignment) {
-  GaloisFieldElementBase<GaloisFieldBinary> elem_0(0, gf2);
-  GaloisFieldElementBase<GaloisFieldBinary> elem_1(1, gf2);
+  GaloisFieldElement<GaloisFieldBinary> elem_0(0, gf2);
+  GaloisFieldElement<GaloisFieldBinary> elem_1(1, gf2);
 
   elem_0 = elem_1;
   EXPECT_EQ(elem_0.Value(), 1);
   EXPECT_EQ(elem_0.Field(), gf2);
 
-  elem_1 = GaloisFieldElementBase<GaloisFieldBinary>(0, gf2);
+  elem_1 = GaloisFieldElement<GaloisFieldBinary>(0, gf2);
   EXPECT_EQ(elem_1.Value(), 0);
 }
 
 TEST_F(GaloisFieldBinaryElementTest, CompoundAssignmentOperators) {
-  GaloisFieldElementBase<GaloisFieldBinary> elem_a(1, gf2);
-  GaloisFieldElementBase<GaloisFieldBinary> elem_b(1, gf2);
+  GaloisFieldElement<GaloisFieldBinary> elem_a(1, gf2);
+  GaloisFieldElement<GaloisFieldBinary> elem_b(1, gf2);
 
   elem_a += elem_b;
   EXPECT_EQ(elem_a.Value(), 0);
 
-  elem_a = GaloisFieldElementBase<GaloisFieldBinary>(0, gf2);
+  elem_a = GaloisFieldElement<GaloisFieldBinary>(0, gf2);
   elem_a += elem_b;
   EXPECT_EQ(elem_a.Value(), 1);
 
   elem_a -= elem_b;
   EXPECT_EQ(elem_a.Value(), 0);
 
-  elem_a = GaloisFieldElementBase<GaloisFieldBinary>(1, gf2);
+  elem_a = GaloisFieldElement<GaloisFieldBinary>(1, gf2);
   elem_a *= elem_b;
   EXPECT_EQ(elem_a.Value(), 1);
 
-  elem_a = GaloisFieldElementBase<GaloisFieldBinary>(0, gf2);
+  elem_a = GaloisFieldElement<GaloisFieldBinary>(0, gf2);
   elem_a *= elem_b;
   EXPECT_EQ(elem_a.Value(), 0);
 
-  elem_a = GaloisFieldElementBase<GaloisFieldBinary>(1, gf2);
+  elem_a = GaloisFieldElement<GaloisFieldBinary>(1, gf2);
   elem_a /= elem_b;
   EXPECT_EQ(elem_a.Value(), 1);
 
-  elem_a = GaloisFieldElementBase<GaloisFieldBinary>(0, gf2);
+  elem_a = GaloisFieldElement<GaloisFieldBinary>(0, gf2);
   elem_a /= elem_b;
   EXPECT_EQ(elem_a.Value(), 0);
 
-  GaloisFieldElementBase<GaloisFieldBinary> elem_zero(0, gf2);
+  GaloisFieldElement<GaloisFieldBinary> elem_zero(0, gf2);
   EXPECT_THROW(elem_a /= elem_zero, std::domain_error);
 }
 
@@ -670,9 +670,9 @@ TEST_F(GaloisFieldBinaryElementTest, StrictElementValidation) {
 }
 
 TEST_F(GaloisFieldBinaryElementTest, ElementPrinting) {
-  GaloisFieldElementBase<GaloisFieldBinary> elem_0(0, gf2);
-  GaloisFieldElementBase<GaloisFieldBinary> elem_1(1, gf2);
-  GaloisFieldElementBase<GaloisFieldBinary> elem_hex(1, gf2_hex);
+  GaloisFieldElement<GaloisFieldBinary> elem_0(0, gf2);
+  GaloisFieldElement<GaloisFieldBinary> elem_1(1, gf2);
+  GaloisFieldElement<GaloisFieldBinary> elem_hex(1, gf2_hex);
 
   std::ostringstream oss;
 
@@ -693,10 +693,10 @@ TEST_F(GaloisFieldBinaryElementTest, ElementPrinting) {
 }
 
 TEST_F(GaloisFieldBinaryElementTest, NullFieldHandling) {
-  EXPECT_THROW(GaloisFieldElementBase<GaloisFieldBinary>(0, nullptr),
+  EXPECT_THROW(GaloisFieldElement<GaloisFieldBinary>(0, nullptr),
                std::invalid_argument);
 
-  GaloisFieldElementBase<GaloisFieldBinary> elem;
+  GaloisFieldElement<GaloisFieldBinary> elem;
   EXPECT_FALSE(elem.HasField());
 }
 
@@ -713,8 +713,8 @@ class GaloisFieldBinaryExtensionElementTest : public ::testing::Test {
 };
 
 TEST_F(GaloisFieldBinaryExtensionElementTest, ElementConstruction) {
-  GaloisFieldElementBase<GaloisFieldBinaryExtension<uint8_t>> elem_0(0, gf8);
-  GaloisFieldElementBase<GaloisFieldBinaryExtension<uint8_t>> elem_5(5, gf8);
+  GaloisFieldElement<GaloisFieldBinaryExtension<uint8_t>> elem_0(0, gf8);
+  GaloisFieldElement<GaloisFieldBinaryExtension<uint8_t>> elem_5(5, gf8);
 
   EXPECT_EQ(elem_0.Value(), 0);
   EXPECT_EQ(elem_5.Value(), 5);
@@ -752,54 +752,51 @@ TEST_F(GaloisFieldBinaryExtensionElementTest, StringConstructorAllFormats) {
 }
 
 TEST_F(GaloisFieldBinaryExtensionElementTest, StringConstructorCustomVariable) {
-  GaloisFieldElementBase<GaloisFieldBinaryExtension<uint16_t>> elem_beta(
-      "β^2 + β", gf16);
+  GaloisFieldElement<GaloisFieldBinaryExtension<uint16_t>> elem_beta("β^2 + β",
+                                                                     gf16);
   EXPECT_EQ(elem_beta.Value(), 6);
 
-  EXPECT_THROW(GaloisFieldElementBase<GaloisFieldBinaryExtension<uint16_t>>(
-                   "α^2 + α", gf16),
-               std::invalid_argument);
+  EXPECT_THROW(
+      GaloisFieldElement<GaloisFieldBinaryExtension<uint16_t>>("α^2 + α", gf16),
+      std::invalid_argument);
 }
 
 TEST_F(GaloisFieldBinaryExtensionElementTest, StringConstructorGenerator) {
-  GaloisFieldElementBase<GaloisFieldBinaryExtension<uint8_t>> elem_g0("g^0",
-                                                                      gf8);
+  GaloisFieldElement<GaloisFieldBinaryExtension<uint8_t>> elem_g0("g^0", gf8);
   EXPECT_EQ(elem_g0.Value(), 1);
 
-  GaloisFieldElementBase<GaloisFieldBinaryExtension<uint8_t>> elem_g1("g^1",
-                                                                      gf8);
+  GaloisFieldElement<GaloisFieldBinaryExtension<uint8_t>> elem_g1("g^1", gf8);
   uint8_t generator = gf8->MultiplicativeGenerator();
   EXPECT_EQ(elem_g1.Value(), generator);
 
-  GaloisFieldElementBase<GaloisFieldBinaryExtension<uint8_t>> elem_g2("g^2",
-                                                                      gf8);
+  GaloisFieldElement<GaloisFieldBinaryExtension<uint8_t>> elem_g2("g^2", gf8);
   EXPECT_EQ(elem_g2.Value(), gf8->Mul(generator, generator));
 }
 
 TEST_F(GaloisFieldBinaryExtensionElementTest, StringConstructorInvalid) {
-  EXPECT_THROW(GaloisFieldElementBase<GaloisFieldBinaryExtension<uint8_t>>(
-                   "invalid", gf8),
-               std::invalid_argument);
-
   EXPECT_THROW(
-      GaloisFieldElementBase<GaloisFieldBinaryExtension<uint8_t>>("h^1", gf8),
+      GaloisFieldElement<GaloisFieldBinaryExtension<uint8_t>>("invalid", gf8),
       std::invalid_argument);
 
   EXPECT_THROW(
-      GaloisFieldElementBase<GaloisFieldBinaryExtension<uint8_t>>("α^8", gf8),
+      GaloisFieldElement<GaloisFieldBinaryExtension<uint8_t>>("h^1", gf8),
       std::invalid_argument);
 
   EXPECT_THROW(
-      GaloisFieldElementBase<GaloisFieldBinaryExtension<uint8_t>>("0x8", gf8),
+      GaloisFieldElement<GaloisFieldBinaryExtension<uint8_t>>("α^8", gf8),
+      std::invalid_argument);
+
+  EXPECT_THROW(
+      GaloisFieldElement<GaloisFieldBinaryExtension<uint8_t>>("0x8", gf8),
       std::out_of_range);
 
   EXPECT_THROW(
-      GaloisFieldElementBase<GaloisFieldBinaryExtension<uint8_t>>("8", gf8),
+      GaloisFieldElement<GaloisFieldBinaryExtension<uint8_t>>("8", gf8),
       std::out_of_range);
 }
 
 TEST_F(GaloisFieldBinaryExtensionElementTest, NumericAssignmentOperator) {
-  GaloisFieldElementBase<GaloisFieldBinaryExtension<uint8_t>> elem(0, gf8);
+  GaloisFieldElement<GaloisFieldBinaryExtension<uint8_t>> elem(0, gf8);
 
   elem = static_cast<uint8_t>(5);
   EXPECT_EQ(elem.Value(), 5);
@@ -812,7 +809,7 @@ TEST_F(GaloisFieldBinaryExtensionElementTest, NumericAssignmentOperator) {
 }
 
 TEST_F(GaloisFieldBinaryExtensionElementTest, StringAssignmentOperator) {
-  GaloisFieldElementBase<GaloisFieldBinaryExtension<uint8_t>> elem(0, gf8);
+  GaloisFieldElement<GaloisFieldBinaryExtension<uint8_t>> elem(0, gf8);
 
   elem = "α^2 + α";
   EXPECT_EQ(elem.Value(), 6);
@@ -834,8 +831,8 @@ TEST_F(GaloisFieldBinaryExtensionElementTest, StringAssignmentOperator) {
 }
 
 TEST_F(GaloisFieldBinaryExtensionElementTest, CompoundAssignmentOperators) {
-  GaloisFieldElementBase<GaloisFieldBinaryExtension<uint8_t>> elem_a(3, gf8);
-  GaloisFieldElementBase<GaloisFieldBinaryExtension<uint8_t>> elem_b(5, gf8);
+  GaloisFieldElement<GaloisFieldBinaryExtension<uint8_t>> elem_a(3, gf8);
+  GaloisFieldElement<GaloisFieldBinaryExtension<uint8_t>> elem_b(5, gf8);
 
   elem_a += elem_b;
   EXPECT_EQ(elem_a.Value(), 6);
@@ -843,23 +840,23 @@ TEST_F(GaloisFieldBinaryExtensionElementTest, CompoundAssignmentOperators) {
   elem_a -= elem_b;
   EXPECT_EQ(elem_a.Value(), 3);
 
-  elem_a = GaloisFieldElementBase<GaloisFieldBinaryExtension<uint8_t>>(2, gf8);
-  elem_b = GaloisFieldElementBase<GaloisFieldBinaryExtension<uint8_t>>(3, gf8);
+  elem_a = GaloisFieldElement<GaloisFieldBinaryExtension<uint8_t>>(2, gf8);
+  elem_b = GaloisFieldElement<GaloisFieldBinaryExtension<uint8_t>>(3, gf8);
   elem_a *= elem_b;
   EXPECT_EQ(elem_a.Value(), 6);
 
-  elem_a = GaloisFieldElementBase<GaloisFieldBinaryExtension<uint8_t>>(6, gf8);
-  elem_b = GaloisFieldElementBase<GaloisFieldBinaryExtension<uint8_t>>(2, gf8);
+  elem_a = GaloisFieldElement<GaloisFieldBinaryExtension<uint8_t>>(6, gf8);
+  elem_b = GaloisFieldElement<GaloisFieldBinaryExtension<uint8_t>>(2, gf8);
   elem_a /= elem_b;
   EXPECT_EQ(elem_a.Value(), 3);
 
-  GaloisFieldElementBase<GaloisFieldBinaryExtension<uint8_t>> elem_zero(0, gf8);
+  GaloisFieldElement<GaloisFieldBinaryExtension<uint8_t>> elem_zero(0, gf8);
   EXPECT_THROW(elem_a /= elem_zero, std::domain_error);
 }
 
 TEST_F(GaloisFieldBinaryExtensionElementTest, ElementArithmetic) {
-  GaloisFieldElementBase<GaloisFieldBinaryExtension<uint8_t>> elem_2(2, gf8);
-  GaloisFieldElementBase<GaloisFieldBinaryExtension<uint8_t>> elem_3(3, gf8);
+  GaloisFieldElement<GaloisFieldBinaryExtension<uint8_t>> elem_2(2, gf8);
+  GaloisFieldElement<GaloisFieldBinaryExtension<uint8_t>> elem_3(3, gf8);
 
   auto sum = elem_2 + elem_3;
   EXPECT_EQ(sum.Value(), 1);

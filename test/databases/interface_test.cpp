@@ -90,7 +90,7 @@ class DatabaseInterfaceTest : public ::testing::Test {
 
   void TestPrimeFactors(const PrimeTestCase& test_case) {
     PrimeFactorsDatabase db;
-    PrimeFactorsResult result = db.fetch(test_case.number);
+    PrimeFactorsResult result = db.Fetch(test_case.number);
 
     VerifyFactorizationInvariant(test_case.number, result);
 
@@ -104,14 +104,14 @@ class DatabaseInterfaceTest : public ::testing::Test {
     if (is_irreducible) {
       IrreduciblePolyDatabase db;
       IrreduciblePolyResult result =
-          db.fetch(test_case.characteristic, test_case.degree);
+          db.Fetch(test_case.characteristic, test_case.degree);
 
       EXPECT_EQ(result.nonzero_degrees, test_case.expected_degrees);
       EXPECT_EQ(result.nonzero_coeffs, test_case.expected_coeffs);
     } else {
       ConwayPolyDatabase db;
       ConwayPolyResult result =
-          db.fetch(test_case.characteristic, test_case.degree);
+          db.Fetch(test_case.characteristic, test_case.degree);
 
       EXPECT_EQ(result.nonzero_degrees, test_case.expected_degrees);
       EXPECT_EQ(result.nonzero_coeffs, test_case.expected_coeffs);
@@ -162,7 +162,7 @@ TEST_F(DatabaseInterfaceTest, PrimeFactorsOnTheFlyLargeNumbers) {
   };
 
   for (uint64_t n : targets) {
-    PrimeFactorsResult result = db.fetch(n);
+    PrimeFactorsResult result = db.Fetch(n);
     VerifyFactorizationInvariant(n, result);
     EXPECT_EQ(result.composite, xg::utils::IsPrime(n) ? 0 : 1);
   }
@@ -170,8 +170,8 @@ TEST_F(DatabaseInterfaceTest, PrimeFactorsOnTheFlyLargeNumbers) {
 
 TEST_F(DatabaseInterfaceTest, PrimeFactorsFetchNotFound) {
   PrimeFactorsDatabase db;
-  EXPECT_THROW(db.fetch(0), std::runtime_error);
-  EXPECT_THROW(db.fetch(1), std::runtime_error);
+  EXPECT_THROW(db.Fetch(0), std::runtime_error);
+  EXPECT_THROW(db.Fetch(1), std::runtime_error);
 }
 
 TEST_F(DatabaseInterfaceTest, IrreduciblePolyFetchGF2Degree2) {
@@ -189,12 +189,12 @@ TEST_F(DatabaseInterfaceTest, IrreduciblePolyFetchGF2Degree4) {
 TEST_F(DatabaseInterfaceTest, IrreduciblePolyFetchAll) {
   IrreduciblePolyDatabase db;
 
-  auto deg2 = db.fetch_all(2, 2);
+  auto deg2 = db.FetchAll(2, 2);
   ASSERT_EQ(deg2.size(), 1U);
   EXPECT_EQ(deg2[0].nonzero_degrees, std::vector<int>({2, 1, 0}));
 
   // irreducible_polys.db has 3 primitive polynomials for GF(2^5).
-  auto deg5 = db.fetch_all(2, 5);
+  auto deg5 = db.FetchAll(2, 5);
   EXPECT_EQ(deg5.size(), 3U);
   for (const auto& poly : deg5) {
     EXPECT_EQ(poly.nonzero_degrees.size(), poly.nonzero_coeffs.size());
@@ -202,13 +202,13 @@ TEST_F(DatabaseInterfaceTest, IrreduciblePolyFetchAll) {
     EXPECT_EQ(poly.nonzero_degrees.front(), 5);
   }
 
-  auto missing = db.fetch_all(999, 999);
+  auto missing = db.FetchAll(999, 999);
   EXPECT_TRUE(missing.empty());
 }
 
 TEST_F(DatabaseInterfaceTest, IrreduciblePolyFetchNotFound) {
   IrreduciblePolyDatabase db;
-  EXPECT_THROW(db.fetch(999, 999), std::runtime_error);
+  EXPECT_THROW(db.Fetch(999, 999), std::runtime_error);
 }
 
 TEST_F(DatabaseInterfaceTest, ConwayPolyFetchGF2Degree1) {
@@ -235,7 +235,7 @@ TEST_F(DatabaseInterfaceTest, EmbeddedConwayPolysZeroDiskIO) {
     EXPECT_EQ(embedded->back().degree, static_cast<uint16_t>(m));
     EXPECT_EQ(embedded->back().coeff, 1U);
 
-    ConwayPolyResult result = db.fetch(2, m);
+    ConwayPolyResult result = db.Fetch(2, m);
     ASSERT_EQ(result.nonzero_degrees.size(), embedded->size());
     EXPECT_EQ(result.nonzero_degrees.back(), m);
   }
@@ -249,29 +249,29 @@ TEST_F(DatabaseInterfaceTest, EmbeddedConwayPolysZeroDiskIO) {
                                                  static_cast<uint32_t>(d))
                     .has_value())
         << "Missing embedded GF(" << p << "^" << d << ")";
-    ConwayPolyResult result = db.fetch(p, d);
+    ConwayPolyResult result = db.Fetch(p, d);
     EXPECT_EQ(result.nonzero_degrees.back(), d);
     EXPECT_EQ(result.nonzero_coeffs.back(), 1);
   }
 
   // Extended entry loaded from conway_polys.db (not embedded).
   EXPECT_FALSE(detail::LookupEmbeddedConwayPoly(2U, 65U).has_value());
-  ConwayPolyResult ext = db.fetch(2, 65);
+  ConwayPolyResult ext = db.Fetch(2, 65);
   EXPECT_EQ(ext.nonzero_degrees.back(), 65);
 }
 
 TEST_F(DatabaseInterfaceTest, ConwayPolyFetchNotFound) {
   ConwayPolyDatabase db;
-  EXPECT_THROW(db.fetch(999, 999), std::runtime_error);
+  EXPECT_THROW(db.Fetch(999, 999), std::runtime_error);
 }
 
 TEST_F(DatabaseInterfaceTest, MissingFileErrorHandling) {
   IrreduciblePolyDatabase missing_irred("/nonexistent/path/irreducible.db");
   ConwayPolyDatabase missing_conway("/nonexistent/path/conway.db");
 
-  EXPECT_THROW(missing_irred.fetch(2, 2), std::runtime_error);
-  EXPECT_THROW(missing_irred.fetch_all(2, 2), std::runtime_error);
-  EXPECT_THROW(missing_conway.fetch(2, 2), std::runtime_error);
+  EXPECT_THROW(missing_irred.Fetch(2, 2), std::runtime_error);
+  EXPECT_THROW(missing_irred.FetchAll(2, 2), std::runtime_error);
+  EXPECT_THROW(missing_conway.Fetch(2, 2), std::runtime_error);
 }
 
 TEST_F(DatabaseInterfaceTest, DatabasePerformance) {
@@ -281,7 +281,7 @@ TEST_F(DatabaseInterfaceTest, DatabasePerformance) {
 
   std::vector<uint64_t> test_numbers = {273323, 142903, 21218, 643482, 309550};
   for (uint64_t num : test_numbers) {
-    PrimeFactorsResult result = db.fetch(num);
+    PrimeFactorsResult result = db.Fetch(num);
     EXPECT_GT(result.factors.size(), 0U);
   }
 
@@ -296,16 +296,16 @@ TEST_F(DatabaseInterfaceTest, DatabaseDataConsistency) {
   IrreduciblePolyDatabase irreducible_db;
   ConwayPolyDatabase conway_db;
 
-  PrimeFactorsResult prime_result = prime_db.fetch(273323);
+  PrimeFactorsResult prime_result = prime_db.Fetch(273323);
   EXPECT_EQ(prime_result.factors.size(), prime_result.multiplicities.size());
   EXPECT_FALSE(prime_result.factors.empty());
 
-  IrreduciblePolyResult irreducible_result = irreducible_db.fetch(2, 2);
+  IrreduciblePolyResult irreducible_result = irreducible_db.Fetch(2, 2);
   EXPECT_EQ(irreducible_result.nonzero_degrees.size(),
             irreducible_result.nonzero_coeffs.size());
   EXPECT_FALSE(irreducible_result.nonzero_degrees.empty());
 
-  ConwayPolyResult conway_result = conway_db.fetch(2, 2);
+  ConwayPolyResult conway_result = conway_db.Fetch(2, 2);
   EXPECT_EQ(conway_result.nonzero_degrees.size(),
             conway_result.nonzero_coeffs.size());
   EXPECT_FALSE(conway_result.nonzero_degrees.empty());
@@ -316,16 +316,16 @@ TEST_F(DatabaseInterfaceTest, MultipleDatabaseOperations) {
   IrreduciblePolyDatabase irreducible_db;
   ConwayPolyDatabase conway_db;
 
-  PrimeFactorsResult prime1 = prime_db.fetch(273323);
-  PrimeFactorsResult prime2 = prime_db.fetch(21218);
+  PrimeFactorsResult prime1 = prime_db.Fetch(273323);
+  PrimeFactorsResult prime2 = prime_db.Fetch(21218);
   EXPECT_NE(prime1.composite, prime2.composite);
 
-  IrreduciblePolyResult irreducible1 = irreducible_db.fetch(2, 2);
-  IrreduciblePolyResult irreducible2 = irreducible_db.fetch(2, 3);
+  IrreduciblePolyResult irreducible1 = irreducible_db.Fetch(2, 2);
+  IrreduciblePolyResult irreducible2 = irreducible_db.Fetch(2, 3);
   EXPECT_NE(irreducible1.nonzero_degrees[0], irreducible2.nonzero_degrees[0]);
 
-  ConwayPolyResult conway1 = conway_db.fetch(2, 1);
-  ConwayPolyResult conway2 = conway_db.fetch(2, 2);
+  ConwayPolyResult conway1 = conway_db.Fetch(2, 1);
+  ConwayPolyResult conway2 = conway_db.Fetch(2, 2);
   EXPECT_NE(conway1.nonzero_degrees.size(), conway2.nonzero_degrees.size());
 }
 
@@ -429,7 +429,7 @@ TEST_F(DatabaseInterfaceTest, PrimeFactorsEdgeCases) {
   PrimeFactorsDatabase db;
 
   for (uint64_t invalid_num : {0ULL, 1ULL}) {
-    EXPECT_THROW(db.fetch(invalid_num), std::runtime_error)
+    EXPECT_THROW(db.Fetch(invalid_num), std::runtime_error)
         << "Expected exception for number: " << invalid_num;
   }
 }
@@ -442,10 +442,10 @@ TEST_F(DatabaseInterfaceTest, PolynomialEdgeCases) {
       {0, 1}, {1, 1}, {-1, 2}, {2, 0}, {2, -1}};
 
   for (const auto& [char_val, deg_val] : invalid_params) {
-    EXPECT_THROW(irreducible_db.fetch(char_val, deg_val), std::runtime_error)
+    EXPECT_THROW(irreducible_db.Fetch(char_val, deg_val), std::runtime_error)
         << "Expected exception for characteristic=" << char_val
         << ", degree=" << deg_val;
-    EXPECT_THROW(conway_db.fetch(char_val, deg_val), std::runtime_error)
+    EXPECT_THROW(conway_db.Fetch(char_val, deg_val), std::runtime_error)
         << "Expected exception for characteristic=" << char_val
         << ", degree=" << deg_val;
   }
@@ -460,19 +460,19 @@ TEST_F(DatabaseInterfaceTest, StressTestMultipleLookups) {
 
   for (int i = 0; i < 50; ++i) {
     for (const auto& test_case : kPrimeTestCases) {
-      PrimeFactorsResult result = prime_db.fetch(test_case.number);
+      PrimeFactorsResult result = prime_db.Fetch(test_case.number);
       EXPECT_FALSE(result.factors.empty());
     }
 
     for (const auto& test_case : kIrreducibleTestCases) {
       IrreduciblePolyResult result =
-          irreducible_db.fetch(test_case.characteristic, test_case.degree);
+          irreducible_db.Fetch(test_case.characteristic, test_case.degree);
       EXPECT_FALSE(result.nonzero_degrees.empty());
     }
 
     for (const auto& test_case : kConwayTestCases) {
       ConwayPolyResult result =
-          conway_db.fetch(test_case.characteristic, test_case.degree);
+          conway_db.Fetch(test_case.characteristic, test_case.degree);
       EXPECT_FALSE(result.nonzero_degrees.empty());
     }
   }
@@ -501,27 +501,27 @@ TEST_F(DatabaseInterfaceTest, ConcurrentDatabaseAccess) {
 
       for (int i = 0; i < kIterations; ++i) {
         try {
-          auto p_res = prime_db.fetch(21218);
+          auto p_res = prime_db.Fetch(21218);
           if (p_res.factors != std::vector<uint64_t>({2, 103}) ||
               p_res.multiplicities != std::vector<int>({1, 2}) ||
               p_res.composite != 1) {
             ++failures;
           }
 
-          auto i_res = irred_db.fetch(2, 2 + (t + i) % 3);
+          auto i_res = irred_db.Fetch(2, 2 + (t + i) % 3);
           if (i_res.nonzero_degrees.empty() ||
               i_res.nonzero_degrees.size() != i_res.nonzero_coeffs.size()) {
             ++failures;
           }
 
-          auto c_emb = conway_db.fetch(2, 1 + (t + i) % 64);
+          auto c_emb = conway_db.Fetch(2, 1 + (t + i) % 64);
           if (c_emb.nonzero_degrees.empty() ||
               c_emb.nonzero_degrees.back() != 1 + (t + i) % 64) {
             ++failures;
           }
 
           // Extended file-backed entry accessed concurrently across threads.
-          auto c_ext = conway_db.fetch(2, 65);
+          auto c_ext = conway_db.Fetch(2, 65);
           if (c_ext.nonzero_degrees.empty() ||
               c_ext.nonzero_degrees.back() != 65) {
             ++failures;

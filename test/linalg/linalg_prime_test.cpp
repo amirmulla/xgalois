@@ -6,7 +6,6 @@
 #include <random>
 #include <stdexcept>
 #include <vector>
-#include <xtensor/containers/xarray.hpp>
 
 #include "xgalois/field/gf_array.hpp"
 #include "xgalois/field/gf_element.hpp"
@@ -19,17 +18,17 @@ namespace {
 
 template <typename Field>
 GFArray<Field> EvalPolyAtMatrix(const PolynomialDense<Field> &p,
-                                const GFArray<Field> &A) {
-  auto field = A.Field();
-  const std::size_t n = A.Shape(0);
+                                const GFArray<Field> &a) {
+  auto field = a.Field();
+  const std::size_t n = a.Shape(0);
   const int deg = p.Degree();
-  auto I = linalg::eye(field, n);
+  auto eye_mat = linalg::Eye(field, n);
   if (deg < 0) {
-    return linalg::zeros(field, {n, n});
+    return linalg::Zeros(field, {n, n});
   }
-  auto acc = I * p[static_cast<std::size_t>(deg)];
+  auto acc = eye_mat * p[static_cast<std::size_t>(deg)];
   for (std::size_t k = static_cast<std::size_t>(deg); k-- > 0;) {
-    acc = linalg::dot(acc, A) + (I * p[k]);
+    acc = linalg::Dot(acc, a) + (eye_mat * p[k]);
   }
   return acc;
 }
@@ -63,7 +62,6 @@ GFArray<Field> MakeGFVector(
 class LinalgPrimeTest : public ::testing::Test {
  protected:
   using FieldType = GaloisFieldPrime<uint32_t>;
-  using FieldElement = GaloisFieldElement<FieldType>;
 
   void SetUp() override { field = std::make_shared<FieldType>(7); }
 
@@ -71,728 +69,530 @@ class LinalgPrimeTest : public ::testing::Test {
 };
 
 TEST_F(LinalgPrimeTest, VectorDotProduct) {
-  xt::xarray<FieldElement> v1({3});
-  xt::xarray<FieldElement> v2({3});
+  auto v1 = MakeGFVector(field, {2, 3, 4});
+  auto v2 = MakeGFVector(field, {1, 5, 6});
 
-  v1(0) = FieldElement(2, field);
-  v1(1) = FieldElement(3, field);
-  v1(2) = FieldElement(4, field);
+  auto result = linalg::Dot(v1, v2);
 
-  v2(0) = FieldElement(1, field);
-  v2(1) = FieldElement(5, field);
-  v2(2) = FieldElement(6, field);
-
-  auto result = linalg::dot(v1, v2);
-
-  EXPECT_EQ(result().Value(), 6);
+  ASSERT_EQ(result.Dimension(), std::size_t{0});
+  EXPECT_EQ(result.RawData()(), uint32_t{6});
 }
 
 TEST_F(LinalgPrimeTest, VectorDotProductMismatchedSizes) {
-  auto v1 = linalg::zeros({3}, field);
-  auto v2 = linalg::zeros({4}, field);
+  auto v1 = linalg::Zeros(field, {3});
+  auto v2 = linalg::Zeros(field, {4});
 
-  EXPECT_THROW(linalg::dot(v1, v2), std::invalid_argument);
+  EXPECT_THROW(linalg::Dot(v1, v2), std::invalid_argument);
 }
 
 TEST_F(LinalgPrimeTest, VectorMatrixMultiplication1D2D) {
-  xt::xarray<FieldElement> v({2});
-  xt::xarray<FieldElement> A({2, 3});
-
-  v(0) = FieldElement(2, field);
-  v(1) = FieldElement(5, field);
-
-  A(0, 0) = FieldElement(1, field);
-  A(0, 1) = FieldElement(2, field);
-  A(0, 2) = FieldElement(3, field);
-  A(1, 0) = FieldElement(4, field);
-  A(1, 1) = FieldElement(5, field);
-  A(1, 2) = FieldElement(6, field);
-
   // [2, 5] * [[1, 2, 3], [4, 5, 6]] = [2+20, 4+25, 6+30] mod 7 = [1, 1, 1]
-  auto result = linalg::dot(v, A);
-  ASSERT_EQ(result.dimension(), 1);
-  ASSERT_EQ(result.shape(0), 3);
-  EXPECT_EQ(result(0).Value(), 1);
-  EXPECT_EQ(result(1).Value(), 1);
-  EXPECT_EQ(result(2).Value(), 1);
+  auto v = MakeGFVector(field, {2, 5});
+  auto a = MakeGFMatrix(field, 2, 3, {1, 2, 3, 4, 5, 6});
+  auto result = linalg::Dot(v, a);
 
-  auto gv = MakeGFVector(field, {2, 5});
-  auto gA = MakeGFMatrix(field, 2, 3, {1, 2, 3, 4, 5, 6});
-  auto gres = linalg::dot(gv, gA);
-  ASSERT_EQ(gres.Dimension(), 1);
-  ASSERT_EQ(gres.Shape(0), 3);
-  EXPECT_EQ(gres.At(0).Value(), 1);
-  EXPECT_EQ(gres.At(1).Value(), 1);
-  EXPECT_EQ(gres.At(2).Value(), 1);
+  ASSERT_EQ(result.Dimension(), std::size_t{1});
+  ASSERT_EQ(result.Shape(0), std::size_t{3});
+  EXPECT_EQ(result.At(0).Value(), uint32_t{1});
+  EXPECT_EQ(result.At(1).Value(), uint32_t{1});
+  EXPECT_EQ(result.At(2).Value(), uint32_t{1});
 }
 
 TEST_F(LinalgPrimeTest, MatrixVectorMultiplication) {
-  xt::xarray<FieldElement> A({2, 3});
-  xt::xarray<FieldElement> v({3});
+  auto a = MakeGFMatrix(field, 2, 3, {1, 2, 3, 4, 5, 6});
+  auto v = MakeGFVector(field, {1, 2, 3});
 
-  A(0, 0) = FieldElement(1, field);
-  A(0, 1) = FieldElement(2, field);
-  A(0, 2) = FieldElement(3, field);
-  A(1, 0) = FieldElement(4, field);
-  A(1, 1) = FieldElement(5, field);
-  A(1, 2) = FieldElement(6, field);
+  auto result = linalg::Dot(a, v);
 
-  v(0) = FieldElement(1, field);
-  v(1) = FieldElement(2, field);
-  v(2) = FieldElement(3, field);
-
-  auto result = linalg::dot(A, v);
-
-  EXPECT_EQ(result(0).Value(), 0);
-  EXPECT_EQ(result(1).Value(), 4);
+  ASSERT_EQ(result.Dimension(), std::size_t{1});
+  ASSERT_EQ(result.Shape(0), std::size_t{2});
+  EXPECT_EQ(result.At(0).Value(), uint32_t{0});
+  EXPECT_EQ(result.At(1).Value(), uint32_t{4});
 }
 
 TEST_F(LinalgPrimeTest, MatrixMultiplication) {
-  xt::xarray<FieldElement> A({2, 2});
-  xt::xarray<FieldElement> B({2, 2});
+  auto a = MakeGFMatrix(field, 2, 2, {1, 2, 3, 4});
+  auto b = MakeGFMatrix(field, 2, 2, {5, 6, 1, 2});
 
-  A(0, 0) = FieldElement(1, field);
-  A(0, 1) = FieldElement(2, field);
-  A(1, 0) = FieldElement(3, field);
-  A(1, 1) = FieldElement(4, field);
+  auto result = linalg::Dot(a, b);
 
-  B(0, 0) = FieldElement(5, field);
-  B(0, 1) = FieldElement(6, field);
-  B(1, 0) = FieldElement(1, field);
-  B(1, 1) = FieldElement(2, field);
-
-  auto result = linalg::dot(A, B);
-
-  EXPECT_EQ(result(0, 0).Value(), 0);
-  EXPECT_EQ(result(0, 1).Value(), 3);
-  EXPECT_EQ(result(1, 0).Value(), 5);
-  EXPECT_EQ(result(1, 1).Value(), 5);
+  EXPECT_EQ(result.At(0, 0).Value(), uint32_t{0});
+  EXPECT_EQ(result.At(0, 1).Value(), uint32_t{3});
+  EXPECT_EQ(result.At(1, 0).Value(), uint32_t{5});
+  EXPECT_EQ(result.At(1, 1).Value(), uint32_t{5});
 }
 
 TEST_F(LinalgPrimeTest, OuterProduct) {
-  xt::xarray<FieldElement> v1({2});
-  xt::xarray<FieldElement> v2({3});
+  auto v1 = MakeGFVector(field, {2, 3});
+  auto v2 = MakeGFVector(field, {4, 5, 6});
 
-  v1(0) = FieldElement(2, field);
-  v1(1) = FieldElement(3, field);
+  auto result = linalg::Outer(v1, v2);
 
-  v2(0) = FieldElement(4, field);
-  v2(1) = FieldElement(5, field);
-  v2(2) = FieldElement(6, field);
-
-  auto result = linalg::outer(v1, v2);
-
-  EXPECT_EQ(result(0, 0).Value(), 1);
-  EXPECT_EQ(result(0, 1).Value(), 3);
-  EXPECT_EQ(result(0, 2).Value(), 5);
-  EXPECT_EQ(result(1, 0).Value(), 5);
-  EXPECT_EQ(result(1, 1).Value(), 1);
-  EXPECT_EQ(result(1, 2).Value(), 4);
+  EXPECT_EQ(result.At(0, 0).Value(), uint32_t{1});
+  EXPECT_EQ(result.At(0, 1).Value(), uint32_t{3});
+  EXPECT_EQ(result.At(0, 2).Value(), uint32_t{5});
+  EXPECT_EQ(result.At(1, 0).Value(), uint32_t{5});
+  EXPECT_EQ(result.At(1, 1).Value(), uint32_t{1});
+  EXPECT_EQ(result.At(1, 2).Value(), uint32_t{4});
 }
 
 TEST_F(LinalgPrimeTest, Trace) {
-  xt::xarray<FieldElement> A({3, 3});
+  auto a = MakeGFMatrix(field, 3, 3, {1, 2, 3, 4, 5, 6, 0, 1, 2});
 
-  A(0, 0) = FieldElement(1, field);
-  A(0, 1) = FieldElement(2, field);
-  A(0, 2) = FieldElement(3, field);
-  A(1, 0) = FieldElement(4, field);
-  A(1, 1) = FieldElement(5, field);
-  A(1, 2) = FieldElement(6, field);
-  A(2, 0) = FieldElement(0, field);
-  A(2, 1) = FieldElement(1, field);
-  A(2, 2) = FieldElement(2, field);
+  auto result = linalg::Trace(a);
 
-  auto result = linalg::trace(A);
-
-  EXPECT_EQ(result.Value(), 1);
+  EXPECT_EQ(result.Value(), uint32_t{1});
 }
 
 TEST_F(LinalgPrimeTest, TraceNonSquareMatrix) {
-  auto A = linalg::zeros({2, 3}, field);
+  auto a = linalg::Zeros(field, {2, 3});
 
-  EXPECT_THROW(linalg::trace(A), std::invalid_argument);
+  EXPECT_THROW(linalg::Trace(a), std::invalid_argument);
 }
 
 TEST_F(LinalgPrimeTest, Determinant2x2) {
-  xt::xarray<FieldElement> A({2, 2});
+  auto a = MakeGFMatrix(field, 2, 2, {1, 2, 3, 4});
 
-  A(0, 0) = FieldElement(1, field);
-  A(0, 1) = FieldElement(2, field);
-  A(1, 0) = FieldElement(3, field);
-  A(1, 1) = FieldElement(4, field);
+  auto result = linalg::Det(a);
 
-  auto result = linalg::det(A);
-
-  EXPECT_EQ(result.Value(), 5);
+  EXPECT_EQ(result.Value(), uint32_t{5});
 }
 
 TEST_F(LinalgPrimeTest, Determinant3x3) {
-  xt::xarray<FieldElement> A({3, 3});
+  auto a = MakeGFMatrix(field, 3, 3, {1, 2, 3, 0, 1, 4, 5, 6, 0});
 
-  A(0, 0) = FieldElement(1, field);
-  A(0, 1) = FieldElement(2, field);
-  A(0, 2) = FieldElement(3, field);
-  A(1, 0) = FieldElement(0, field);
-  A(1, 1) = FieldElement(1, field);
-  A(1, 2) = FieldElement(4, field);
-  A(2, 0) = FieldElement(5, field);
-  A(2, 1) = FieldElement(6, field);
-  A(2, 2) = FieldElement(0, field);
+  auto result = linalg::Det(a);
 
-  auto result = linalg::det(A);
-
-  EXPECT_EQ(result.Value(), 1);
+  EXPECT_EQ(result.Value(), uint32_t{1});
 }
 
 TEST_F(LinalgPrimeTest, DeterminantZeroPivotRowSwapSignFlip) {
   // [[0, 1], [1, 0]] has det = -1 == 6 mod 7
-  auto P2 = MakeGFMatrix(field, 2, 2, {0, 1, 1, 0});
-  EXPECT_EQ(linalg::det(P2).Value(), 6);
+  auto p2 = MakeGFMatrix(field, 2, 2, {0, 1, 1, 0});
+  EXPECT_EQ(linalg::Det(p2).Value(), uint32_t{6});
 
   // [[0, 1, 2], [1, 3, 4], [2, 5, 1]]:
   // det = -1*(1 - 8) + 2*(5 - 6) = 7 - 2 = 5 mod 7
-  auto A3 = MakeGFMatrix(field, 3, 3, {0, 1, 2, 1, 3, 4, 2, 5, 1});
-  EXPECT_EQ(linalg::det(A3).Value(), 5);
+  auto a3 = MakeGFMatrix(field, 3, 3, {0, 1, 2, 1, 3, 4, 2, 5, 1});
+  EXPECT_EQ(linalg::Det(a3).Value(), uint32_t{5});
 
   // [[0, 0, 1], [0, 1, 0], [1, 0, 0]] has 1 swap => det = -1 == 6 mod 7
-  auto P3 = MakeGFMatrix(field, 3, 3, {0, 0, 1, 0, 1, 0, 1, 0, 0});
-  EXPECT_EQ(linalg::det(P3).Value(), 6);
+  auto p3 = MakeGFMatrix(field, 3, 3, {0, 0, 1, 0, 1, 0, 1, 0, 0});
+  EXPECT_EQ(linalg::Det(p3).Value(), uint32_t{6});
 }
 
 TEST_F(LinalgPrimeTest, IdentityMatrix) {
-  auto I = linalg::eye(3, field);
+  auto eye_mat = linalg::Eye(field, 3);
 
-  EXPECT_EQ(I(0, 0).Value(), 1);
-  EXPECT_EQ(I(0, 1).Value(), 0);
-  EXPECT_EQ(I(0, 2).Value(), 0);
-  EXPECT_EQ(I(1, 0).Value(), 0);
-  EXPECT_EQ(I(1, 1).Value(), 1);
-  EXPECT_EQ(I(1, 2).Value(), 0);
-  EXPECT_EQ(I(2, 0).Value(), 0);
-  EXPECT_EQ(I(2, 1).Value(), 0);
-  EXPECT_EQ(I(2, 2).Value(), 1);
+  EXPECT_EQ(eye_mat.At(0, 0).Value(), uint32_t{1});
+  EXPECT_EQ(eye_mat.At(0, 1).Value(), uint32_t{0});
+  EXPECT_EQ(eye_mat.At(0, 2).Value(), uint32_t{0});
+  EXPECT_EQ(eye_mat.At(1, 0).Value(), uint32_t{0});
+  EXPECT_EQ(eye_mat.At(1, 1).Value(), uint32_t{1});
+  EXPECT_EQ(eye_mat.At(1, 2).Value(), uint32_t{0});
+  EXPECT_EQ(eye_mat.At(2, 0).Value(), uint32_t{0});
+  EXPECT_EQ(eye_mat.At(2, 1).Value(), uint32_t{0});
+  EXPECT_EQ(eye_mat.At(2, 2).Value(), uint32_t{1});
 }
 
 TEST_F(LinalgPrimeTest, MatrixPower) {
-  xt::xarray<FieldElement> A({2, 2});
+  auto a = MakeGFMatrix(field, 2, 2, {1, 2, 3, 4});
 
-  A(0, 0) = FieldElement(1, field);
-  A(0, 1) = FieldElement(2, field);
-  A(1, 0) = FieldElement(3, field);
-  A(1, 1) = FieldElement(4, field);
+  auto a2 = linalg::MatrixPower(a, 2);
 
-  auto A2 = linalg::matrix_power(A, 2);
-
-  EXPECT_EQ(A2(0, 0).Value(), 0);
-  EXPECT_EQ(A2(0, 1).Value(), 3);
-  EXPECT_EQ(A2(1, 0).Value(), 1);
-  EXPECT_EQ(A2(1, 1).Value(), 1);
+  EXPECT_EQ(a2.At(0, 0).Value(), uint32_t{0});
+  EXPECT_EQ(a2.At(0, 1).Value(), uint32_t{3});
+  EXPECT_EQ(a2.At(1, 0).Value(), uint32_t{1});
+  EXPECT_EQ(a2.At(1, 1).Value(), uint32_t{1});
 }
 
 TEST_F(LinalgPrimeTest, MatrixPowerZero) {
-  xt::xarray<FieldElement> A({2, 2});
+  auto a = MakeGFMatrix(field, 2, 2, {1, 2, 3, 4});
 
-  A(0, 0) = FieldElement(1, field);
-  A(0, 1) = FieldElement(2, field);
-  A(1, 0) = FieldElement(3, field);
-  A(1, 1) = FieldElement(4, field);
+  auto a0 = linalg::MatrixPower(a, 0);
 
-  auto A0 = linalg::matrix_power(A, 0);
-
-  EXPECT_EQ(A0(0, 0).Value(), 1);
-  EXPECT_EQ(A0(0, 1).Value(), 0);
-  EXPECT_EQ(A0(1, 0).Value(), 0);
-  EXPECT_EQ(A0(1, 1).Value(), 1);
+  EXPECT_EQ(a0.At(0, 0).Value(), uint32_t{1});
+  EXPECT_EQ(a0.At(0, 1).Value(), uint32_t{0});
+  EXPECT_EQ(a0.At(1, 0).Value(), uint32_t{0});
+  EXPECT_EQ(a0.At(1, 1).Value(), uint32_t{1});
 }
 
 TEST_F(LinalgPrimeTest, MatrixPowerNegative) {
-  auto A = MakeGFMatrix(field, 2, 2, {1, 2, 3, 5});
-  auto A_inv = linalg::inv(A);
-  auto A_neg1 = linalg::matrix_power(A, -1);
-  EXPECT_EQ(A_neg1, A_inv);
+  auto a = MakeGFMatrix(field, 2, 2, {1, 2, 3, 5});
+  auto a_inv = linalg::Inv(a);
+  auto a_neg1 = linalg::MatrixPower(a, -1);
+  EXPECT_EQ(a_neg1, a_inv);
 
-  auto A_pos5 = linalg::matrix_power(A, 5);
-  auto A_neg5 = linalg::matrix_power(A, -5);
-  auto prod = linalg::dot(A_pos5, A_neg5);
-  EXPECT_EQ(prod, linalg::eye(field, 2));
+  auto a_pos5 = linalg::MatrixPower(a, 5);
+  auto a_neg5 = linalg::MatrixPower(a, -5);
+  auto prod = linalg::Dot(a_pos5, a_neg5);
+  EXPECT_EQ(prod, linalg::Eye(field, 2));
 
   // Singular matrix negative power must throw.
-  auto S = MakeGFMatrix(field, 2, 2, {1, 2, 2, 4});
-  EXPECT_THROW(linalg::matrix_power(S, -2), std::runtime_error);
+  auto s = MakeGFMatrix(field, 2, 2, {1, 2, 2, 4});
+  EXPECT_THROW(linalg::MatrixPower(s, -2), std::runtime_error);
 }
 
 TEST_F(LinalgPrimeTest, LinearSystemSolve) {
-  xt::xarray<FieldElement> A({2, 2});
-  xt::xarray<FieldElement> b({2});
+  auto a = MakeGFMatrix(field, 2, 2, {1, 2, 3, 4});
+  auto b = MakeGFVector(field, {5, 6});
 
-  A(0, 0) = FieldElement(1, field);
-  A(0, 1) = FieldElement(2, field);
-  A(1, 0) = FieldElement(3, field);
-  A(1, 1) = FieldElement(4, field);
+  auto x = linalg::Solve(a, b);
 
-  b(0) = FieldElement(5, field);
-  b(1) = FieldElement(6, field);
-
-  auto x = linalg::solve(A, b);
-
-  auto verification = linalg::dot(A, x);
-  EXPECT_EQ(verification(0).Value(), b(0).Value());
-  EXPECT_EQ(verification(1).Value(), b(1).Value());
+  auto verification = linalg::Dot(a, x);
+  EXPECT_EQ(verification.At(0).Value(), b.At(0).Value());
+  EXPECT_EQ(verification.At(1).Value(), b.At(1).Value());
 }
 
 TEST_F(LinalgPrimeTest, LinearSystemSolveMultiRHSAndSingular) {
-  auto A = MakeGFMatrix(field, 3, 3, {0, 1, 2, 1, 3, 4, 2, 5, 1});
-  auto B = MakeGFMatrix(field, 3, 2, {1, 6, 2, 5, 3, 4});
+  auto a = MakeGFMatrix(field, 3, 3, {0, 1, 2, 1, 3, 4, 2, 5, 1});
+  auto b = MakeGFMatrix(field, 3, 2, {1, 6, 2, 5, 3, 4});
 
-  auto X = linalg::solve(A, B);
-  ASSERT_EQ(X.Dimension(), 2);
-  ASSERT_EQ(X.Shape(0), 3);
-  ASSERT_EQ(X.Shape(1), 2);
-  EXPECT_EQ(linalg::dot(A, X), B);
+  auto x = linalg::Solve(a, b);
+  ASSERT_EQ(x.Dimension(), std::size_t{2});
+  ASSERT_EQ(x.Shape(0), std::size_t{3});
+  ASSERT_EQ(x.Shape(1), std::size_t{2});
+  EXPECT_EQ(linalg::Dot(a, x), b);
 
-  auto S = MakeGFMatrix(field, 2, 2, {1, 2, 2, 4});
-  auto b = MakeGFVector(field, {3, 6});
-  EXPECT_THROW(linalg::solve(S, b), std::runtime_error);
+  auto s = MakeGFMatrix(field, 2, 2, {1, 2, 2, 4});
+  auto rhs = MakeGFVector(field, {3, 6});
+  EXPECT_THROW(linalg::Solve(s, rhs), std::runtime_error);
 }
 
 TEST_F(LinalgPrimeTest, MatrixInversion) {
-  xt::xarray<FieldElement> A({2, 2});
+  auto a = MakeGFMatrix(field, 2, 2, {1, 2, 3, 5});
 
-  A(0, 0) = FieldElement(1, field);
-  A(0, 1) = FieldElement(2, field);
-  A(1, 0) = FieldElement(3, field);
-  A(1, 1) = FieldElement(5, field);
+  auto a_inv = linalg::Inv(a);
+  auto verification = linalg::Dot(a, a_inv);
 
-  auto A_inv = linalg::inv(A);
-
-  auto verification = linalg::dot(A, A_inv);
-
-  EXPECT_EQ(verification(0, 0).Value(), 1);
-  EXPECT_EQ(verification(0, 1).Value(), 0);
-  EXPECT_EQ(verification(1, 0).Value(), 0);
-  EXPECT_EQ(verification(1, 1).Value(), 1);
+  EXPECT_EQ(verification.At(0, 0).Value(), uint32_t{1});
+  EXPECT_EQ(verification.At(0, 1).Value(), uint32_t{0});
+  EXPECT_EQ(verification.At(1, 0).Value(), uint32_t{0});
+  EXPECT_EQ(verification.At(1, 1).Value(), uint32_t{1});
 }
 
 TEST_F(LinalgPrimeTest, SingularMatrixInversion) {
-  xt::xarray<FieldElement> A({2, 2});
+  auto a = MakeGFMatrix(field, 2, 2, {1, 2, 2, 4});
 
-  A(0, 0) = FieldElement(1, field);
-  A(0, 1) = FieldElement(2, field);
-  A(1, 0) = FieldElement(2, field);
-  A(1, 1) = FieldElement(4, field);
-
-  EXPECT_THROW(linalg::inv(A), std::runtime_error);
+  EXPECT_THROW(linalg::Inv(a), std::runtime_error);
 }
 
 TEST_F(LinalgPrimeTest, VdotProduct) {
-  xt::xarray<FieldElement> A({2, 2});
-  xt::xarray<FieldElement> B({2, 2});
+  auto a = MakeGFMatrix(field, 2, 2, {1, 2, 3, 4});
+  auto b = MakeGFMatrix(field, 2, 2, {5, 6, 0, 1});
 
-  A(0, 0) = FieldElement(1, field);
-  A(0, 1) = FieldElement(2, field);
-  A(1, 0) = FieldElement(3, field);
-  A(1, 1) = FieldElement(4, field);
+  auto result = linalg::Vdot(a, b);
 
-  B(0, 0) = FieldElement(5, field);
-  B(0, 1) = FieldElement(6, field);
-  B(1, 0) = FieldElement(0, field);
-  B(1, 1) = FieldElement(1, field);
-
-  auto result = linalg::vdot(A, B);
-
-  EXPECT_EQ(result.Value(), 0);
+  EXPECT_EQ(result.Value(), uint32_t{0});
 }
 
 TEST_F(LinalgPrimeTest, KroneckerProduct) {
-  xt::xarray<FieldElement> A({1, 2});
-  xt::xarray<FieldElement> B({2, 2});
+  auto a = MakeGFMatrix(field, 1, 2, {1, 2});
+  auto b = MakeGFMatrix(field, 2, 2, {3, 4, 5, 6});
 
-  A(0, 0) = FieldElement(1, field);
-  A(0, 1) = FieldElement(2, field);
+  auto result = linalg::Kron(a, b);
 
-  B(0, 0) = FieldElement(3, field);
-  B(0, 1) = FieldElement(4, field);
-  B(1, 0) = FieldElement(5, field);
-  B(1, 1) = FieldElement(6, field);
+  EXPECT_EQ(result.Shape(0), std::size_t{2});
+  EXPECT_EQ(result.Shape(1), std::size_t{4});
 
-  auto result = linalg::kron(A, B);
+  EXPECT_EQ(result.At(0, 0).Value(), uint32_t{3});
+  EXPECT_EQ(result.At(0, 1).Value(), uint32_t{4});
+  EXPECT_EQ(result.At(0, 2).Value(), uint32_t{6});
+  EXPECT_EQ(result.At(0, 3).Value(), uint32_t{1});
 
-  EXPECT_EQ(result.shape(0), 2);
-  EXPECT_EQ(result.shape(1), 4);
-
-  EXPECT_EQ(result(0, 0).Value(), 3);
-  EXPECT_EQ(result(0, 1).Value(), 4);
-  EXPECT_EQ(result(0, 2).Value(), 6);
-  EXPECT_EQ(result(0, 3).Value(), 1);
-
-  EXPECT_EQ(result(1, 0).Value(), 5);
-  EXPECT_EQ(result(1, 1).Value(), 6);
-  EXPECT_EQ(result(1, 2).Value(), 3);
-  EXPECT_EQ(result(1, 3).Value(), 5);
+  EXPECT_EQ(result.At(1, 0).Value(), uint32_t{5});
+  EXPECT_EQ(result.At(1, 1).Value(), uint32_t{6});
+  EXPECT_EQ(result.At(1, 2).Value(), uint32_t{3});
+  EXPECT_EQ(result.At(1, 3).Value(), uint32_t{5});
 }
 
 TEST_F(LinalgPrimeTest, RowEchelonForm) {
-  xt::xarray<FieldElement> A({3, 4});
+  auto a = MakeGFMatrix(field, 3, 4, {1, 2, 1, 0, 2, 4, 3, 1, 3, 6, 0, 5});
 
-  A(0, 0) = FieldElement(1, field);
-  A(0, 1) = FieldElement(2, field);
-  A(0, 2) = FieldElement(1, field);
-  A(0, 3) = FieldElement(0, field);
-  A(1, 0) = FieldElement(2, field);
-  A(1, 1) = FieldElement(4, field);
-  A(1, 2) = FieldElement(3, field);
-  A(1, 3) = FieldElement(1, field);
-  A(2, 0) = FieldElement(3, field);
-  A(2, 1) = FieldElement(6, field);
-  A(2, 2) = FieldElement(0, field);
-  A(2, 3) = FieldElement(5, field);
+  auto r = linalg::RowEchelon(a);
 
-  auto R = linalg::row_echelon(A);
+  EXPECT_EQ(r.At(0, 0).Value(), uint32_t{1});
+  EXPECT_EQ(r.At(0, 1).Value(), uint32_t{2});
+  EXPECT_EQ(r.At(0, 2).Value(), uint32_t{1});
+  EXPECT_EQ(r.At(0, 3).Value(), uint32_t{0});
 
-  EXPECT_EQ(R(0, 0).Value(), 1);
-  EXPECT_EQ(R(0, 1).Value(), 2);
-  EXPECT_EQ(R(0, 2).Value(), 1);
-  EXPECT_EQ(R(0, 3).Value(), 0);
+  EXPECT_EQ(r.At(1, 0).Value(), uint32_t{0});
+  EXPECT_EQ(r.At(1, 1).Value(), uint32_t{0});
+  EXPECT_EQ(r.At(1, 2).Value(), uint32_t{1});
+  EXPECT_EQ(r.At(1, 3).Value(), uint32_t{1});
 
-  EXPECT_EQ(R(1, 0).Value(), 0);
-  EXPECT_EQ(R(1, 1).Value(), 0);
-  EXPECT_EQ(R(1, 2).Value(), 1);
-  EXPECT_EQ(R(1, 3).Value(), 1);
-
-  EXPECT_EQ(R(2, 0).Value(), 0);
-  EXPECT_EQ(R(2, 1).Value(), 0);
-  EXPECT_EQ(R(2, 2).Value(), 0);
-  EXPECT_EQ(R(2, 3).Value(), 1);
+  EXPECT_EQ(r.At(2, 0).Value(), uint32_t{0});
+  EXPECT_EQ(r.At(2, 1).Value(), uint32_t{0});
+  EXPECT_EQ(r.At(2, 2).Value(), uint32_t{0});
+  EXPECT_EQ(r.At(2, 3).Value(), uint32_t{1});
 }
 
 TEST_F(LinalgPrimeTest, MatrixRank) {
-  xt::xarray<FieldElement> A({3, 4});
+  auto a = MakeGFMatrix(field, 3, 4, {1, 2, 1, 0, 2, 4, 3, 1, 3, 6, 0, 5});
+  EXPECT_EQ(linalg::MatrixRank(a), std::size_t{3});
 
-  A(0, 0) = FieldElement(1, field);
-  A(0, 1) = FieldElement(2, field);
-  A(0, 2) = FieldElement(1, field);
-  A(0, 3) = FieldElement(0, field);
-  A(1, 0) = FieldElement(2, field);
-  A(1, 1) = FieldElement(4, field);
-  A(1, 2) = FieldElement(3, field);
-  A(1, 3) = FieldElement(1, field);
-  A(2, 0) = FieldElement(3, field);
-  A(2, 1) = FieldElement(6, field);
-  A(2, 2) = FieldElement(0, field);
-  A(2, 3) = FieldElement(5, field);
-  EXPECT_EQ(linalg::matrix_rank(A), 3);
-
-  xt::xarray<FieldElement> B({2, 3});
-
-  B(0, 0) = FieldElement(1, field);
-  B(0, 1) = FieldElement(2, field);
-  B(0, 2) = FieldElement(3, field);
-  B(1, 0) = FieldElement(2, field);
-  B(1, 1) = FieldElement(4, field);
-  B(1, 2) = FieldElement(6, field);
-  EXPECT_EQ(linalg::matrix_rank(B), 1);
+  auto b = MakeGFMatrix(field, 2, 3, {1, 2, 3, 2, 4, 6});
+  EXPECT_EQ(linalg::MatrixRank(b), std::size_t{1});
 }
 
 TEST_F(LinalgPrimeTest, CrossProduct3D) {
-  xt::xarray<FieldElement> v1({3});
-  xt::xarray<FieldElement> v2({3});
+  auto v1 = MakeGFVector(field, {1, 2, 3});
+  auto v2 = MakeGFVector(field, {4, 5, 6});
 
-  v1(0) = FieldElement(1, field);
-  v1(1) = FieldElement(2, field);
-  v1(2) = FieldElement(3, field);
+  auto result = linalg::Cross(v1, v2);
 
-  v2(0) = FieldElement(4, field);
-  v2(1) = FieldElement(5, field);
-  v2(2) = FieldElement(6, field);
-
-  auto result = linalg::cross(v1, v2);
-
-  EXPECT_EQ(result.shape(0), 3);
-  EXPECT_EQ(result(0).Value(), 4);
-  EXPECT_EQ(result(1).Value(), 6);
-  EXPECT_EQ(result(2).Value(), 4);
+  EXPECT_EQ(result.Shape(0), std::size_t{3});
+  EXPECT_EQ(result.At(0).Value(), uint32_t{4});
+  EXPECT_EQ(result.At(1).Value(), uint32_t{6});
+  EXPECT_EQ(result.At(2).Value(), uint32_t{4});
 }
 
 TEST_F(LinalgPrimeTest, CrossProduct2D) {
-  xt::xarray<FieldElement> v1({2});
-  xt::xarray<FieldElement> v2({2});
+  auto v1 = MakeGFVector(field, {1, 2});
+  auto v2 = MakeGFVector(field, {3, 4});
 
-  v1(0) = FieldElement(1, field);
-  v1(1) = FieldElement(2, field);
+  auto result = linalg::Cross(v1, v2);
 
-  v2(0) = FieldElement(3, field);
-  v2(1) = FieldElement(4, field);
-
-  auto result = linalg::cross(v1, v2);
-
-  EXPECT_EQ(result.shape(0), 3);
-  EXPECT_EQ(result(0).Value(), 0);
-  EXPECT_EQ(result(1).Value(), 0);
-  EXPECT_EQ(result(2).Value(), 5);
+  EXPECT_EQ(result.Shape(0), std::size_t{3});
+  EXPECT_EQ(result.At(0).Value(), uint32_t{0});
+  EXPECT_EQ(result.At(1).Value(), uint32_t{0});
+  EXPECT_EQ(result.At(2).Value(), uint32_t{5});
 }
 
 TEST_F(LinalgPrimeTest, ZerosMatrix) {
-  auto Z = linalg::zeros({2, 3}, field);
+  auto z = linalg::Zeros(field, {2, 3});
 
-  EXPECT_EQ(Z.shape(0), 2);
-  EXPECT_EQ(Z.shape(1), 3);
+  EXPECT_EQ(z.Shape(0), std::size_t{2});
+  EXPECT_EQ(z.Shape(1), std::size_t{3});
 
-  EXPECT_EQ(Z(0, 0).Value(), 0);
-  EXPECT_EQ(Z(0, 1).Value(), 0);
-  EXPECT_EQ(Z(0, 2).Value(), 0);
-  EXPECT_EQ(Z(1, 0).Value(), 0);
-  EXPECT_EQ(Z(1, 1).Value(), 0);
-  EXPECT_EQ(Z(1, 2).Value(), 0);
+  EXPECT_EQ(z.At(0, 0).Value(), uint32_t{0});
+  EXPECT_EQ(z.At(0, 1).Value(), uint32_t{0});
+  EXPECT_EQ(z.At(0, 2).Value(), uint32_t{0});
+  EXPECT_EQ(z.At(1, 0).Value(), uint32_t{0});
+  EXPECT_EQ(z.At(1, 1).Value(), uint32_t{0});
+  EXPECT_EQ(z.At(1, 2).Value(), uint32_t{0});
 }
 
 TEST_F(LinalgPrimeTest, ZerosVector) {
-  auto z = linalg::zeros({4}, field);
+  auto z = linalg::Zeros(field, {4});
 
-  EXPECT_EQ(z.shape(0), 4);
-  EXPECT_EQ(z.dimension(), 1);
+  EXPECT_EQ(z.Shape(0), std::size_t{4});
+  EXPECT_EQ(z.Dimension(), std::size_t{1});
 
-  EXPECT_EQ(z(0).Value(), 0);
-  EXPECT_EQ(z(1).Value(), 0);
-  EXPECT_EQ(z(2).Value(), 0);
-  EXPECT_EQ(z(3).Value(), 0);
+  EXPECT_EQ(z.At(0).Value(), uint32_t{0});
+  EXPECT_EQ(z.At(1).Value(), uint32_t{0});
+  EXPECT_EQ(z.At(2).Value(), uint32_t{0});
+  EXPECT_EQ(z.At(3).Value(), uint32_t{0});
 }
 
 TEST_F(LinalgPrimeTest, ReducedRowEchelonForm) {
-  xt::xarray<FieldElement> A({3, 4});
+  auto a = MakeGFMatrix(field, 3, 4, {1, 2, 1, 0, 2, 4, 3, 1, 3, 6, 0, 5});
 
-  A(0, 0) = FieldElement(1, field);
-  A(0, 1) = FieldElement(2, field);
-  A(0, 2) = FieldElement(1, field);
-  A(0, 3) = FieldElement(0, field);
-  A(1, 0) = FieldElement(2, field);
-  A(1, 1) = FieldElement(4, field);
-  A(1, 2) = FieldElement(3, field);
-  A(1, 3) = FieldElement(1, field);
-  A(2, 0) = FieldElement(3, field);
-  A(2, 1) = FieldElement(6, field);
-  A(2, 2) = FieldElement(0, field);
-  A(2, 3) = FieldElement(5, field);
-
-  auto R = linalg::rref(A);
+  auto r = linalg::Rref(a);
 
   // Verify ALL 4 columns of RREF:
   // [[1, 2, 0, 0],
   //  [0, 0, 1, 0],
   //  [0, 0, 0, 1]]
-  EXPECT_EQ(R(0, 0).Value(), 1);
-  EXPECT_EQ(R(0, 1).Value(), 2);
-  EXPECT_EQ(R(0, 2).Value(), 0);
-  EXPECT_EQ(R(0, 3).Value(), 0);
+  EXPECT_EQ(r.At(0, 0).Value(), uint32_t{1});
+  EXPECT_EQ(r.At(0, 1).Value(), uint32_t{2});
+  EXPECT_EQ(r.At(0, 2).Value(), uint32_t{0});
+  EXPECT_EQ(r.At(0, 3).Value(), uint32_t{0});
 
-  EXPECT_EQ(R(1, 0).Value(), 0);
-  EXPECT_EQ(R(1, 1).Value(), 0);
-  EXPECT_EQ(R(1, 2).Value(), 1);
-  EXPECT_EQ(R(1, 3).Value(), 0);
+  EXPECT_EQ(r.At(1, 0).Value(), uint32_t{0});
+  EXPECT_EQ(r.At(1, 1).Value(), uint32_t{0});
+  EXPECT_EQ(r.At(1, 2).Value(), uint32_t{1});
+  EXPECT_EQ(r.At(1, 3).Value(), uint32_t{0});
 
-  EXPECT_EQ(R(2, 0).Value(), 0);
-  EXPECT_EQ(R(2, 1).Value(), 0);
-  EXPECT_EQ(R(2, 2).Value(), 0);
-  EXPECT_EQ(R(2, 3).Value(), 1);
+  EXPECT_EQ(r.At(2, 0).Value(), uint32_t{0});
+  EXPECT_EQ(r.At(2, 1).Value(), uint32_t{0});
+  EXPECT_EQ(r.At(2, 2).Value(), uint32_t{0});
+  EXPECT_EQ(r.At(2, 3).Value(), uint32_t{1});
 }
 
 TEST_F(LinalgPrimeTest, NullspaceAndFundamentalSubspaces) {
   // Rank-2 matrix of shape 3x5 over GF(7)
-  auto A =
+  auto a =
       MakeGFMatrix(field, 3, 5, {1, 2, 3, 4, 5, 2, 4, 6, 1, 3, 0, 1, 2, 3, 4});
-  const std::size_t rank = linalg::matrix_rank(A);
-  EXPECT_EQ(rank, 2);
+  const std::size_t rank = linalg::MatrixRank(a);
+  EXPECT_EQ(rank, std::size_t{2});
 
-  auto N = linalg::nullspace(A);
-  EXPECT_EQ(N.Shape(0), 5 - rank);
-  EXPECT_EQ(N.Shape(1), 5);
-  EXPECT_EQ(linalg::matrix_rank(N), 5 - rank);
+  auto ns = linalg::Nullspace(a);
+  EXPECT_EQ(ns.Shape(0), 5 - rank);
+  EXPECT_EQ(ns.Shape(1), std::size_t{5});
+  EXPECT_EQ(linalg::MatrixRank(ns), 5 - rank);
   // A * N^T == 0
-  auto prod = linalg::dot(A, linalg::transpose(N));
-  EXPECT_EQ(prod, linalg::zeros(field, {3, 5 - rank}));
+  auto prod = linalg::Dot(a, linalg::Transpose(ns));
+  EXPECT_EQ(prod, linalg::Zeros(field, {3, 5 - rank}));
 
   // Left nullspace: L * A == 0
-  auto L = linalg::left_nullspace(A);
-  EXPECT_EQ(L.Shape(0), 3 - rank);
-  EXPECT_EQ(L.Shape(1), 3);
-  EXPECT_EQ(linalg::dot(L, A), linalg::zeros(field, {3 - rank, 5}));
+  auto lns = linalg::LeftNullspace(a);
+  EXPECT_EQ(lns.Shape(0), 3 - rank);
+  EXPECT_EQ(lns.Shape(1), std::size_t{3});
+  EXPECT_EQ(linalg::Dot(lns, a), linalg::Zeros(field, {3 - rank, 5}));
 
   // Row space & column space dimensions
-  auto RS = linalg::row_space(A);
-  EXPECT_EQ(RS.Shape(0), rank);
-  EXPECT_EQ(RS.Shape(1), 5);
-  EXPECT_EQ(linalg::matrix_rank(RS), rank);
+  auto rs = linalg::RowSpace(a);
+  EXPECT_EQ(rs.Shape(0), rank);
+  EXPECT_EQ(rs.Shape(1), std::size_t{5});
+  EXPECT_EQ(linalg::MatrixRank(rs), rank);
 
-  auto CS = linalg::column_space(A);
-  EXPECT_EQ(CS.Shape(0), 3);
-  EXPECT_EQ(CS.Shape(1), rank);
-  EXPECT_EQ(linalg::matrix_rank(CS), rank);
+  auto cs = linalg::ColumnSpace(a);
+  EXPECT_EQ(cs.Shape(0), std::size_t{3});
+  EXPECT_EQ(cs.Shape(1), rank);
+  EXPECT_EQ(linalg::MatrixRank(cs), rank);
 
   // Full column rank matrix -> empty nullspace of shape {0, n}
-  auto FullCol = MakeGFMatrix(field, 3, 2, {1, 0, 0, 1, 2, 3});
-  auto N_empty = linalg::nullspace(FullCol);
-  EXPECT_EQ(N_empty.Shape(0), 0);
-  EXPECT_EQ(N_empty.Shape(1), 2);
+  auto full_col = MakeGFMatrix(field, 3, 2, {1, 0, 0, 1, 2, 3});
+  auto ns_empty = linalg::Nullspace(full_col);
+  EXPECT_EQ(ns_empty.Shape(0), std::size_t{0});
+  EXPECT_EQ(ns_empty.Shape(1), std::size_t{2});
 }
 
 TEST_F(LinalgPrimeTest, SystematicForm) {
   // Generator matrix with non-leading pivot columns {1, 3}
-  auto G = MakeGFMatrix(field, 2, 5, {0, 1, 2, 0, 3, 0, 0, 0, 2, 4});
-  auto res = linalg::systematic_form(G);
+  auto g = MakeGFMatrix(field, 2, 5, {0, 1, 2, 0, 3, 0, 0, 0, 2, 4});
+  auto res = linalg::SystematicForm(g);
 
   EXPECT_EQ(res.pivot_cols, (std::vector<std::size_t>{1, 3}));
   EXPECT_EQ(res.free_cols, (std::vector<std::size_t>{0, 2, 4}));
   EXPECT_EQ(res.col_perm, (std::vector<std::size_t>{1, 3, 0, 2, 4}));
-  ASSERT_EQ(res.G_sys.Shape(0), 2);
-  ASSERT_EQ(res.G_sys.Shape(1), 5);
+  ASSERT_EQ(res.g_sys.Shape(0), std::size_t{2});
+  ASSERT_EQ(res.g_sys.Shape(1), std::size_t{5});
 
   // Left block must be I_2
   for (std::size_t i = 0; i < 2; ++i) {
     for (std::size_t j = 0; j < 2; ++j) {
-      EXPECT_EQ(res.G_sys.At(i, j).Value(), i == j ? 1U : 0U);
+      EXPECT_EQ(res.g_sys.At(i, j).Value(), i == j ? uint32_t{1} : uint32_t{0});
     }
   }
 
   // Construct parity check matrix H in original coordinates and check G * H^T =
   // 0
   const std::size_t k = res.pivot_cols.size();
-  const std::size_t n = G.Shape(1);
-  auto H = linalg::zeros(field, {n - k, n});
+  const std::size_t n = g.Shape(1);
+  auto h = linalg::Zeros(field, {n - k, n});
   for (std::size_t r = 0; r < n - k; ++r) {
-    H.Raw(r, res.free_cols[r]) = field->MultiplicativeIdentity();
+    h.Raw(r, res.free_cols[r]) = field->MultiplicativeIdentity();
     for (std::size_t c = 0; c < k; ++c) {
-      H.Raw(r, res.pivot_cols[c]) = field->Neg(res.G_sys.Raw(c, k + r));
+      h.Raw(r, res.pivot_cols[c]) = field->Neg(res.g_sys.Raw(c, k + r));
     }
   }
-  EXPECT_EQ(linalg::dot(G, linalg::transpose(H)),
-            linalg::zeros(field, {2, n - k}));
+  EXPECT_EQ(linalg::Dot(g, linalg::Transpose(h)),
+            linalg::Zeros(field, {2, n - k}));
 }
 
-TEST_F(LinalgPrimeTest, PLUDecomposition) {
+TEST_F(LinalgPrimeTest, PluDecomposition) {
   // Matrix requiring row swaps (A(0,0) == 0)
-  auto A = MakeGFMatrix(field, 4, 4,
+  auto a = MakeGFMatrix(field, 4, 4,
                         {0, 2, 1, 3, 1, 4, 2, 5, 2, 1, 0, 6, 3, 5, 4, 2});
-  auto res = linalg::plu(A);
+  auto res = linalg::Plu(a);
 
   // Verify P * A == L * U
-  EXPECT_EQ(linalg::dot(res.P, A), linalg::dot(res.L, res.U));
+  EXPECT_EQ(linalg::Dot(res.p, a), linalg::Dot(res.l, res.u));
 
   // Verify L is unit lower triangular and U is upper triangular
   for (std::size_t i = 0; i < 4; ++i) {
-    EXPECT_EQ(res.L.At(i, i).Value(), 1);
+    EXPECT_EQ(res.l.At(i, i).Value(), uint32_t{1});
     for (std::size_t j = i + 1; j < 4; ++j) {
-      EXPECT_EQ(res.L.At(i, j).Value(), 0);
+      EXPECT_EQ(res.l.At(i, j).Value(), uint32_t{0});
     }
     for (std::size_t j = 0; j < i; ++j) {
-      EXPECT_EQ(res.U.At(i, j).Value(), 0);
+      EXPECT_EQ(res.u.At(i, j).Value(), uint32_t{0});
     }
   }
 
   // Verify det(A) == (-1)^num_swaps * prod(diag(U))
   uint32_t diag_prod = 1;
   for (std::size_t i = 0; i < 4; ++i) {
-    diag_prod = field->Mul(diag_prod, res.U.Raw(i, i));
+    diag_prod = field->Mul(diag_prod, res.u.Raw(i, i));
   }
   if (res.num_swaps % 2 == 1) {
     diag_prod = field->Neg(diag_prod);
   }
-  EXPECT_EQ(diag_prod, linalg::det(A).Value());
+  EXPECT_EQ(diag_prod, linalg::Det(a).Value());
 
   // Rectangular matrix PLU
-  auto Rect = MakeGFMatrix(field, 3, 4, {0, 1, 2, 3, 2, 3, 4, 5, 4, 6, 1, 2});
-  auto rect_plu = linalg::plu(Rect);
-  EXPECT_EQ(linalg::dot(rect_plu.P, Rect), linalg::dot(rect_plu.L, rect_plu.U));
+  auto rect = MakeGFMatrix(field, 3, 4, {0, 1, 2, 3, 2, 3, 4, 5, 4, 6, 1, 2});
+  auto rect_plu = linalg::Plu(rect);
+  EXPECT_EQ(linalg::Dot(rect_plu.p, rect), linalg::Dot(rect_plu.l, rect_plu.u));
 }
 
 TEST_F(LinalgPrimeTest, CharacteristicPolyCayleyHamilton) {
   std::mt19937_64 rng(42);
   for (std::size_t n : {std::size_t{1}, std::size_t{2}, std::size_t{3},
                         std::size_t{4}, std::size_t{5}}) {
-    auto A = linalg::random_matrix(field, {n, n}, rng);
-    auto p = linalg::characteristic_poly(A);
+    auto a = linalg::RandomMatrix(field, {n, n}, rng);
+    auto p = linalg::CharacteristicPoly(a);
 
     EXPECT_EQ(p.Degree(), static_cast<int>(n));
-    EXPECT_EQ(p[n].Value(), 1);
+    EXPECT_EQ(p[n].Value(), uint32_t{1});
 
     // Degree n-1 coefficient == -trace(A)
-    auto neg_tr = -linalg::trace(A);
+    auto neg_tr = -linalg::Trace(a);
     EXPECT_EQ(p[n - 1], neg_tr);
 
     // Constant term == (-1)^n * det(A)
-    auto det_a = linalg::det(A);
+    auto det_a = linalg::Det(a);
     auto expected_c0 = (n % 2 == 1) ? -det_a : det_a;
     EXPECT_EQ(p[0], expected_c0);
 
     // Cayley-Hamilton: p_A(A) == 0
-    auto pA = EvalPolyAtMatrix(p, A);
-    EXPECT_EQ(pA, linalg::zeros(field, {n, n}));
+    auto p_a = EvalPolyAtMatrix(p, a);
+    EXPECT_EQ(p_a, linalg::Zeros(field, {n, n}));
   }
 }
 
 TEST_F(LinalgPrimeTest, GFArrayDirectAPIUtilities) {
-  auto A = MakeGFMatrix(field, 2, 3, {1, 2, 3, 4, 5, 6});
-  auto B = MakeGFMatrix(field, 2, 2, {6, 5, 4, 3});
-  auto C = MakeGFMatrix(field, 1, 3, {2, 0, 1});
+  auto a = MakeGFMatrix(field, 2, 3, {1, 2, 3, 4, 5, 6});
+  auto b = MakeGFMatrix(field, 2, 2, {6, 5, 4, 3});
+  auto c = MakeGFMatrix(field, 1, 3, {2, 0, 1});
 
-  auto AT = linalg::transpose(A);
-  EXPECT_EQ(AT.Shape(0), 3);
-  EXPECT_EQ(AT.Shape(1), 2);
-  EXPECT_EQ(linalg::transpose(AT), A);
+  auto a_t = linalg::Transpose(a);
+  EXPECT_EQ(a_t.Shape(0), std::size_t{3});
+  EXPECT_EQ(a_t.Shape(1), std::size_t{2});
+  EXPECT_EQ(linalg::Transpose(a_t), a);
 
-  auto H = linalg::hstack(A, B);
-  EXPECT_EQ(H.Shape(0), 2);
-  EXPECT_EQ(H.Shape(1), 5);
-  EXPECT_EQ(H.At(0, 3).Value(), 6);
-  EXPECT_EQ(H.At(1, 4).Value(), 3);
+  auto h = linalg::HStack(a, b);
+  EXPECT_EQ(h.Shape(0), std::size_t{2});
+  EXPECT_EQ(h.Shape(1), std::size_t{5});
+  EXPECT_EQ(h.At(0, 3).Value(), uint32_t{6});
+  EXPECT_EQ(h.At(1, 4).Value(), uint32_t{3});
 
-  auto V = linalg::vstack(A, C);
-  EXPECT_EQ(V.Shape(0), 3);
-  EXPECT_EQ(V.Shape(1), 3);
-  EXPECT_EQ(V.At(2, 0).Value(), 2);
-  EXPECT_EQ(V.At(2, 2).Value(), 1);
+  auto v = linalg::VStack(a, c);
+  EXPECT_EQ(v.Shape(0), std::size_t{3});
+  EXPECT_EQ(v.Shape(1), std::size_t{3});
+  EXPECT_EQ(v.At(2, 0).Value(), uint32_t{2});
+  EXPECT_EQ(v.At(2, 2).Value(), uint32_t{1});
 
-  auto O = linalg::ones(field, {2, 2});
+  auto ones_mat = linalg::Ones(field, {2, 2});
   for (std::size_t i = 0; i < 2; ++i) {
     for (std::size_t j = 0; j < 2; ++j) {
-      EXPECT_EQ(O.At(i, j).Value(), 1);
+      EXPECT_EQ(ones_mat.At(i, j).Value(), uint32_t{1});
     }
   }
 }
 
 TEST_F(LinalgPrimeTest, EmptyArrayAndNullFieldErrorHandling) {
   std::shared_ptr<FieldType> null_field;
-  EXPECT_THROW(linalg::eye(null_field, 2), std::invalid_argument);
-  EXPECT_THROW(linalg::eye(2, null_field), std::invalid_argument);
-  EXPECT_THROW(linalg::zeros(null_field, {2, 2}), std::invalid_argument);
-  EXPECT_THROW(linalg::zeros({2, 2}, null_field), std::invalid_argument);
-  EXPECT_THROW(linalg::ones(null_field, {2, 2}), std::invalid_argument);
-  EXPECT_THROW(linalg::random_matrix(null_field, {2, 2}),
-               std::invalid_argument);
+  EXPECT_THROW(linalg::Eye(null_field, 2), std::invalid_argument);
+  EXPECT_THROW(linalg::Zeros(null_field, {2, 2}), std::invalid_argument);
+  EXPECT_THROW(linalg::Ones(null_field, {2, 2}), std::invalid_argument);
+  EXPECT_THROW(linalg::RandomMatrix(null_field, {2, 2}), std::invalid_argument);
 
   // Default-constructed GFArray has null field pointer.
   GFArray<FieldType> empty_gf;
-  EXPECT_THROW(linalg::det(empty_gf), std::invalid_argument);
-  EXPECT_THROW(linalg::inv(empty_gf), std::invalid_argument);
-  EXPECT_THROW(linalg::rref(empty_gf), std::invalid_argument);
-  EXPECT_THROW(linalg::dot(empty_gf, empty_gf), std::invalid_argument);
-  EXPECT_THROW(linalg::characteristic_poly(empty_gf), std::invalid_argument);
-
-  // Empty garray (0 elements) cannot infer field.
-  xt::xarray<FieldElement> empty_garray =
-      xt::xarray<FieldElement>::from_shape({0, 0});
-  EXPECT_THROW(linalg::det(empty_garray), std::invalid_argument);
-  EXPECT_THROW(linalg::dot(empty_garray, empty_garray), std::invalid_argument);
-  EXPECT_THROW(linalg::inv(empty_garray), std::invalid_argument);
-
-  // garray with uninitialized (null-field) elements.
-  xt::xarray<FieldElement> uninit_garray({2, 2});
-  EXPECT_THROW(linalg::det(uninit_garray), std::invalid_argument);
+  EXPECT_THROW(linalg::Det(empty_gf), std::invalid_argument);
+  EXPECT_THROW(linalg::Inv(empty_gf), std::invalid_argument);
+  EXPECT_THROW(linalg::Rref(empty_gf), std::invalid_argument);
+  EXPECT_THROW(linalg::Dot(empty_gf, empty_gf), std::invalid_argument);
+  EXPECT_THROW(linalg::CharacteristicPoly(empty_gf), std::invalid_argument);
 
   // Mismatched fields.
   auto other_field = std::make_shared<FieldType>(11);
-  auto A7 = linalg::eye(field, 2);
-  auto A11 = linalg::eye(other_field, 2);
-  EXPECT_THROW(linalg::dot(A7, A11), std::invalid_argument);
-  EXPECT_THROW(linalg::solve(A7, linalg::ones(other_field, {2})),
+  auto a7 = linalg::Eye(field, 2);
+  auto a11 = linalg::Eye(other_field, 2);
+  EXPECT_THROW(linalg::Dot(a7, a11), std::invalid_argument);
+  EXPECT_THROW(linalg::Solve(a7, linalg::Ones(other_field, {2})),
                std::invalid_argument);
 }

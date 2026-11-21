@@ -31,14 +31,14 @@ class DatabaseInterface {
   virtual ~DatabaseInterface() = default;
 
  protected:
-  virtual const std::string& get_db_path() const = 0;
+  virtual const std::string& GetDbPath() const = 0;
 
-  bool file_exists() const {
-    std::ifstream f(get_db_path());
+  bool FileExists() const {
+    std::ifstream f(GetDbPath());
     return f.good();
   }
 
-  std::vector<std::string> parse_csv_line(const std::string& line) const {
+  std::vector<std::string> ParseCsvLine(const std::string& line) const {
     std::vector<std::string> segments;
     std::string current_segment;
     bool in_quotes = false;
@@ -72,13 +72,13 @@ class PrimeFactorsDatabase : public DatabaseInterface {
   static inline const std::string kEmptyPath = "";
 
  protected:
-  const std::string& get_db_path() const override { return kEmptyPath; }
+  const std::string& GetDbPath() const override { return kEmptyPath; }
 
  public:
   PrimeFactorsDatabase() = default;
 
   // Computes exact prime factorization on the fly with zero disk I/O.
-  PrimeFactorsResult fetch(uint64_t n) const {
+  PrimeFactorsResult Fetch(uint64_t n) const {
     if (n < 2) {
       throw std::runtime_error(
           "Number not found in prime factors database (must be >= 2): " +
@@ -240,7 +240,21 @@ inline std::string ResolveDbPath(const std::string& filename,
     }
   }
 
-  // 3. Relative fallback from workspace root.
+  // 3. Compile-time default DB directory (CMake build/install trees) and
+  // relative fallback from workspace root.
+  std::vector<fs::path> candidates;
+#ifdef XGALOIS_DEFAULT_DB_DIR
+  candidates.push_back(std::filesystem::path(XGALOIS_DEFAULT_DB_DIR) /
+                       filename);
+#endif
+  candidates.push_back(fs::path("xgalois") / "databases" / filename);
+  for (const auto& candidate : candidates) {
+    ec.clear();
+    if (fs::exists(candidate, ec) && !ec) {
+      return candidate.string();
+    }
+  }
+
   return "xgalois/databases/" + filename;
 }
 
@@ -340,7 +354,7 @@ class IrreduciblePolyDatabase : public DatabaseInterface {
   }
 
  protected:
-  const std::string& get_db_path() const override {
+  const std::string& GetDbPath() const override {
     return custom_db_path_.empty() ? kDefaultDbPath : custom_db_path_;
   }
 
@@ -351,7 +365,7 @@ class IrreduciblePolyDatabase : public DatabaseInterface {
       : custom_db_path_(std::move(db_path)),
         custom_cache_(std::make_shared<detail::CachedPolyTable>()) {}
 
-  IrreduciblePolyResult fetch(int characteristic, int degree) const {
+  IrreduciblePolyResult Fetch(int characteristic, int degree) const {
     const detail::PolyTable& table = GetTable();
     if (characteristic > 0 && degree > 0) {
       auto it = table.find({static_cast<uint64_t>(characteristic),
@@ -365,8 +379,8 @@ class IrreduciblePolyDatabase : public DatabaseInterface {
         std::to_string(characteristic) + ", degree " + std::to_string(degree));
   }
 
-  std::vector<IrreduciblePolyResult> fetch_all(int characteristic,
-                                               int degree) const {
+  std::vector<IrreduciblePolyResult> FetchAll(int characteristic,
+                                              int degree) const {
     const detail::PolyTable& table = GetTable();
     if (characteristic > 0 && degree > 0) {
       auto it = table.find({static_cast<uint64_t>(characteristic),
@@ -396,7 +410,7 @@ class ConwayPolyDatabase : public DatabaseInterface {
   }
 
  protected:
-  const std::string& get_db_path() const override {
+  const std::string& GetDbPath() const override {
     return custom_db_path_.empty() ? kDefaultDbPath : custom_db_path_;
   }
 
@@ -407,7 +421,7 @@ class ConwayPolyDatabase : public DatabaseInterface {
       : custom_db_path_(std::move(db_path)),
         custom_cache_(std::make_shared<detail::CachedPolyTable>()) {}
 
-  ConwayPolyResult fetch(int characteristic, int degree) const {
+  ConwayPolyResult Fetch(int characteristic, int degree) const {
     if (characteristic <= 0 || degree <= 0) {
       if (!custom_db_path_.empty()) {
         // Trigger file validation for explicit custom path.
@@ -524,7 +538,7 @@ inline std::string ConvertPolyResultToString(const std::vector<int>& degrees,
 inline std::string GetIrreduciblePolynomial(int characteristic, int degree) {
   try {
     databases::IrreduciblePolyDatabase irreducible_db;
-    auto result = irreducible_db.fetch(characteristic, degree);
+    auto result = irreducible_db.Fetch(characteristic, degree);
 
     return ConvertPolyResultToString(result.nonzero_degrees,
                                      result.nonzero_coeffs, characteristic);
@@ -538,7 +552,7 @@ inline std::string GetIrreduciblePolynomial(int characteristic, int degree) {
 inline std::string GetConwayPolynomial(int characteristic, int degree) {
   try {
     databases::ConwayPolyDatabase conway_db;
-    auto result = conway_db.fetch(characteristic, degree);
+    auto result = conway_db.Fetch(characteristic, degree);
 
     return ConvertPolyResultToString(result.nonzero_degrees,
                                      result.nonzero_coeffs, characteristic);

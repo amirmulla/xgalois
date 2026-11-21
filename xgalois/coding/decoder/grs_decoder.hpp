@@ -358,7 +358,7 @@ inline DecodingResult<GaloisField> DecodeGRSWithErasures(
 
 // Peterson-Gorenstein-Zierler (PGZ) key-equation solver:
 // Loops descending from nu = max_errors down to 1, solves the Hankel linear
-// system M_nu * x = -a via linalg::solve, and constructs
+// system M_nu * x = -a via linalg::Solve, and constructs
 // Lambda(z) = 1 + Lambda_1 z + ... + Lambda_nu z^nu with Lambda_k = x_{nu - k}.
 template <typename GaloisField>
 inline std::optional<KeyEquationSolution<GaloisField>> SolveKeyEquationPGZ(
@@ -404,7 +404,7 @@ inline std::optional<KeyEquationSolution<GaloisField>> SolveKeyEquationPGZ(
     auto mat = GFArray<GaloisField>::FromRaw(field, std::move(mat_raw));
     auto rhs = GFArray<GaloisField>::FromRaw(field, std::move(rhs_raw));
     try {
-      auto sol = linalg::solve(mat, rhs);
+      auto sol = linalg::Solve(mat, rhs);
       std::vector<StorageType> coeffs(nu + 1);
       coeffs[0] = field->MultiplicativeIdentity();
       for (std::size_t k = 1; k <= nu; ++k) {

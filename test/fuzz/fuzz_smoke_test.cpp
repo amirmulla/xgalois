@@ -458,7 +458,7 @@ TEST(FuzzSmokeTest, FuzzErrorErasureChannel500Configs) {
       channel::ErrorErasureChannel<GF2XLOG<uint8_t>> ch(
           gf32, n, num_errors, num_erasures, 0xA00000ULL + trial);
       const auto cw = GFArray<GF2XLOG<uint8_t>>::Random(gf32, {n}, rng);
-      const auto tx = ch.transmit_with_erasures(cw);
+      const auto tx = ch.TransmitWithErasures(cw);
 
       ASSERT_EQ(tx.received.Size(), n);
       ASSERT_EQ(tx.erasure_mask.size(), n);
@@ -498,7 +498,7 @@ TEST(FuzzSmokeTest, FuzzErrorErasureChannel500Configs) {
           gf32, n, min_errors, max_errors, min_erasures, max_erasures,
           0xB00000ULL + trial);
       const auto cw = GFArray<GF2XLOG<uint8_t>>::Random(gf32, {n}, rng);
-      const auto tx = ch.transmit_with_erasures(cw);
+      const auto tx = ch.TransmitWithErasures(cw);
 
       ASSERT_EQ(tx.received.Size(), n);
       ASSERT_EQ(tx.erasure_mask.size(), n);

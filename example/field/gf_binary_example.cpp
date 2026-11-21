@@ -4,6 +4,7 @@
 #include <iostream>
 #include <memory>
 
+#include "xgalois/field/gf128.hpp"
 #include "xgalois/field/gf_binary.hpp"
 #include "xgalois/field/gf_element.hpp"
 
@@ -133,6 +134,29 @@ int main() {
       (u_std.Sqrt().Value() == u_zech.Sqrt().Value());
   std::cout << "  All three GF(2^8) backends agree: " << std::boolalpha
             << all_match << "\n";
+
+  std::cout << "\n=== Cryptographic GF(2^128) & AES-GCM GHASH (GF128) ===\n";
+  auto gf128 = std::make_shared<GF128>();  // x^128 + x^7 + x^2 + x + 1
+  const UInt128 h = UInt128::FromHex("0x66e94bd4ef8a2c3b884cfa59ca342b2e");
+  const UInt128 c1 = UInt128::FromHex("0x0388dace60b6a392f328c2b971b2fe78");
+  const UInt128 expected_x1 =
+      UInt128::FromHex("0x5e2ec746917062882c85b0685353deb7");
+
+  const UInt128 ghash_x1 = gf128->GhashMul(c1, h);
+  GaloisFieldElement<GF128> h_elem(h, gf128);
+  const auto h_inv = h_elem.Inv();
+  const auto h_sqrt = h_elem.Sqrt();
+
+  std::cout << "  GF(2^128) Degree = " << gf128->Degree()
+            << ", modulus_low = " << gf128->ModulusLow().ToHex() << "\n";
+  std::cout << "  NIST SP 800-38D GHASH(C1, H) = "
+            << ghash_x1.ToHex(/*zero_pad=*/true)
+            << " (matches test vector: " << (ghash_x1 == expected_x1) << ")\n";
+  std::cout << "  H * H^(-1) == 1 : " << (h_elem * h_inv).RawValue().IsOne()
+            << "\n";
+  std::cout << "  Sqrt(H)^2 == H  : " << (h_sqrt * h_sqrt == h_elem) << "\n";
+  std::cout << "  Trace(H) = " << h_elem.Trace().RawValue().ToHex()
+            << ", Norm(H) = " << h_elem.Norm().RawValue().ToHex() << "\n";
 
   std::cout << "\n=== Multiplicative Group of GF(2^4) ===\n";
   const uint8_t gen = gf16->MultiplicativeGenerator();

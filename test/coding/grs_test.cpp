@@ -85,7 +85,7 @@ void VerifyOrthogonalityAndDual(
   EXPECT_EQ(H.Shape(1), code.Length());
 
   if (code.Redundancy() > 0) {
-    const auto prod = linalg::dot(G, linalg::transpose(H));
+    const auto prod = linalg::Dot(G, linalg::Transpose(H));
     EXPECT_TRUE(IsZeroMatrix(prod));
 
     const auto dual = code.DualCode();
@@ -94,10 +94,10 @@ void VerifyOrthogonalityAndDual(
     EXPECT_EQ(dual.MinimumDistance(), code.Dimension() + 1);
     EXPECT_EQ(dual.GeneratorMatrix(), H);
     const auto dual_prod =
-        linalg::dot(dual.GeneratorMatrix(), linalg::transpose(G));
+        linalg::Dot(dual.GeneratorMatrix(), linalg::Transpose(G));
     EXPECT_TRUE(IsZeroMatrix(dual_prod));
-    const auto dual_self_prod = linalg::dot(
-        dual.GeneratorMatrix(), linalg::transpose(dual.ParityCheckMatrix()));
+    const auto dual_self_prod = linalg::Dot(
+        dual.GeneratorMatrix(), linalg::Transpose(dual.ParityCheckMatrix()));
     EXPECT_TRUE(IsZeroMatrix(dual_self_prod));
   }
 }
@@ -284,7 +284,7 @@ TEST(GRSTest, UncorrectableErrorsReturnFailure) {
   const auto cw = rs.Encode(msg);
   const auto received = CorruptAtPositions(cw, {0, 3, 7, 12}, rng);
 
-  for (const std::string &dec : {"PGZ", "BerlekampMassey", "Sugiyama"}) {
+  for (const char *dec : {"PGZ", "BerlekampMassey", "Sugiyama"}) {
     const auto res = rs.DecodeWithResult(received, dec);
     EXPECT_FALSE(res.Ok()) << "Decoder " << dec
                            << " must reject weight-(t+1) error";
@@ -482,8 +482,8 @@ TEST(GRSTest, CCSDSReedSolomon255_223) {
   EXPECT_EQ(rs.GetDecoder("Sugiyama")->DecodingRadius(), 16U);
 
   // Verify exact G * H^T = 0 on the full 223 x 255 and 32 x 255 matrices.
-  const auto ght = linalg::dot(rs.GeneratorMatrix(),
-                               linalg::transpose(rs.ParityCheckMatrix()));
+  const auto ght = linalg::Dot(rs.GeneratorMatrix(),
+                               linalg::Transpose(rs.ParityCheckMatrix()));
   EXPECT_TRUE(IsZeroMatrix(ght));
 
   std::mt19937_64 rng(0xCC5D5255ULL);
@@ -510,7 +510,7 @@ TEST(GRSTest, CCSDSReedSolomon255_223) {
     std::vector<std::size_t> err16(all_pos.begin(), all_pos.begin() + 16);
     const auto rx16 = CorruptAtPositions(cw, err16, rng);
 
-    for (const std::string &dec : {"BerlekampMassey", "Sugiyama"}) {
+    for (const char *dec : {"BerlekampMassey", "Sugiyama"}) {
       const auto res = rs.DecodeWithResult(rx16, dec);
       ASSERT_TRUE(res.Ok()) << dec << " failed on 16 errors in RS(255,223)";
       EXPECT_EQ(res.codeword, cw);
@@ -526,7 +526,7 @@ TEST(GRSTest, CCSDSReedSolomon255_223) {
     for (std::size_t p : era32) {
       rx32.Raw(p) = gf256->Random(rng);
     }
-    for (const std::string &dec : {"BerlekampMassey", "Sugiyama"}) {
+    for (const char *dec : {"BerlekampMassey", "Sugiyama"}) {
       const auto res = rs.DecodeWithErasures(rx32, era32, dec);
       ASSERT_TRUE(res.Ok()) << dec << " failed on 32 erasures in RS(255,223)";
       EXPECT_EQ(res.codeword, cw);
@@ -543,7 +543,7 @@ TEST(GRSTest, CCSDSReedSolomon255_223) {
     for (std::size_t p : era12) {
       rx_mix.Raw(p) = gf256->Random(rng);
     }
-    for (const std::string &dec : {"BerlekampMassey", "Sugiyama"}) {
+    for (const char *dec : {"BerlekampMassey", "Sugiyama"}) {
       const auto res = rs.DecodeWithErasures(rx_mix, era12, dec);
       ASSERT_TRUE(res.Ok())
           << dec << " failed on 10 errors + 12 erasures in RS(255,223)";
@@ -560,7 +560,7 @@ TEST(GRSTest, CCSDSReedSolomon255_223) {
   std::shuffle(all_pos.begin(), all_pos.end(), rng);
   std::vector<std::size_t> err17(all_pos.begin(), all_pos.begin() + 17);
   const auto rx17 = CorruptAtPositions(cw, err17, rng);
-  for (const std::string &dec : {"BerlekampMassey", "Sugiyama"}) {
+  for (const char *dec : {"BerlekampMassey", "Sugiyama"}) {
     const auto res = rs.DecodeWithResult(rx17, dec);
     EXPECT_FALSE(res.Ok()) << dec << " must fail on 17 errors in RS(255,223)";
   }

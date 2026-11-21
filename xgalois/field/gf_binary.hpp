@@ -743,7 +743,7 @@ class GaloisFieldBinaryExtension : public GaloisFieldBase<ElementType> {
       bool loaded = false;
       try {
         databases::ConwayPolyDatabase conway_db;
-        const auto poly_res = conway_db.fetch(2, static_cast<int>(m_));
+        const auto poly_res = conway_db.Fetch(2, static_cast<int>(m_));
         LoadPolyResult(poly_res);
         is_conway_poly_ = true;
         loaded = true;
@@ -754,7 +754,7 @@ class GaloisFieldBinaryExtension : public GaloisFieldBase<ElementType> {
       if (!loaded) {
         try {
           databases::IrreduciblePolyDatabase irred_db;
-          const auto poly_res = irred_db.fetch(2, static_cast<int>(m_));
+          const auto poly_res = irred_db.Fetch(2, static_cast<int>(m_));
           LoadPolyResult(poly_res);
           loaded = true;
         } catch (const std::runtime_error &) {
@@ -1974,13 +1974,13 @@ class GFBELogTables : public GaloisFieldBinaryExtension<ElementType> {
   std::vector<ElementType> exp_table_;
   ElementType generator_;
 
-  static constexpr uint32_t LOG_ZERO = std::numeric_limits<uint32_t>::max();
+  static constexpr uint32_t kLogZero = std::numeric_limits<uint32_t>::max();
 
  private:
   void InitTables() {
     const size_t ord = static_cast<size_t>(this->order_);
     const size_t g_ord = static_cast<size_t>(this->group_order_);
-    log_table_.assign(ord, LOG_ZERO);
+    log_table_.assign(ord, kLogZero);
     exp_table_.assign(2 * g_ord, ElementType{0});
 
     ElementType element = 1;
@@ -1990,7 +1990,7 @@ class GFBELogTables : public GaloisFieldBinaryExtension<ElementType> {
       log_table_[element] = static_cast<uint32_t>(i);
       element = this->MulFast(element, generator_);
     }
-    log_table_[0] = LOG_ZERO;
+    log_table_[0] = kLogZero;
   }
 };
 
@@ -2139,7 +2139,7 @@ template <UnsignedFieldWord ElementType = uint32_t>
 class GFBEZechLogTables final : public GaloisFieldBinaryExtension<ElementType> {
  public:
   static constexpr uint8_t kMaxTableDegree = 22;
-  static constexpr ElementType LOG_ZERO =
+  static constexpr ElementType kLogZero =
       std::numeric_limits<ElementType>::max();
 
   explicit GFBEZechLogTables(uint8_t m, const std::string &rep = "log",
@@ -2162,10 +2162,10 @@ class GFBEZechLogTables final : public GaloisFieldBinaryExtension<ElementType> {
 
   inline ElementType Add(const ElementType &log_a,
                          const ElementType &log_b) const override {
-    if (log_a == LOG_ZERO) {
+    if (log_a == kLogZero) {
       return log_b;
     }
-    if (log_b == LOG_ZERO) {
+    if (log_b == kLogZero) {
       return log_a;
     }
     const uint32_t la = static_cast<uint32_t>(log_a);
@@ -2173,8 +2173,8 @@ class GFBEZechLogTables final : public GaloisFieldBinaryExtension<ElementType> {
     const uint32_t g_ord = static_cast<uint32_t>(this->group_order_);
     const uint32_t diff = (lb >= la) ? (lb - la) : (g_ord - la + lb);
     const ElementType z = zech_table_[diff];
-    if (z == LOG_ZERO) {
-      return LOG_ZERO;
+    if (z == kLogZero) {
+      return kLogZero;
     }
     uint32_t sum = la + static_cast<uint32_t>(z);
     if (sum >= g_ord) {
@@ -2190,8 +2190,8 @@ class GFBEZechLogTables final : public GaloisFieldBinaryExtension<ElementType> {
 
   inline ElementType Mul(const ElementType &log_a,
                          const ElementType &log_b) const override {
-    if (log_a == LOG_ZERO || log_b == LOG_ZERO) {
-      return LOG_ZERO;
+    if (log_a == kLogZero || log_b == kLogZero) {
+      return kLogZero;
     }
     const uint32_t g_ord = static_cast<uint32_t>(this->group_order_);
     uint32_t sum = static_cast<uint32_t>(log_a) + static_cast<uint32_t>(log_b);
@@ -2203,11 +2203,11 @@ class GFBEZechLogTables final : public GaloisFieldBinaryExtension<ElementType> {
 
   inline ElementType Div(const ElementType &log_a,
                          const ElementType &log_b) const override {
-    if (log_b == LOG_ZERO) {
+    if (log_b == kLogZero) {
       throw std::domain_error("Division by zero");
     }
-    if (log_a == LOG_ZERO) {
-      return LOG_ZERO;
+    if (log_a == kLogZero) {
+      return kLogZero;
     }
     const uint32_t la = static_cast<uint32_t>(log_a);
     const uint32_t lb = static_cast<uint32_t>(log_b);
@@ -2221,7 +2221,7 @@ class GFBEZechLogTables final : public GaloisFieldBinaryExtension<ElementType> {
   }
 
   inline ElementType Inv(const ElementType &log_a) const override {
-    if (log_a == LOG_ZERO) {
+    if (log_a == kLogZero) {
       throw std::domain_error("Inverse of zero is undefined");
     }
     return (log_a == 0)
@@ -2232,8 +2232,8 @@ class GFBEZechLogTables final : public GaloisFieldBinaryExtension<ElementType> {
 
   inline ElementType Pow(const ElementType &log_a,
                          uint64_t exp) const override {
-    if (log_a == LOG_ZERO) {
-      return (exp == 0) ? ElementType{0} : LOG_ZERO;
+    if (log_a == kLogZero) {
+      return (exp == 0) ? ElementType{0} : kLogZero;
     }
     if (log_a == 0 || exp == 0 || this->group_order_ == 1) {
       return ElementType{0};
@@ -2245,7 +2245,7 @@ class GFBEZechLogTables final : public GaloisFieldBinaryExtension<ElementType> {
   }
 
   inline ElementType Sqrt(const ElementType &log_a) const override {
-    if (log_a == LOG_ZERO || log_a == 0 || this->m_ == 1) {
+    if (log_a == kLogZero || log_a == 0 || this->m_ == 1) {
       return log_a;
     }
     const uint64_t la = static_cast<uint64_t>(log_a);
@@ -2255,7 +2255,7 @@ class GFBEZechLogTables final : public GaloisFieldBinaryExtension<ElementType> {
   }
 
   uint64_t Log(const ElementType &log_a) const override {
-    if (log_a == LOG_ZERO) {
+    if (log_a == kLogZero) {
       throw std::domain_error("Log of zero is undefined");
     }
     return static_cast<uint64_t>(log_a);
@@ -2263,10 +2263,10 @@ class GFBEZechLogTables final : public GaloisFieldBinaryExtension<ElementType> {
 
   uint64_t Log(const ElementType &log_a,
                const ElementType &gen_log) const override {
-    if (log_a == LOG_ZERO) {
+    if (log_a == kLogZero) {
       throw std::domain_error("Log of zero is undefined");
     }
-    if (gen_log == LOG_ZERO) {
+    if (gen_log == kLogZero) {
       throw std::invalid_argument("Generator cannot be zero");
     }
     if (this->m_ == 1) {
@@ -2300,10 +2300,10 @@ class GFBEZechLogTables final : public GaloisFieldBinaryExtension<ElementType> {
     return utils::ModMul(la / d, inv_g, mod);
   }
 
-  ElementType AdditiveIdentity() const override { return LOG_ZERO; }
+  ElementType AdditiveIdentity() const override { return kLogZero; }
   ElementType MultiplicativeIdentity() const override { return ElementType{0}; }
 
-  bool IsZero(const ElementType &a) const override { return a == LOG_ZERO; }
+  bool IsZero(const ElementType &a) const override { return a == kLogZero; }
   bool IsOne(const ElementType &a) const override {
     return a == ElementType{0};
   }
@@ -2334,11 +2334,11 @@ class GFBEZechLogTables final : public GaloisFieldBinaryExtension<ElementType> {
   ElementType Random(std::mt19937_64 &rng) const override {
     std::uniform_int_distribution<uint64_t> distrib(0ULL, this->group_order_);
     const uint64_t r = distrib(rng);
-    return (r == this->group_order_) ? LOG_ZERO : static_cast<ElementType>(r);
+    return (r == this->group_order_) ? kLogZero : static_cast<ElementType>(r);
   }
 
   ElementType GetElementValue(const ElementType &log_val) const override {
-    if (log_val == LOG_ZERO) {
+    if (log_val == kLogZero) {
       return ElementType{0};
     }
     if (static_cast<uint64_t>(log_val) >= this->group_order_) {
@@ -2364,7 +2364,7 @@ class GFBEZechLogTables final : public GaloisFieldBinaryExtension<ElementType> {
     detail::BinaryStreamFlagsGuard guard(os);
     const FieldRepresentation rep = this->GetRepresentation();
     if (rep == FieldRepresentation::POW) {
-      if (log_a == LOG_ZERO) {
+      if (log_a == kLogZero) {
         os << "0";
       } else {
         os << this->generator_name_ << "^" << static_cast<uint64_t>(log_a);
@@ -2372,7 +2372,7 @@ class GFBEZechLogTables final : public GaloisFieldBinaryExtension<ElementType> {
       return;
     }
     if (rep == FieldRepresentation::LOG) {
-      if (log_a == LOG_ZERO) {
+      if (log_a == kLogZero) {
         os << "-inf";
       } else {
         os << static_cast<uint64_t>(log_a);
@@ -2440,8 +2440,8 @@ class GFBEZechLogTables final : public GaloisFieldBinaryExtension<ElementType> {
     if (a.size() != n) {
       throw std::invalid_argument("ScalarMulArray: span sizes must match");
     }
-    if (scalar == LOG_ZERO) {
-      std::fill(dst.begin(), dst.end(), LOG_ZERO);
+    if (scalar == kLogZero) {
+      std::fill(dst.begin(), dst.end(), kLogZero);
       return;
     }
     if (scalar == ElementType{0}) {
@@ -2461,7 +2461,7 @@ class GFBEZechLogTables final : public GaloisFieldBinaryExtension<ElementType> {
     if (a.size() != n) {
       throw std::invalid_argument("FmaArray: span sizes must match");
     }
-    if (scalar == LOG_ZERO) {
+    if (scalar == kLogZero) {
       return;
     }
     if (scalar == ElementType{0}) {
@@ -2481,7 +2481,7 @@ class GFBEZechLogTables final : public GaloisFieldBinaryExtension<ElementType> {
     if (b.size() != n) {
       throw std::invalid_argument("DotProduct: span sizes must match");
     }
-    ElementType acc = LOG_ZERO;
+    ElementType acc = kLogZero;
     for (size_t i = 0; i < n; ++i) {
       acc = Add(acc, Mul(a[i], b[i]));
     }
@@ -2498,9 +2498,9 @@ class GFBEZechLogTables final : public GaloisFieldBinaryExtension<ElementType> {
   void InitZechTables() {
     const size_t g_ord = static_cast<size_t>(this->group_order_);
     const size_t ord = static_cast<size_t>(this->order_);
-    zech_table_.assign(g_ord, LOG_ZERO);
+    zech_table_.assign(g_ord, kLogZero);
     exp_table_.assign(g_ord, ElementType{0});
-    log_table_.assign(ord, LOG_ZERO);
+    log_table_.assign(ord, kLogZero);
 
     // Single pass computing g^i once for both exp/log and Zech tables.
     ElementType element = 1;
@@ -2513,7 +2513,7 @@ class GFBEZechLogTables final : public GaloisFieldBinaryExtension<ElementType> {
     for (size_t i = 0; i < g_ord; ++i) {
       const ElementType one_plus =
           static_cast<ElementType>(ElementType{1} ^ exp_table_[i]);
-      zech_table_[i] = (one_plus == 0) ? LOG_ZERO : log_table_[one_plus];
+      zech_table_[i] = (one_plus == 0) ? kLogZero : log_table_[one_plus];
     }
   }
 };

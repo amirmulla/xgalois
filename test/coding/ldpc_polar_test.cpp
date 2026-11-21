@@ -125,7 +125,7 @@ TEST(LdpcTest, SparseBinaryMatrixRepresentationsAndSyndrome) {
   for (int trial = 0; trial < 20; ++trial) {
     auto word = GFArray<GaloisFieldBinary>::Random(gf2, {16}, rng);
     auto syn_sparse = sparse.Syndrome(word);
-    auto syn_dense = linalg::dot(dense, word);
+    auto syn_dense = linalg::Dot(dense, word);
     EXPECT_TRUE(ArraysEqual(syn_sparse, syn_dense));
     EXPECT_EQ(sparse.CheckParity(word), IsAllZero(syn_dense));
   }
@@ -169,7 +169,7 @@ TEST(LdpcTest, AlgebraicInvariantsHammingRegularAndQuasiCyclic) {
     EXPECT_EQ(H.Shape(1), code->Length());
 
     // Exact orthogonality G * H^T = 0.
-    auto ght = linalg::dot(G, linalg::transpose(H));
+    auto ght = linalg::Dot(G, linalg::Transpose(H));
     EXPECT_TRUE(IsAllZero(ght));
 
     // All-zero message round-trip.
@@ -275,7 +275,7 @@ TEST(LdpcTest, BeliefPropagationAwgnSumProductAndMinSumVariants) {
     auto msg =
         GFArray<GaloisFieldBinary>::Random(gf2, {qc_ldpc.Dimension()}, rng);
     auto cw = qc_ldpc.Encode(msg);
-    auto llrs = ch_noiseless.transmit_llr(cw);
+    auto llrs = ch_noiseless.TransmitLlr(cw);
     for (const auto *dec : {&sp_dec, &nms_dec, &oms_dec}) {
       auto res = dec->DecodeLlr(llrs);
       ASSERT_TRUE(res.Ok());
@@ -298,7 +298,7 @@ TEST(LdpcTest, BeliefPropagationAwgnSumProductAndMinSumVariants) {
       auto msg =
           GFArray<GaloisFieldBinary>::Random(gf2, {qc_ldpc.Dimension()}, rng);
       auto cw = qc_ldpc.Encode(msg);
-      auto tx = ch_high.transmit_detailed(cw);
+      auto tx = ch_high.TransmitDetailed(cw);
 
       auto r_sp = sp_dec.DecodeLlr(tx.llr);
       auto r_nms = nms_dec.DecodeLlr(tx.llr);
@@ -328,7 +328,7 @@ TEST(LdpcTest, BeliefPropagationAwgnSumProductAndMinSumVariants) {
       auto msg =
           GFArray<GaloisFieldBinary>::Random(gf2, {qc_ldpc.Dimension()}, rng);
       auto cw = qc_ldpc.Encode(msg);
-      auto tx = ch_mod.transmit_detailed(cw);
+      auto tx = ch_mod.TransmitDetailed(cw);
 
       if (!ArraysEqual(tx.hard_decision, cw)) {
         ++raw_frame_errors;
@@ -397,7 +397,7 @@ TEST(PolarTest, TransformMatchesDenseGeneratorAndOrthogonality) {
     for (int t = 0; t < 10; ++t) {
       auto u = GFArray<GaloisFieldBinary>::Random(gf2, {n}, rng);
       auto x_fast = PolarCode::PolarTransform(u);
-      auto x_dense = linalg::dot(u, G_full);
+      auto x_dense = linalg::Dot(u, G_full);
       EXPECT_TRUE(ArraysEqual(x_fast, x_dense));
       // Involution: PolarTransform(PolarTransform(u)) == u.
       EXPECT_TRUE(ArraysEqual(PolarCode::PolarTransform(x_fast), u));
@@ -416,8 +416,8 @@ TEST(PolarTest, TransformMatchesDenseGeneratorAndOrthogonality) {
       EXPECT_FALSE(code->FrozenMask()[n - 1]);
 
       // Exact G * H^T = 0.
-      auto ght = linalg::dot(code->GeneratorMatrix(),
-                             linalg::transpose(code->ParityCheckMatrix()));
+      auto ght = linalg::Dot(code->GeneratorMatrix(),
+                             linalg::Transpose(code->ParityCheckMatrix()));
       EXPECT_TRUE(IsAllZero(ght));
 
       // Verify O(N log N) Polar encoder matches dense GeneratorMatrix encoder.
@@ -452,8 +452,8 @@ TEST(PolarTest, NonSystematicAndSystematicRoundTrip) {
 
   for (const PolarCode *code : {&sys_bhatt, &sys_ga, &sys_custom}) {
     EXPECT_TRUE(code->IsSystematicPolar());
-    auto ght = linalg::dot(code->GeneratorMatrix(),
-                           linalg::transpose(code->ParityCheckMatrix()));
+    auto ght = linalg::Dot(code->GeneratorMatrix(),
+                           linalg::Transpose(code->ParityCheckMatrix()));
     EXPECT_TRUE(IsAllZero(ght));
 
     // All-zero message.
@@ -499,7 +499,7 @@ TEST(PolarTest, ScAndSclOverAwgnPolar64And128) {
     for (int f = 0; f < 10; ++f) {
       auto msg = GFArray<GaloisFieldBinary>::Random(gf2, {32}, rng);
       auto cw = polar64.Encode(msg);
-      auto llrs = ch_zero.transmit_llr(cw);
+      auto llrs = ch_zero.TransmitLlr(cw);
       auto r_sc = sc.DecodeLlr(llrs);
       auto r_scl = scl8.DecodeLlr(llrs);
       ASSERT_TRUE(r_sc.Ok());
@@ -519,7 +519,7 @@ TEST(PolarTest, ScAndSclOverAwgnPolar64And128) {
     for (int f = 0; f < kFrames; ++f) {
       auto msg = GFArray<GaloisFieldBinary>::Random(gf2, {32}, rng);
       auto cw = polar64.Encode(msg);
-      auto tx = ch_mod.transmit_detailed(cw);
+      auto tx = ch_mod.TransmitDetailed(cw);
 
       if (!ArraysEqual(tx.hard_decision, cw)) {
         ++raw_errors;
@@ -558,7 +558,7 @@ TEST(PolarTest, ScAndSclOverAwgnPolar64And128) {
     for (int f = 0; f < 30; ++f) {
       auto msg = GFArray<GaloisFieldBinary>::Random(gf2, {64}, rng);
       auto cw = polar128.Encode(msg);
-      auto llrs = ch_high.transmit_llr(cw);
+      auto llrs = ch_high.TransmitLlr(cw);
       auto r_scl = scl128.DecodeLlr(llrs);
       if (!r_scl.Ok() || !ArraysEqual(r_scl.message, msg)) {
         ++high_err;
@@ -572,7 +572,7 @@ TEST(PolarTest, ScAndSclOverAwgnPolar64And128) {
     for (int f = 0; f < 50; ++f) {
       auto msg = GFArray<GaloisFieldBinary>::Random(gf2, {64}, rng);
       auto cw = polar128.Encode(msg);
-      auto llrs = ch_mod.transmit_llr(cw);
+      auto llrs = ch_mod.TransmitLlr(cw);
       auto r_sc = sc128.DecodeLlr(llrs);
       auto r_scl = scl128.DecodeLlr(llrs);
       if (!r_sc.Ok() || !ArraysEqual(r_sc.message, msg)) ++sc_err;
@@ -600,8 +600,8 @@ TEST(PolarTest, CrcAidedPolarCaSclImprovesOverPlainSc) {
   // Verify G * H^T = 0 and fast vs dense encoding on CA-Polar (both modes).
   std::mt19937_64 rng(808);
   for (const PolarCode *code : {&ca_polar, &ca_polar_sys}) {
-    auto ght = linalg::dot(code->GeneratorMatrix(),
-                           linalg::transpose(code->ParityCheckMatrix()));
+    auto ght = linalg::Dot(code->GeneratorMatrix(),
+                           linalg::Transpose(code->ParityCheckMatrix()));
     EXPECT_TRUE(IsAllZero(ght));
     for (int t = 0; t < 15; ++t) {
       auto msg = GFArray<GaloisFieldBinary>::Random(gf2, {32}, rng);
@@ -632,14 +632,14 @@ TEST(PolarTest, CrcAidedPolarCaSclImprovesOverPlainSc) {
     auto msg = GFArray<GaloisFieldBinary>::Random(gf2, {32}, rng);
 
     auto cw_plain = plain_polar.Encode(msg);
-    auto llr_plain = ch_plain.transmit_llr(cw_plain);
+    auto llr_plain = ch_plain.TransmitLlr(cw_plain);
     auto res_plain = plain_sc.DecodeLlr(llr_plain);
     if (!res_plain.Ok() || !ArraysEqual(res_plain.message, msg)) {
       ++plain_sc_errors;
     }
 
     auto cw_ca = ca_polar.Encode(msg);
-    auto llr_ca = ch_ca.transmit_llr(cw_ca);
+    auto llr_ca = ch_ca.TransmitLlr(cw_ca);
     auto res_ca = ca_scl.DecodeLlr(llr_ca);
     if (res_ca.Ok()) {
       ++ca_scl_crc_passes;

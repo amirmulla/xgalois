@@ -1,8 +1,10 @@
 """
 High-level xgalois benchmark suite covering GFArray bulk kernels,
 GaloisFieldElement overhead, PolynomialDense arithmetic, linear algebra
-(M4RI GF(2) and GF(2^8)), Reed-Solomon(255, 223) coding throughput, and
-field construction latency.
+(M4RI GF(2) and GF(2^8)), Reed-Solomon(255, 223) coding throughput,
+field construction latency, GF(2^128)/GHASH PCLMULQDQ arithmetic,
+QC-LDPC belief propagation, Polar SC/SCL coding, and Guruswami-Sudan
+list decoding.
 """
 
 load("@rules_cc//cc:defs.bzl", "cc_binary")

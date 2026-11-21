@@ -1,0 +1,25 @@
+@PACKAGE_INIT@
+
+include(CMakeFindDependencyMacro)
+
+set(_xgalois_use_external_xtl @XGALOIS_USE_EXTERNAL_XTL@)
+set(_xgalois_use_external_xtensor @XGALOIS_USE_EXTERNAL_XTENSOR@)
+
+if(_xgalois_use_external_xtl)
+  find_dependency(xtl CONFIG)
+else()
+  find_package(xtl CONFIG QUIET)
+endif()
+
+if(_xgalois_use_external_xtensor)
+  find_dependency(xtensor CONFIG)
+else()
+  find_package(xtensor CONFIG QUIET)
+endif()
+
+unset(_xgalois_use_external_xtl)
+unset(_xgalois_use_external_xtensor)
+
+include("${CMAKE_CURRENT_LIST_DIR}/xgaloisTargets.cmake")
+
+check_required_components(xgalois)

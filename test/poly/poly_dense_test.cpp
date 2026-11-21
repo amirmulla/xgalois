@@ -46,25 +46,25 @@ class PolynomialDenseTest : public ::testing::Test {
   void SetUp() override {
     gf7 = std::make_shared<GaloisFieldPrime<uint8_t>>(7);
 
-    zero = GaloisFieldElementBase<GaloisFieldPrime<uint8_t>>(0, gf7);
-    one = GaloisFieldElementBase<GaloisFieldPrime<uint8_t>>(1, gf7);
-    two = GaloisFieldElementBase<GaloisFieldPrime<uint8_t>>(2, gf7);
-    three = GaloisFieldElementBase<GaloisFieldPrime<uint8_t>>(3, gf7);
-    four = GaloisFieldElementBase<GaloisFieldPrime<uint8_t>>(4, gf7);
-    five = GaloisFieldElementBase<GaloisFieldPrime<uint8_t>>(5, gf7);
-    six = GaloisFieldElementBase<GaloisFieldPrime<uint8_t>>(6, gf7);
+    zero = GaloisFieldElement<GaloisFieldPrime<uint8_t>>(0, gf7);
+    one = GaloisFieldElement<GaloisFieldPrime<uint8_t>>(1, gf7);
+    two = GaloisFieldElement<GaloisFieldPrime<uint8_t>>(2, gf7);
+    three = GaloisFieldElement<GaloisFieldPrime<uint8_t>>(3, gf7);
+    four = GaloisFieldElement<GaloisFieldPrime<uint8_t>>(4, gf7);
+    five = GaloisFieldElement<GaloisFieldPrime<uint8_t>>(5, gf7);
+    six = GaloisFieldElement<GaloisFieldPrime<uint8_t>>(6, gf7);
 
     gf2 = std::make_shared<GaloisFieldBinary>();
-    gf2_zero = GaloisFieldElementBase<GaloisFieldBinary>(0, gf2);
-    gf2_one = GaloisFieldElementBase<GaloisFieldBinary>(1, gf2);
+    gf2_zero = GaloisFieldElement<GaloisFieldBinary>(0, gf2);
+    gf2_one = GaloisFieldElement<GaloisFieldBinary>(1, gf2);
   }
 
   std::shared_ptr<GaloisFieldPrime<uint8_t>> gf7;
   std::shared_ptr<GaloisFieldBinary> gf2;
 
-  GaloisFieldElementBase<GaloisFieldPrime<uint8_t>> zero, one, two, three, four,
+  GaloisFieldElement<GaloisFieldPrime<uint8_t>> zero, one, two, three, four,
       five, six;
-  GaloisFieldElementBase<GaloisFieldBinary> gf2_zero, gf2_one;
+  GaloisFieldElement<GaloisFieldBinary> gf2_zero, gf2_one;
 };
 
 TEST_F(PolynomialDenseTest, DefaultConstructorAndStaticFactories) {
@@ -108,8 +108,8 @@ TEST_F(PolynomialDenseTest, DefaultConstructorAndStaticFactories) {
 }
 
 TEST_F(PolynomialDenseTest, ConstructorAndBasicProperties) {
-  std::vector<GaloisFieldElementBase<GaloisFieldPrime<uint8_t>>> coeffs = {
-      one, two, three};
+  std::vector<GaloisFieldElement<GaloisFieldPrime<uint8_t>>> coeffs = {one, two,
+                                                                       three};
   PolynomialDense<GaloisFieldPrime<uint8_t>> poly(coeffs);
 
   EXPECT_EQ(poly.Degree(), 2);
@@ -127,8 +127,8 @@ TEST_F(PolynomialDenseTest, ConstructorAndBasicProperties) {
 }
 
 TEST_F(PolynomialDenseTest, CustomVariable) {
-  std::vector<GaloisFieldElementBase<GaloisFieldPrime<uint8_t>>> coeffs = {one,
-                                                                           two};
+  std::vector<GaloisFieldElement<GaloisFieldPrime<uint8_t>>> coeffs = {one,
+                                                                       two};
   PolynomialDense<GaloisFieldPrime<uint8_t>> poly(coeffs, "t");
 
   EXPECT_EQ(poly.GetVariable(), "t");
@@ -142,8 +142,7 @@ TEST_F(PolynomialDenseTest, CustomVariable) {
 }
 
 TEST_F(PolynomialDenseTest, ZeroPolynomial) {
-  std::vector<GaloisFieldElementBase<GaloisFieldPrime<uint8_t>>> coeffs = {
-      zero};
+  std::vector<GaloisFieldElement<GaloisFieldPrime<uint8_t>>> coeffs = {zero};
   PolynomialDense<GaloisFieldPrime<uint8_t>> poly(coeffs);
 
   EXPECT_TRUE(poly.IsZero());
@@ -153,8 +152,7 @@ TEST_F(PolynomialDenseTest, ZeroPolynomial) {
 }
 
 TEST_F(PolynomialDenseTest, ConstantPolynomial) {
-  std::vector<GaloisFieldElementBase<GaloisFieldPrime<uint8_t>>> coeffs = {
-      five};
+  std::vector<GaloisFieldElement<GaloisFieldPrime<uint8_t>>> coeffs = {five};
   PolynomialDense<GaloisFieldPrime<uint8_t>> poly(coeffs);
 
   EXPECT_EQ(poly.Degree(), 0);
@@ -163,7 +161,7 @@ TEST_F(PolynomialDenseTest, ConstantPolynomial) {
 }
 
 TEST_F(PolynomialDenseTest, LeadingZeroTrimming) {
-  std::vector<GaloisFieldElementBase<GaloisFieldPrime<uint8_t>>> coeffs = {
+  std::vector<GaloisFieldElement<GaloisFieldPrime<uint8_t>>> coeffs = {
       one, two, zero, zero};
   PolynomialDense<GaloisFieldPrime<uint8_t>> poly(coeffs);
 
@@ -174,8 +172,8 @@ TEST_F(PolynomialDenseTest, LeadingZeroTrimming) {
 }
 
 TEST_F(PolynomialDenseTest, IndexingAndSetCoeffPreservesInvariant) {
-  std::vector<GaloisFieldElementBase<GaloisFieldPrime<uint8_t>>> coeffs = {
-      one, two, three};
+  std::vector<GaloisFieldElement<GaloisFieldPrime<uint8_t>>> coeffs = {one, two,
+                                                                       three};
   PolynomialDense<GaloisFieldPrime<uint8_t>> poly(coeffs);
 
   EXPECT_EQ(poly[0], one);
@@ -205,12 +203,12 @@ TEST_F(PolynomialDenseTest, IndexingAndSetCoeffPreservesInvariant) {
 }
 
 TEST_F(PolynomialDenseTest, Addition) {
-  std::vector<GaloisFieldElementBase<GaloisFieldPrime<uint8_t>>> coeffs1 = {
+  std::vector<GaloisFieldElement<GaloisFieldPrime<uint8_t>>> coeffs1 = {
       one, two, three};
   PolynomialDense<GaloisFieldPrime<uint8_t>> p1(coeffs1);
 
-  std::vector<GaloisFieldElementBase<GaloisFieldPrime<uint8_t>>> coeffs2 = {
-      four, five};
+  std::vector<GaloisFieldElement<GaloisFieldPrime<uint8_t>>> coeffs2 = {four,
+                                                                        five};
   PolynomialDense<GaloisFieldPrime<uint8_t>> p2(coeffs2);
 
   auto result = p1 + p2;
@@ -222,8 +220,8 @@ TEST_F(PolynomialDenseTest, Addition) {
 }
 
 TEST_F(PolynomialDenseTest, AdditionWithZero) {
-  std::vector<GaloisFieldElementBase<GaloisFieldPrime<uint8_t>>> coeffs = {
-      one, two, three};
+  std::vector<GaloisFieldElement<GaloisFieldPrime<uint8_t>>> coeffs = {one, two,
+                                                                       three};
   PolynomialDense<GaloisFieldPrime<uint8_t>> poly(coeffs);
 
   auto zero_poly = PolynomialDense<GaloisFieldPrime<uint8_t>>::Zero(gf7);
@@ -233,12 +231,12 @@ TEST_F(PolynomialDenseTest, AdditionWithZero) {
 }
 
 TEST_F(PolynomialDenseTest, Subtraction) {
-  std::vector<GaloisFieldElementBase<GaloisFieldPrime<uint8_t>>> coeffs1 = {
+  std::vector<GaloisFieldElement<GaloisFieldPrime<uint8_t>>> coeffs1 = {
       one, two, three};
   PolynomialDense<GaloisFieldPrime<uint8_t>> p1(coeffs1);
 
-  std::vector<GaloisFieldElementBase<GaloisFieldPrime<uint8_t>>> coeffs2 = {
-      four, five};
+  std::vector<GaloisFieldElement<GaloisFieldPrime<uint8_t>>> coeffs2 = {four,
+                                                                        five};
   PolynomialDense<GaloisFieldPrime<uint8_t>> p2(coeffs2);
 
   auto result = p1 - p2;
@@ -250,8 +248,8 @@ TEST_F(PolynomialDenseTest, Subtraction) {
 }
 
 TEST_F(PolynomialDenseTest, Negation) {
-  std::vector<GaloisFieldElementBase<GaloisFieldPrime<uint8_t>>> coeffs = {
-      one, two, three};
+  std::vector<GaloisFieldElement<GaloisFieldPrime<uint8_t>>> coeffs = {one, two,
+                                                                       three};
   PolynomialDense<GaloisFieldPrime<uint8_t>> poly(coeffs);
 
   auto neg_poly = -poly;
@@ -263,12 +261,12 @@ TEST_F(PolynomialDenseTest, Negation) {
 }
 
 TEST_F(PolynomialDenseTest, Multiplication) {
-  std::vector<GaloisFieldElementBase<GaloisFieldPrime<uint8_t>>> coeffs1 = {
-      one, two};
+  std::vector<GaloisFieldElement<GaloisFieldPrime<uint8_t>>> coeffs1 = {one,
+                                                                        two};
   PolynomialDense<GaloisFieldPrime<uint8_t>> p1(coeffs1);
 
-  std::vector<GaloisFieldElementBase<GaloisFieldPrime<uint8_t>>> coeffs2 = {
-      three, four};
+  std::vector<GaloisFieldElement<GaloisFieldPrime<uint8_t>>> coeffs2 = {three,
+                                                                        four};
   PolynomialDense<GaloisFieldPrime<uint8_t>> p2(coeffs2);
 
   auto result = p1 * p2;
@@ -280,8 +278,8 @@ TEST_F(PolynomialDenseTest, Multiplication) {
 }
 
 TEST_F(PolynomialDenseTest, ScalarMultiplicationAndDivision) {
-  std::vector<GaloisFieldElementBase<GaloisFieldPrime<uint8_t>>> coeffs = {
-      one, two, three};
+  std::vector<GaloisFieldElement<GaloisFieldPrime<uint8_t>>> coeffs = {one, two,
+                                                                       three};
   PolynomialDense<GaloisFieldPrime<uint8_t>> poly(coeffs);
 
   auto result = poly * five;
@@ -305,8 +303,8 @@ TEST_F(PolynomialDenseTest, ScalarMultiplicationAndDivision) {
 }
 
 TEST_F(PolynomialDenseTest, MultiplicationByZero) {
-  std::vector<GaloisFieldElementBase<GaloisFieldPrime<uint8_t>>> coeffs = {
-      one, two, three};
+  std::vector<GaloisFieldElement<GaloisFieldPrime<uint8_t>>> coeffs = {one, two,
+                                                                       three};
   PolynomialDense<GaloisFieldPrime<uint8_t>> poly(coeffs);
 
   auto result = poly * zero;
@@ -317,12 +315,11 @@ TEST_F(PolynomialDenseTest, MultiplicationByZero) {
 }
 
 TEST_F(PolynomialDenseTest, DivisionByConstant) {
-  std::vector<GaloisFieldElementBase<GaloisFieldPrime<uint8_t>>> coeffs = {
+  std::vector<GaloisFieldElement<GaloisFieldPrime<uint8_t>>> coeffs = {
       two, four, six};
   PolynomialDense<GaloisFieldPrime<uint8_t>> poly(coeffs);
 
-  std::vector<GaloisFieldElementBase<GaloisFieldPrime<uint8_t>>> div_coeffs = {
-      two};
+  std::vector<GaloisFieldElement<GaloisFieldPrime<uint8_t>>> div_coeffs = {two};
   PolynomialDense<GaloisFieldPrime<uint8_t>> divisor(div_coeffs);
 
   auto result = poly / divisor;
@@ -719,7 +716,7 @@ TEST_F(PolynomialDenseTest, ExtendedGCDCoprime) {
 }
 
 TEST_F(PolynomialDenseTest, EmptyAndInvalidConstructorsThrow) {
-  std::vector<GaloisFieldElementBase<GaloisFieldPrime<uint8_t>>> empty_coeffs;
+  std::vector<GaloisFieldElement<GaloisFieldPrime<uint8_t>>> empty_coeffs;
   EXPECT_THROW((void)PolynomialDense<GaloisFieldPrime<uint8_t>>(empty_coeffs),
                std::invalid_argument);
 
@@ -781,11 +778,10 @@ TEST_F(PolynomialDenseTest, FieldMismatchThrowsAndInequality) {
 }
 
 TEST_F(PolynomialDenseTest, LargePolynomials) {
-  std::vector<GaloisFieldElementBase<GaloisFieldPrime<uint8_t>>> coeffs;
+  std::vector<GaloisFieldElement<GaloisFieldPrime<uint8_t>>> coeffs;
   coeffs.reserve(10);
   for (int i = 0; i < 10; ++i) {
-    coeffs.push_back(
-        GaloisFieldElementBase<GaloisFieldPrime<uint8_t>>(i % 7, gf7));
+    coeffs.push_back(GaloisFieldElement<GaloisFieldPrime<uint8_t>>(i % 7, gf7));
   }
 
   PolynomialDense<GaloisFieldPrime<uint8_t>> poly(coeffs);

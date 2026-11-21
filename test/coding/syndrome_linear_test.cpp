@@ -26,7 +26,7 @@ void ExpectOrthogonal(const GFMatrix<Field> &G, const GFMatrix<Field> &H) {
   if (G.Shape(0) == 0 || H.Shape(0) == 0) {
     return;
   }
-  auto prod = linalg::dot(G, linalg::transpose(H));
+  auto prod = linalg::Dot(G, linalg::Transpose(H));
   ASSERT_EQ(prod.Shape(0), G.Shape(0));
   ASSERT_EQ(prod.Shape(1), H.Shape(0));
   auto field = G.Field();
@@ -84,7 +84,7 @@ TEST(LinearCodeTest, FromGeneratorAndParityCheckMatrices) {
 
   // Reconstruct from H (with an added redundant row = row 0 + row 1).
   const auto &H = code.ParityCheckMatrix();
-  auto H_red = linalg::vstack(
+  auto H_red = linalg::VStack(
       H,
       MakeMatrix2D(gf2, {{static_cast<uint8_t>(H.Raw(0, 0) ^ H.Raw(1, 0)),
                           static_cast<uint8_t>(H.Raw(0, 1) ^ H.Raw(1, 1)),

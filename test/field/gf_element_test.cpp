@@ -55,7 +55,7 @@ TEST_F(GaloisFieldElementTest, Construction) {
   EXPECT_EQ(elem_3.Field(), gf7);
   EXPECT_TRUE(elem_3.HasField());
 
-  EXPECT_THROW(GaloisFieldElementBase<GaloisFieldPrime<uint8_t>>(3, nullptr),
+  EXPECT_THROW(GaloisFieldElement<GaloisFieldPrime<uint8_t>>(3, nullptr),
                std::invalid_argument);
 }
 

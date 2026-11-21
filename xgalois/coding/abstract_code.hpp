@@ -336,7 +336,7 @@ class AbstractCode {
     }
     throw std::invalid_argument(
         "Rank metric requires matrix-valued codewords; use "
-        "linalg::matrix_rank");
+        "linalg::MatrixRank");
   }
 
   virtual std::string ToString() const = 0;

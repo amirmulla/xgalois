@@ -18,7 +18,9 @@
 #include "xgalois/coding/bch.hpp"
 #include "xgalois/coding/cyclic_code.hpp"
 #include "xgalois/coding/grs.hpp"
+#include "xgalois/coding/ldpc.hpp"
 #include "xgalois/coding/linear_code.hpp"
+#include "xgalois/coding/polar.hpp"
 
 #include "xgalois/coding/encoder/cyclic_encoder.hpp"
 #include "xgalois/coding/encoder/encoder.hpp"
@@ -30,6 +32,7 @@
 
 #include "xgalois/coding/decoder/berlekamp_massey_decoder.hpp"
 #include "xgalois/coding/decoder/cyclic_syndrome_decoder.hpp"
+#include "xgalois/coding/decoder/guruswami_sudan_decoder.hpp"
 #include "xgalois/coding/decoder/sugiyama_decoder.hpp"
 #include "xgalois/coding/decoder/syndrome_decoder.hpp"
 // clang-format on

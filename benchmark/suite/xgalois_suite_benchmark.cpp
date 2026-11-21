@@ -8,10 +8,15 @@
 #include <random>
 #include <vector>
 
+#include "xgalois/channel/channel.hpp"
 #include "xgalois/coding/decoder/berlekamp_massey_decoder.hpp"
+#include "xgalois/coding/decoder/guruswami_sudan_decoder.hpp"
 #include "xgalois/coding/decoder/sugiyama_decoder.hpp"
 #include "xgalois/coding/encoder/grs_encoder.hpp"
 #include "xgalois/coding/grs.hpp"
+#include "xgalois/coding/ldpc.hpp"
+#include "xgalois/coding/polar.hpp"
+#include "xgalois/field/gf128.hpp"
 #include "xgalois/field/gf_array.hpp"
 #include "xgalois/field/gf_binary.hpp"
 #include "xgalois/field/gf_element.hpp"
@@ -22,12 +27,14 @@
 using xg::GaloisFieldElement;
 using xg::GaloisFieldPrime;
 using xg::GaloisFieldPrimeTable;
+using xg::GF128;
 using xg::GF2;
 using xg::GF2X;
 using xg::GF2XLOG;
 using xg::GF2XZECH;
 using xg::GFArray;
 using xg::PolynomialDense;
+using xg::UInt128;
 
 namespace {
 
@@ -320,7 +327,7 @@ void BM_PolyDense_Prime65521_DivRem_256_128(benchmark::State& state) {
 }
 
 // ============================================================================
-// 4. Linear Algebra: linalg::dot & linalg::rref on GF(2) M4RI and GF(2^8)
+// 4. Linear Algebra: linalg::Dot & linalg::Rref on GF(2) M4RI and GF(2^8)
 // ============================================================================
 
 void BM_Linalg_GF2_M4RI_Dot(benchmark::State& state) {
@@ -328,11 +335,11 @@ void BM_Linalg_GF2_M4RI_Dot(benchmark::State& state) {
   auto gf2 = std::make_shared<GF2>();
   std::mt19937_64 rng(kSeed);
 
-  const auto a = xg::linalg::random_matrix(gf2, {n, n}, rng);
-  const auto b = xg::linalg::random_matrix(gf2, {n, n}, rng);
+  const auto a = xg::linalg::RandomMatrix(gf2, {n, n}, rng);
+  const auto b = xg::linalg::RandomMatrix(gf2, {n, n}, rng);
 
   for (auto _ : state) {
-    auto c = xg::linalg::dot(a, b);
+    auto c = xg::linalg::Dot(a, b);
     benchmark::DoNotOptimize(c.RawSpan().data());
     benchmark::ClobberMemory();
   }
@@ -343,10 +350,10 @@ void BM_Linalg_GF2_M4RI_Rref(benchmark::State& state) {
   auto gf2 = std::make_shared<GF2>();
   std::mt19937_64 rng(kSeed);
 
-  const auto a = xg::linalg::random_matrix(gf2, {n, n}, rng);
+  const auto a = xg::linalg::RandomMatrix(gf2, {n, n}, rng);
 
   for (auto _ : state) {
-    auto r = xg::linalg::rref(a);
+    auto r = xg::linalg::Rref(a);
     benchmark::DoNotOptimize(r.RawSpan().data());
     benchmark::ClobberMemory();
   }
@@ -357,11 +364,11 @@ void BM_Linalg_GF256_Dot(benchmark::State& state) {
   auto gf256 = std::make_shared<GF2XLOG<uint8_t>>(8);
   std::mt19937_64 rng(kSeed);
 
-  const auto a = xg::linalg::random_matrix(gf256, {n, n}, rng);
-  const auto b = xg::linalg::random_matrix(gf256, {n, n}, rng);
+  const auto a = xg::linalg::RandomMatrix(gf256, {n, n}, rng);
+  const auto b = xg::linalg::RandomMatrix(gf256, {n, n}, rng);
 
   for (auto _ : state) {
-    auto c = xg::linalg::dot(a, b);
+    auto c = xg::linalg::Dot(a, b);
     benchmark::DoNotOptimize(c.RawSpan().data());
     benchmark::ClobberMemory();
   }
@@ -372,10 +379,10 @@ void BM_Linalg_GF256_Rref(benchmark::State& state) {
   auto gf256 = std::make_shared<GF2XLOG<uint8_t>>(8);
   std::mt19937_64 rng(kSeed);
 
-  const auto a = xg::linalg::random_matrix(gf256, {n, n}, rng);
+  const auto a = xg::linalg::RandomMatrix(gf256, {n, n}, rng);
 
   for (auto _ : state) {
-    auto r = xg::linalg::rref(a);
+    auto r = xg::linalg::Rref(a);
     benchmark::DoNotOptimize(r.RawSpan().data());
     benchmark::ClobberMemory();
   }
@@ -563,6 +570,372 @@ void BM_FieldConstruct_GFPTABLE_65521(benchmark::State& state) {
   state.counters["FieldBytes"] = static_cast<double>(field_bytes);
 }
 
+// ============================================================================
+// 7. GF(2^128) & GHASH (PCLMULQDQ / Portable Carry-Less)
+// ============================================================================
+
+void BM_GF128_Mul(benchmark::State& state) {
+  GF128 field;
+  std::mt19937_64 rng(kSeed);
+  std::vector<UInt128> vals(kScalarBufSize);
+  for (auto& v : vals) {
+    v = field.Random(rng);
+  }
+  size_t idx = 0;
+
+  for (auto _ : state) {
+    const UInt128 res =
+        field.Mul(vals[idx & kScalarBufMask], vals[(idx + 1) & kScalarBufMask]);
+    benchmark::DoNotOptimize(res);
+    ++idx;
+  }
+}
+
+void BM_GF128_GhashMul(benchmark::State& state) {
+  GF128 field;
+  std::mt19937_64 rng(kSeed);
+  std::vector<UInt128> vals(kScalarBufSize);
+  for (auto& v : vals) {
+    v = field.Random(rng);
+  }
+  size_t idx = 0;
+
+  for (auto _ : state) {
+    const UInt128 res = field.GhashMul(vals[idx & kScalarBufMask],
+                                       vals[(idx + 1) & kScalarBufMask]);
+    benchmark::DoNotOptimize(res);
+    ++idx;
+  }
+}
+
+void BM_GF128_Inv(benchmark::State& state) {
+  GF128 field;
+  std::mt19937_64 rng(kSeed);
+  std::vector<UInt128> vals(kScalarBufSize);
+  for (auto& v : vals) {
+    v = field.Random(rng);
+    while (field.IsZero(v)) {
+      v = field.Random(rng);
+    }
+  }
+  size_t idx = 0;
+
+  for (auto _ : state) {
+    const UInt128 res = field.Inv(vals[idx & kScalarBufMask]);
+    benchmark::DoNotOptimize(res);
+    ++idx;
+  }
+}
+
+void BM_GFArray_GF128_MulArray(benchmark::State& state) {
+  BenchBulkMulArray<GF128>(state, [] { return std::make_shared<GF128>(); });
+}
+
+// ============================================================================
+// 8. QC-LDPC Belief Propagation (Normalized Min-Sum over AWGN LLRs)
+// ============================================================================
+
+struct LdpcQcFixture {
+  static constexpr size_t kLiftingZ = 17;
+  static constexpr size_t kBatchSize = 16;
+  static constexpr size_t kBatchMask = kBatchSize - 1;
+  static constexpr size_t kMaxIterations = 50;
+  static constexpr double kAlpha = 0.75;
+  static constexpr double kSnrDb = 4.5;
+
+  std::shared_ptr<GF2> field;
+  xg::coding::LDPCCode code;
+  std::vector<GFArray<GF2>> codewords;
+  std::vector<std::vector<double>> llrs;
+
+  static std::vector<std::vector<int>> BaseMatrix() {
+    return {
+        {0, 0, 0, 0, 0, 0},
+        {0, 1, 2, 3, 4, 5},
+        {0, 2, 4, 6, 8, 10},
+    };
+  }
+
+  LdpcQcFixture()
+      : field(std::make_shared<GF2>()),
+        code(xg::coding::LDPCCode::FromQuasiCyclic(field, BaseMatrix(),
+                                                   kLiftingZ)) {
+    std::mt19937_64 rng(kSeed);
+    auto channel = xg::channel::AWGNChannel::FromEbN0(
+        field, code.Length(), kSnrDb, code.Rate(), kSeed);
+    xg::coding::BeliefPropagationDecoder decoder(
+        code, xg::coding::BpAlgorithm::kNormalizedMinSum, kMaxIterations,
+        kAlpha);
+
+    codewords.reserve(kBatchSize);
+    llrs.reserve(kBatchSize);
+
+    for (size_t attempt = 0; attempt < 512 && llrs.size() < kBatchSize;
+         ++attempt) {
+      auto msg = GFArray<GF2>::Random(field, {code.Dimension()}, rng);
+      auto cw = code.Encode(msg);
+      auto tx = channel.TransmitDetailed(cw);
+      if (code.CheckParity(tx.hard_decision)) {
+        continue;
+      }
+      const auto res = decoder.DecodeLlr(tx.llr);
+      if (res.Ok() && res.codeword == cw) {
+        codewords.push_back(std::move(cw));
+        llrs.push_back(std::move(tx.llr));
+      }
+    }
+    while (llrs.size() < kBatchSize) {
+      auto msg = GFArray<GF2>::Random(field, {code.Dimension()}, rng);
+      auto cw = code.Encode(msg);
+      auto tx_llr = channel.TransmitLlr(cw);
+      codewords.push_back(std::move(cw));
+      llrs.push_back(std::move(tx_llr));
+    }
+  }
+};
+
+const LdpcQcFixture& GetLdpcQcFixture() {
+  static const LdpcQcFixture fixture;
+  return fixture;
+}
+
+void BM_LDPC_NormalizedMinSum_Decode(benchmark::State& state) {
+  const auto& fix = GetLdpcQcFixture();
+  xg::coding::BeliefPropagationDecoder decoder(
+      fix.code, xg::coding::BpAlgorithm::kNormalizedMinSum,
+      LdpcQcFixture::kMaxIterations, LdpcQcFixture::kAlpha);
+
+  const auto check = decoder.DecodeLlr(fix.llrs[0]);
+  if (!check.Ok() || check.codeword != fix.codewords[0]) {
+    state.SkipWithError(
+        "BeliefPropagationDecoder NormalizedMinSum self-check failed");
+    return;
+  }
+
+  size_t idx = 0;
+  for (auto _ : state) {
+    auto res = decoder.DecodeLlr(fix.llrs[idx & LdpcQcFixture::kBatchMask]);
+    benchmark::DoNotOptimize(res.codeword.RawSpan().data());
+    benchmark::DoNotOptimize(res.num_errors);
+    benchmark::ClobberMemory();
+    ++idx;
+  }
+
+  state.SetItemsProcessed(static_cast<int64_t>(state.iterations()));
+}
+
+// ============================================================================
+// 9. Polar(64, 32): Encode, SC Decode, SCL(L=4) Decode over AWGN LLRs
+// ============================================================================
+
+struct Polar64Fixture {
+  static constexpr size_t kCodeLen = 64;
+  static constexpr size_t kMessageLen = 32;
+  static constexpr size_t kBatchSize = 16;
+  static constexpr size_t kBatchMask = kBatchSize - 1;
+  static constexpr double kDesignSnrDb = 2.5;
+  static constexpr double kChannelSnrDb = 4.0;
+
+  std::shared_ptr<GF2> field;
+  xg::coding::PolarCode code;
+  std::vector<GFArray<GF2>> messages;
+  std::vector<GFArray<GF2>> codewords;
+  std::vector<std::vector<double>> llrs;
+
+  Polar64Fixture()
+      : field(std::make_shared<GF2>()),
+        code(xg::coding::PolarCode::FromDesignSnr(
+            field, kCodeLen, kMessageLen, kDesignSnrDb, /*systematic=*/false)) {
+    std::mt19937_64 rng(kSeed);
+    xg::coding::PolarEncoder encoder(code);
+    xg::coding::SuccessiveCancellationDecoder sc(code);
+    xg::coding::SuccessiveCancellationListDecoder scl4(code, /*list_size=*/4);
+    auto channel = xg::channel::AWGNChannel::FromEbN0(
+        field, kCodeLen, kChannelSnrDb, code.Rate(), kSeed);
+
+    messages.reserve(kBatchSize);
+    codewords.reserve(kBatchSize);
+    llrs.reserve(kBatchSize);
+
+    for (size_t attempt = 0; attempt < 512 && llrs.size() < kBatchSize;
+         ++attempt) {
+      auto msg = GFArray<GF2>::Random(field, {kMessageLen}, rng);
+      auto cw = encoder.Encode(msg);
+      auto rx_llr = channel.TransmitLlr(cw);
+      const auto r_sc = sc.DecodeLlr(rx_llr);
+      const auto r_scl = scl4.DecodeLlr(rx_llr);
+      if (r_sc.Ok() && r_sc.codeword == cw && r_scl.Ok() &&
+          r_scl.codeword == cw) {
+        messages.push_back(std::move(msg));
+        codewords.push_back(std::move(cw));
+        llrs.push_back(std::move(rx_llr));
+      }
+    }
+    while (llrs.size() < kBatchSize) {
+      auto msg = GFArray<GF2>::Random(field, {kMessageLen}, rng);
+      auto cw = encoder.Encode(msg);
+      auto rx_llr = channel.TransmitLlr(cw);
+      messages.push_back(std::move(msg));
+      codewords.push_back(std::move(cw));
+      llrs.push_back(std::move(rx_llr));
+    }
+  }
+};
+
+const Polar64Fixture& GetPolar64Fixture() {
+  static const Polar64Fixture fixture;
+  return fixture;
+}
+
+void BM_Polar64_32_Encode(benchmark::State& state) {
+  const auto& fix = GetPolar64Fixture();
+  xg::coding::PolarEncoder encoder(fix.code);
+  size_t idx = 0;
+
+  for (auto _ : state) {
+    auto cw = encoder.Encode(fix.messages[idx & Polar64Fixture::kBatchMask]);
+    benchmark::DoNotOptimize(cw.RawSpan().data());
+    benchmark::ClobberMemory();
+    ++idx;
+  }
+
+  state.SetItemsProcessed(static_cast<int64_t>(state.iterations()));
+}
+
+void BM_Polar64_32_SC_Decode(benchmark::State& state) {
+  const auto& fix = GetPolar64Fixture();
+  xg::coding::SuccessiveCancellationDecoder decoder(fix.code);
+
+  const auto check = decoder.DecodeLlr(fix.llrs[0]);
+  if (!check.Ok() || check.codeword != fix.codewords[0] ||
+      check.message != fix.messages[0]) {
+    state.SkipWithError("Polar SC decoder self-check failed");
+    return;
+  }
+
+  size_t idx = 0;
+  for (auto _ : state) {
+    auto res = decoder.DecodeLlr(fix.llrs[idx & Polar64Fixture::kBatchMask]);
+    benchmark::DoNotOptimize(res.codeword.RawSpan().data());
+    benchmark::DoNotOptimize(res.num_errors);
+    benchmark::ClobberMemory();
+    ++idx;
+  }
+
+  state.SetItemsProcessed(static_cast<int64_t>(state.iterations()));
+}
+
+void BM_Polar64_32_SCL4_Decode(benchmark::State& state) {
+  const auto& fix = GetPolar64Fixture();
+  xg::coding::SuccessiveCancellationListDecoder decoder(fix.code,
+                                                        /*list_size=*/4);
+
+  const auto check = decoder.DecodeLlr(fix.llrs[0]);
+  if (!check.Ok() || check.codeword != fix.codewords[0] ||
+      check.message != fix.messages[0]) {
+    state.SkipWithError("Polar SCL(L=4) decoder self-check failed");
+    return;
+  }
+
+  size_t idx = 0;
+  for (auto _ : state) {
+    auto res = decoder.DecodeLlr(fix.llrs[idx & Polar64Fixture::kBatchMask]);
+    benchmark::DoNotOptimize(res.codeword.RawSpan().data());
+    benchmark::DoNotOptimize(res.num_errors);
+    benchmark::ClobberMemory();
+    ++idx;
+  }
+
+  state.SetItemsProcessed(static_cast<int64_t>(state.iterations()));
+}
+
+// ============================================================================
+// 10. Guruswami-Sudan List Decoding: RS(15, 3) over GF(2^4) with 8 Errors
+//     (unique radius t = 6, Johnson radius tau_J = 9)
+// ============================================================================
+
+struct GsRs15Fixture {
+  using Field = GF2XLOG<uint8_t>;
+  using Code = xg::coding::GeneralizedReedSolomonCode<Field>;
+
+  static constexpr size_t kCodeLen = 15;
+  static constexpr size_t kMessageLen = 3;
+  static constexpr size_t kNumErrors = 8;
+  static constexpr size_t kBatchSize = 16;
+  static constexpr size_t kBatchMask = kBatchSize - 1;
+
+  std::shared_ptr<Field> field;
+  Code rs;
+  std::vector<GFArray<Field>> codewords;
+  std::vector<GFArray<Field>> received_8err;
+
+  GsRs15Fixture()
+      : field(std::make_shared<Field>(4)),
+        rs(Code::ReedSolomon(field, kCodeLen, kMessageLen)) {
+    std::mt19937_64 rng(kSeed);
+    xg::coding::GRSEncoder<Field> encoder(rs);
+
+    std::vector<size_t> positions(kCodeLen);
+    std::iota(positions.begin(), positions.end(), size_t{0});
+
+    codewords.reserve(kBatchSize);
+    received_8err.reserve(kBatchSize);
+
+    for (size_t b = 0; b < kBatchSize; ++b) {
+      auto msg = GFArray<Field>::Random(field, {kMessageLen}, rng);
+      auto cw = encoder.Encode(msg);
+      auto rx = cw;
+
+      std::shuffle(positions.begin(), positions.end(), rng);
+      for (size_t e = 0; e < kNumErrors; ++e) {
+        const size_t pos = positions[e];
+        uint8_t err = field->Random(rng);
+        while (field->IsZero(err)) {
+          err = field->Random(rng);
+        }
+        rx.Raw(pos) = field->Add(rx.Raw(pos), err);
+      }
+
+      codewords.push_back(std::move(cw));
+      received_8err.push_back(std::move(rx));
+    }
+  }
+};
+
+const GsRs15Fixture& GetGsRs15Fixture() {
+  static const GsRs15Fixture fixture;
+  return fixture;
+}
+
+void BM_GuruswamiSudan_RS15_3_8Errors(benchmark::State& state) {
+  const auto& fix = GetGsRs15Fixture();
+  const auto decoder =
+      xg::coding::GuruswamiSudanDecoder<GsRs15Fixture::Field>::FromTargetRadius(
+          fix.rs, GsRs15Fixture::kNumErrors);
+
+  const auto check_list = decoder.DecodeToList(fix.received_8err[0]);
+  if (std::find(check_list.begin(), check_list.end(), fix.codewords[0]) ==
+      check_list.end()) {
+    state.SkipWithError("GuruswamiSudanDecoder 8-error self-check failed");
+    return;
+  }
+
+  size_t idx = 0;
+  for (auto _ : state) {
+    auto list = decoder.DecodeToList(
+        fix.received_8err[idx & GsRs15Fixture::kBatchMask]);
+    const size_t list_len = list.size();
+    benchmark::DoNotOptimize(list.data());
+    benchmark::DoNotOptimize(list_len);
+    benchmark::ClobberMemory();
+    ++idx;
+  }
+
+  state.SetItemsProcessed(static_cast<int64_t>(state.iterations()));
+  state.SetBytesProcessed(static_cast<int64_t>(state.iterations()) *
+                          static_cast<int64_t>(GsRs15Fixture::kCodeLen));
+}
+
 }  // namespace
 
 // 1. GFArray bulk kernels
@@ -633,3 +1006,20 @@ BENCHMARK(BM_FieldConstruct_GF2XZECH)
     ->Unit(benchmark::kMicrosecond);
 BENCHMARK(BM_FieldConstruct_GFP_65521)->Unit(benchmark::kMicrosecond);
 BENCHMARK(BM_FieldConstruct_GFPTABLE_65521)->Unit(benchmark::kMicrosecond);
+
+// 7. GF(2^128) & GHASH arithmetic (PCLMULQDQ / portable carry-less)
+BENCHMARK(BM_GF128_Mul)->Unit(benchmark::kNanosecond);
+BENCHMARK(BM_GF128_GhashMul)->Unit(benchmark::kNanosecond);
+BENCHMARK(BM_GF128_Inv)->Unit(benchmark::kNanosecond);
+BENCHMARK(BM_GFArray_GF128_MulArray)->Arg(1024)->Unit(benchmark::kMicrosecond);
+
+// 8. QC-LDPC Belief Propagation (Normalized Min-Sum)
+BENCHMARK(BM_LDPC_NormalizedMinSum_Decode)->Unit(benchmark::kMicrosecond);
+
+// 9. Polar(64, 32) encode and SC / SCL(L=4) decoding
+BENCHMARK(BM_Polar64_32_Encode)->Unit(benchmark::kNanosecond);
+BENCHMARK(BM_Polar64_32_SC_Decode)->Unit(benchmark::kMicrosecond);
+BENCHMARK(BM_Polar64_32_SCL4_Decode)->Unit(benchmark::kMicrosecond);
+
+// 10. Guruswami-Sudan RS(15, 3) list decoding beyond unique radius (8 errors)
+BENCHMARK(BM_GuruswamiSudan_RS15_3_8Errors)->Unit(benchmark::kMicrosecond);

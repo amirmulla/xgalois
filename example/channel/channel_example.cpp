@@ -50,29 +50,30 @@ int main() {
   GFArray<Field16> msg16(gf16, xt::xarray<uint8_t>{1, 2, 3, 4, 5, 6, 7, 8});
   PrintArray("Original GF(2^4) message", msg16);
 
-  std::cout << "\n--- StaticErrorRateChannel (fixed 2 errors, seed=42) ---\n";
-  channel::StaticErrorRateChannel<Field16> static_ch(
-      gf16, kMsgLen, 2, std::optional<uint64_t>{42ULL});
+  std::cout << "\n--- StaticErrorRateChannel::Fixed (2 errors, seed=42) ---\n";
+  auto static_ch = channel::StaticErrorRateChannel<Field16>::Fixed(
+      gf16, kMsgLen, /*num_errors=*/2, /*seed=*/42ULL);
   std::cout << "Channel: " << static_ch << "\n";
-  const auto rx_static = static_ch.transmit(msg16);
+  const auto rx_static = static_ch.Transmit(msg16);
   PrintArray("Received", rx_static);
   std::cout << "Symbol errors introduced: "
             << CountDifferences(msg16, rx_static) << "\n";
 
   std::cout << "\n--- StaticErrorRateChannel (1..3 errors, seed=100) ---\n";
   channel::StaticErrorRateChannel<Field16> var_ch(gf16, kMsgLen, 1, 3,
-                                                  /*seed=*/100);
+                                                  /*seed=*/100ULL);
   for (int trial = 1; trial <= 3; ++trial) {
-    const auto rx = var_ch.transmit(msg16);
+    const auto rx = var_ch.Transmit(msg16);
     std::cout << "  Trial " << trial
               << " -> errors: " << CountDifferences(msg16, rx) << "\n";
   }
 
   std::cout
       << "\n--- ErrorErasureChannel (2 errors + 1 erasure, seed=77) ---\n";
-  channel::ErrorErasureChannel<Field16> ee_ch(gf16, kMsgLen, 2, 1, /*seed=*/77);
+  channel::ErrorErasureChannel<Field16> ee_ch(gf16, kMsgLen, 2, 1,
+                                              /*seed=*/77ULL);
   std::cout << "Channel: " << ee_ch << "\n";
-  const auto ee_tx = ee_ch.transmit_with_erasures(msg16);
+  const auto ee_tx = ee_ch.TransmitWithErasures(msg16);
   PrintArray("Received", ee_tx.received);
   std::cout << "Erasure positions: [";
   for (size_t i = 0; i < ee_tx.erasure_positions.size(); ++i) {
@@ -94,12 +95,13 @@ int main() {
   PrintArray("Original GF(31) message", msg31);
 
   channel::QarySymmetricChannel<Field31> qsc(gf31, kMsgLen, /*epsilon=*/0.2,
-                                             /*seed=*/2026);
+                                             /*seed=*/2026ULL);
   std::cout << "Channel: " << qsc << "\n";
   std::cout << std::fixed << std::setprecision(4)
-            << "P(<= 2 errors) = " << qsc.probability_of_at_most_t_errors(2)
+            << "P(== 2 errors) = " << qsc.ProbabilityOfExactlyTErrors(2)
+            << ", P(<= 2 errors) = " << qsc.ProbabilityOfAtMostTErrors(2)
             << "\n";
-  const auto rx_qsc = qsc.transmit(msg31);
+  const auto rx_qsc = qsc.Transmit(msg31);
   PrintArray("Received", rx_qsc);
   std::cout << "Symbol errors introduced: " << CountDifferences(msg31, rx_qsc)
             << "\n";
@@ -112,18 +114,18 @@ int main() {
   PrintArray("Original bits", bits);
 
   channel::BinarySymmetricChannel bsc(gf2, kBitLen, /*crossover_prob=*/0.1,
-                                      /*seed=*/55);
-  const auto rx_bsc = bsc.transmit(bits);
-  std::cout << "BSC (p=0.1) capacity = " << bsc.capacity()
+                                      /*seed=*/55ULL);
+  const auto rx_bsc = bsc.Transmit(bits);
+  std::cout << "BSC (p=0.1) capacity = " << bsc.Capacity()
             << " bits/use, bit flips = " << CountDifferences(bits, rx_bsc)
             << "\n";
 
   auto awgn = channel::AWGNChannel::FromSNR(gf2, kBitLen, /*snr_db=*/4.0,
-                                            /*code_rate=*/1.0, /*seed=*/314);
+                                            /*code_rate=*/1.0, /*seed=*/314ULL);
   std::cout << "Channel: " << awgn << "\n";
-  std::cout << "  sigma = " << awgn.sigma()
-            << ", theoretical uncoded BER = " << awgn.theoretical_ber() << "\n";
-  const auto awgn_tx = awgn.transmit_detailed(bits);
+  std::cout << "  snr_db = " << awgn.SnrDb() << ", sigma = " << awgn.Sigma()
+            << ", theoretical uncoded BER = " << awgn.TheoreticalBer() << "\n";
+  const auto awgn_tx = awgn.TransmitDetailed(bits);
   PrintArray("AWGN hard decision", awgn_tx.hard_decision);
   std::cout << "  First 4 soft samples: [";
   for (size_t i = 0; i < 4; ++i) {

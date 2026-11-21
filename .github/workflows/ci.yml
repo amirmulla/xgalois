@@ -8,7 +8,7 @@ on:
 
 jobs:
   build-and-test:
-    name: Build & Test (${{ matrix.compiler }})
+    name: Bazel Build & Test (${{ matrix.compiler }}, C++20)
     runs-on: ubuntu-24.04
     strategy:
       fail-fast: false
@@ -37,17 +37,91 @@ jobs:
           CC: ${{ matrix.cc }}
           CXX: ${{ matrix.cxx }}
         run: |
-          bazel build //xgalois/... //example/...
+          bazel build --cxxopt=-std=c++20 //xgalois/... //example/...
 
       - name: Run unit tests
         env:
           CC: ${{ matrix.cc }}
           CXX: ${{ matrix.cxx }}
         run: |
-          bazel test //test:galois_field_tests --test_output=errors
+          bazel test --cxxopt=-std=c++20 //test:galois_field_tests --test_output=errors
+
+  cmake-build-and-test:
+    name: CMake Build, Test & Install (${{ matrix.compiler }}, C++20)
+    runs-on: ubuntu-24.04
+    strategy:
+      fail-fast: false
+      matrix:
+        compiler: [gcc, clang]
+        include:
+          - compiler: gcc
+            cc: gcc
+            cxx: g++
+          - compiler: clang
+            cc: clang
+            cxx: clang++
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+
+      - name: Configure CMake (C++20)
+        env:
+          CC: ${{ matrix.cc }}
+          CXX: ${{ matrix.cxx }}
+        run: |
+          cmake -B build \
+            -DCMAKE_BUILD_TYPE=Release \
+            -DCMAKE_CXX_STANDARD=20 \
+            -DXGALOIS_BUILD_TESTS=ON \
+            -DXGALOIS_BUILD_EXAMPLES=ON
+
+      - name: Build library, tests, and examples
+        run: |
+          cmake --build build --parallel
+
+      - name: Run CTest unit tests
+        run: |
+          ctest --test-dir build --output-on-failure --parallel
+
+      - name: Install XGalois package
+        run: |
+          cmake --install build --prefix /tmp/xgalois_install
+
+      - name: Verify downstream find_package(xgalois CONFIG REQUIRED)
+        env:
+          CC: ${{ matrix.cc }}
+          CXX: ${{ matrix.cxx }}
+        run: |
+          rm -rf /tmp/xgalois_consumer
+          mkdir -p /tmp/xgalois_consumer
+          cat <<'EOF' > /tmp/xgalois_consumer/CMakeLists.txt
+          cmake_minimum_required(VERSION 3.20)
+          project(xgalois_consumer LANGUAGES CXX)
+          find_package(xgalois CONFIG REQUIRED)
+          add_executable(consumer main.cpp)
+          target_link_libraries(consumer PRIVATE xgalois::xgalois)
+          EOF
+          cat <<'EOF' > /tmp/xgalois_consumer/main.cpp
+          #include <cstdint>
+          #include <iostream>
+          #include <memory>
+          #include "xgalois/field/gf_array.hpp"
+          #include "xgalois/field/gf_binary.hpp"
+          int main() {
+            auto gf = std::make_shared<xg::GF2X<uint8_t>>(8);
+            auto arr = xg::GFArray<xg::GF2X<uint8_t>>::Zeros(gf, {3});
+            std::cout << "GF(" << gf->Order() << ") array size=" << arr.Size() << "\n";
+            return (gf->Order() == 256 && arr.Size() == 3) ? 0 : 1;
+          }
+          EOF
+          cmake -S /tmp/xgalois_consumer -B /tmp/xgalois_consumer/build \
+            -DCMAKE_PREFIX_PATH=/tmp/xgalois_install \
+            -DCMAKE_CXX_STANDARD=20
+          cmake --build /tmp/xgalois_consumer/build
+          /tmp/xgalois_consumer/build/consumer
 
   sanitizers:
-    name: Sanitizers (ASan & UBSan)
+    name: Sanitizers (ASan & UBSan, C++20)
     runs-on: ubuntu-24.04
     steps:
       - name: Checkout repository
@@ -62,11 +136,11 @@ jobs:
 
       - name: Run tests with ASan
         run: |
-          bazel test --config=asan //test:galois_field_tests --test_output=errors
+          bazel test --cxxopt=-std=c++20 --config=asan //test:galois_field_tests --test_output=errors
 
       - name: Run tests with UBSan
         run: |
-          bazel test --config=ubsan //test:galois_field_tests --test_output=errors
+          bazel test --cxxopt=-std=c++20 --config=ubsan //test:galois_field_tests --test_output=errors
 
   clang-format:
     name: Clang-Format Check

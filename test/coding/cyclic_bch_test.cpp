@@ -27,7 +27,7 @@ void ExpectOrthogonal(const GFMatrix<Field> &G, const GFMatrix<Field> &H) {
   if (G.Shape(0) == 0 || H.Shape(0) == 0) {
     return;
   }
-  auto prod = linalg::dot(G, linalg::transpose(H));
+  auto prod = linalg::Dot(G, linalg::Transpose(H));
   ASSERT_EQ(prod.Shape(0), G.Shape(0));
   ASSERT_EQ(prod.Shape(1), H.Shape(0));
   auto field = G.Field();

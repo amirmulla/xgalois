@@ -7,11 +7,15 @@
 #include <vector>
 
 // Include EVERY public header in xgalois/ to verify zero ODR violations
-// across multiple translation units.
+// across multiple translation units (all 21 public headers).
 #include "xgalois/channel/channel.hpp"
 #include "xgalois/coding/coding.hpp"
+#include "xgalois/coding/decoder/guruswami_sudan_decoder.hpp"
+#include "xgalois/coding/ldpc.hpp"
+#include "xgalois/coding/polar.hpp"
 #include "xgalois/databases/embedded_conway_polys.hpp"
 #include "xgalois/databases/interface.hpp"
+#include "xgalois/field/gf128.hpp"
 #include "xgalois/field/gf_array.hpp"
 #include "xgalois/field/gf_base.hpp"
 #include "xgalois/field/gf_binary.hpp"
@@ -40,6 +44,7 @@ bool OdrCheckTU1() {
   static_assert(FiniteField<GF2XLOG<uint8_t>>);
   static_assert(FiniteField<GF2XZECH<uint8_t>>);
   static_assert(FiniteField<GFPX<uint8_t>>);
+  static_assert(FiniteField<GF128>);
 
   // utils/math.hpp
   if (!utils::IsPrime(65521) || utils::ModInv(3, 7) != 5 ||
@@ -57,7 +62,7 @@ bool OdrCheckTU1() {
     return false;
   }
   databases::PrimeFactorsDatabase pf_db;
-  const auto pf = pf_db.fetch(121);
+  const auto pf = pf_db.Fetch(121);
   if (pf.factors.size() != 1 || pf.factors[0] != 11 ||
       pf.multiplicities[0] != 2) {
     return false;
@@ -98,6 +103,11 @@ bool OdrCheckTU1() {
       !gf9->IsOne(gf9->Mul(gf9->FromInt(4), gf9->Inv(gf9->FromInt(4))))) {
     return false;
   }
+  auto gf128 = std::make_shared<GF128>();
+  const UInt128 x128 = UInt128::FromHex("0x123456789abcdef0123456789abcdef1");
+  if (!gf128->IsOne(gf128->Mul(x128, gf128->Inv(x128)))) {
+    return false;
+  }
 
   // poly/poly_dense.hpp & utils/poly.hpp
   const auto p = utils::ParsePolynomial(gf7, "x^2 + 1");
@@ -110,11 +120,12 @@ bool OdrCheckTU1() {
   }
 
   // linalg/linalg.hpp
-  const auto eye3 = linalg::eye(gf7, 3);
-  if (!linalg::det(eye3).IsOne() || linalg::inv(eye3) != eye3) {
+  const auto eye3 = linalg::Eye(gf7, 3);
+  if (!linalg::Det(eye3).IsOne() || linalg::Inv(eye3) != eye3 ||
+      linalg::Dot(eye3, eye3) != eye3) {
     return false;
   }
-  const auto cp = linalg::characteristic_poly(eye3);
+  const auto cp = linalg::CharacteristicPoly(eye3);
   if (cp.Degree() != 3) {
     return false;
   }
@@ -129,9 +140,38 @@ bool OdrCheckTU1() {
   const auto msg = GFArray<GF2XLOG<uint8_t>>::Ones(gf16_log, {11});
   const auto cw = rs.Encode(msg);
   channel::ErrorErasureChannel<GF2XLOG<uint8_t>> eec(gf16_log, 15, 1, 2, 123);
-  const auto tx = eec.transmit_with_erasures(cw);
+  const auto tx = eec.TransmitWithErasures(cw);
   const auto dec = rs.DecodeWithErasures(tx.received, tx.erasure_positions);
   if (!dec.Ok() || dec.codeword != cw) {
+    return false;
+  }
+  auto serc = channel::StaticErrorRateChannel<GF2XLOG<uint8_t>>::Fixed(
+      gf16_log, 15, 1, 77ULL);
+  const auto rx_fixed = serc.Transmit(cw);
+  if (!rs.DecodeWithResult(rx_fixed).Ok()) {
+    return false;
+  }
+
+  // M6 coding headers: ldpc.hpp, polar.hpp, guruswami_sudan_decoder.hpp
+  const auto ldpc = coding::LDPCCode::FromQuasiCyclic(gf2, {{0, 1, 2}}, 4);
+  const auto ldpc_cw =
+      ldpc.Encode(GFArray<GF2>::Zeros(gf2, {ldpc.Dimension()}));
+  if (!ldpc.CheckParity(ldpc_cw)) {
+    return false;
+  }
+  const auto polar = coding::PolarCode::FromDesignSnr(gf2, 8, 4, 2.0);
+  const auto polar_msg = GFArray<GF2>::Ones(gf2, {4});
+  const auto polar_cw = polar.Encode(polar_msg);
+  if (!polar.Contains(polar_cw) || polar.Unencode(polar_cw) != polar_msg) {
+    return false;
+  }
+  const auto rs_gs = coding::CreateReedSolomonCode(gf16_log, 15, 5);
+  const auto gs_dec =
+      coding::GuruswamiSudanDecoder<GF2XLOG<uint8_t>>::FromTargetRadius(rs_gs,
+                                                                        6);
+  const auto gs_cw =
+      rs_gs.Encode(GFArray<GF2XLOG<uint8_t>>::Ones(gf16_log, {5}));
+  if (gs_dec.DecodeToList(gs_cw).empty()) {
     return false;
   }
 

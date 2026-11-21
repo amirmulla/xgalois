@@ -199,9 +199,9 @@ TEST_F(GaloisFieldExtensionTest, FieldProperties) {
   EXPECT_EQ(gf27->Order(), 27ULL);
   EXPECT_EQ(gf27->Degree(), 3U);
 
-  EXPECT_EQ(gf49->Characteristic(), 7);
-  EXPECT_EQ(gf49->Order(), 49);
-  EXPECT_EQ(gf49->Degree(), 2);
+  EXPECT_EQ(gf49->Characteristic(), 7ULL);
+  EXPECT_EQ(gf49->Order(), 49ULL);
+  EXPECT_EQ(gf49->Degree(), 2U);
 }
 
 TEST_F(GaloisFieldExtensionTest, IdentityElements) {
@@ -243,9 +243,9 @@ TEST_F(GaloisFieldExtensionTest, ExhaustiveFieldAxiomsGF49) {
 
 TEST_F(GaloisFieldExtensionTest, CharacteristicTwoExtension) {
   GFPX<uint8_t> gf8(std::make_pair(2, 3));
-  EXPECT_EQ(gf8.Characteristic(), 2);
-  EXPECT_EQ(gf8.Order(), 8);
-  EXPECT_EQ(gf8.Degree(), 3);
+  EXPECT_EQ(gf8.Characteristic(), 2ULL);
+  EXPECT_EQ(gf8.Order(), 8ULL);
+  EXPECT_EQ(gf8.Degree(), 3U);
   VerifyFieldAxiomsExhaustive(gf8);
   VerifySqrtAndLogExhaustive(gf8);
 }

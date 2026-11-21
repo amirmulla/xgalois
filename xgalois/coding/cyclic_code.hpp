@@ -200,7 +200,7 @@ class CyclicCode : public AbstractLinearCode<GaloisField> {
   }
 
   matrix_type SystematicGeneratorMatrix() const override {
-    return linalg::systematic_form(generator_matrix_).G_sys;
+    return linalg::SystematicForm(generator_matrix_).g_sys;
   }
 
   const polynomial_type &GeneratorPolynomial() const noexcept {

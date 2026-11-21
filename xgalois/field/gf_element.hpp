@@ -277,10 +277,6 @@ class GaloisFieldElement {
   std::shared_ptr<GaloisField> field_{nullptr};
 };
 
-// Backwards-compatible unified alias eliminating the Base vs Strict split.
-template <typename GaloisField>
-using GaloisFieldElementBase = GaloisFieldElement<GaloisField>;
-
 template <typename GaloisField>
 inline std::ostream &operator<<(std::ostream &os,
                                 const GaloisFieldElement<GaloisField> &elem) {

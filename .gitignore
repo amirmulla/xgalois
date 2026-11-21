@@ -43,6 +43,10 @@
 # Bazel
 bazel-*
 
+# CMake
+build/
+build_*/
+
 # Documentation / Sphinx
 doc/_build/
 doc/api/
