@@ -19,8 +19,8 @@ class MockPrimeField : public xg::GaloisFieldBase<uint32_t> {
   MockPrimeField(uint32_t prime, uint32_t generator)
       : p_(prime), gen_(generator) {}
 
-  uint32_t Characteristic() const override { return p_; }
-  uint32_t Order() const override { return p_; }
+  uint64_t Characteristic() const override { return p_; }
+  uint64_t Order() const override { return p_; }
 
   uint32_t Add(const uint32_t& a, const uint32_t& b) const override {
     return (a + b) % p_;
@@ -44,11 +44,11 @@ class MockPrimeField : public xg::GaloisFieldBase<uint32_t> {
     }
     return Pow(a, p_ - 2);
   }
-  uint32_t Pow(const uint32_t& a, uint32_t exp) const override {
+  uint32_t Pow(const uint32_t& a, uint64_t exp) const override {
     uint64_t result = 1;
     uint64_t base = a % p_;
     while (exp > 0) {
-      if (exp & 1U) {
+      if (exp & 1ULL) {
         result = (result * base) % p_;
       }
       base = (base * base) % p_;
@@ -57,8 +57,8 @@ class MockPrimeField : public xg::GaloisFieldBase<uint32_t> {
     return static_cast<uint32_t>(result);
   }
   uint32_t Sqrt(const uint32_t& a) const override { return a; }
-  uint32_t Log(const uint32_t&) const override { return 0; }
-  uint32_t Log(const uint32_t&, const uint32_t&) const override { return 0; }
+  uint64_t Log(const uint32_t&) const override { return 0; }
+  uint64_t Log(const uint32_t&, const uint32_t&) const override { return 0; }
   uint32_t Random() const override { return 1; }
   uint32_t MultiplicativeIdentity() const override { return 1; }
   uint32_t AdditiveIdentity() const override { return 0; }

@@ -267,13 +267,67 @@ cc_test(
     ],
 )
 
+cc_test(
+    name = "algebraic_property_test",
+    size = "large",
+    timeout = "long",
+    srcs = ["property/algebraic_property_test.cpp"],
+    deps = [
+        "//xgalois",
+        "@googletest//:gtest",
+        "@googletest//:gtest_main",
+    ],
+)
+
+cc_test(
+    name = "odr_multi_tu_test",
+    size = "small",
+    timeout = "short",
+    srcs = [
+        "build/odr_tu1.cpp",
+        "build/odr_tu2.cpp",
+    ],
+    deps = [
+        "//xgalois",
+        "@googletest//:gtest",
+        "@googletest//:gtest_main",
+    ],
+)
+
+cc_test(
+    name = "db_integrity_test",
+    size = "large",
+    timeout = "long",
+    srcs = ["databases/db_integrity_test.cpp"],
+    deps = [
+        "//xgalois",
+        "@googletest//:gtest",
+        "@googletest//:gtest_main",
+    ],
+)
+
+cc_test(
+    name = "fuzz_smoke_test",
+    size = "large",
+    timeout = "long",
+    srcs = ["fuzz/fuzz_smoke_test.cpp"],
+    deps = [
+        "//xgalois",
+        "@googletest//:gtest",
+        "@googletest//:gtest_main",
+    ],
+)
+
 test_suite(
     name = "galois_field_tests",
     tests = [
+        ":algebraic_property_test",
         ":channel_test",
         ":coding_test",
         ":cyclic_bch_test",
+        ":db_integrity_test",
         ":field_test",
+        ":fuzz_smoke_test",
         ":gf_binary_test",
         ":gf_element_test",
         ":gf_extension_test",
@@ -287,6 +341,7 @@ test_suite(
         ":linalg_gf2_test",
         ":linalg_prime_test",
         ":math_test",
+        ":odr_multi_tu_test",
         ":poly_algo_test",
         ":poly_dense_test",
         ":poly_test",

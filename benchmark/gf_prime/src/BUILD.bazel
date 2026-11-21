@@ -7,7 +7,6 @@ load("@rules_cc//cc:defs.bzl", "cc_binary")
 cc_binary(
     name = "gf_prime_benchmark",
     srcs = ["gf_prime_benchmark.cpp"],
-    copts = ["-std=c++23"],
     deps = [
         "//xgalois",
         "@google_benchmark//:benchmark_main",

@@ -1,1380 +1,705 @@
-
-
 #include <benchmark/benchmark.h>
 #include <sys/resource.h>
-#include <unistd.h>
 
-#include <chrono>
+#include <cstddef>
+#include <cstdint>
 #include <memory>
 #include <random>
-#include <stdexcept>
 #include <vector>
 
 #include "xgalois/field/gf_binary.hpp"
-#include "xgalois/field/gf_element.hpp"
 
-using namespace xg;
+using xg::GaloisFieldBinaryExtension;
+using xg::GF2X;
+using xg::GF2XLOG;
+using xg::GF2XZECH;
+using xg::GFBELogTables;
+using xg::GFBELogTablesOpt;
+using xg::GFBEZechLogTables;
+
+namespace {
+
+constexpr size_t kNumElements = 1024;
+constexpr size_t kElementMask = kNumElements - 1;
+constexpr uint64_t kDefaultSeed = 42;
+constexpr uint64_t kDenomSeed = 1337;
+constexpr uint64_t kExpSeed = 9001;
 
 struct MemoryUsage {
-  size_t peak_rss_kb;
-  size_t current_rss_kb;
-
-  MemoryUsage() : peak_rss_kb(0), current_rss_kb(0) {}
+  size_t peak_rss_kb = 0;
 };
 
-MemoryUsage GetMemoryUsage() {
+[[maybe_unused]] MemoryUsage GetMemoryUsage() {
   MemoryUsage usage;
-
-  struct rusage rusage_data;
+  struct rusage rusage_data {};
   if (getrusage(RUSAGE_SELF, &rusage_data) == 0) {
-    usage.peak_rss_kb = rusage_data.ru_maxrss / 1024;
+#ifdef __APPLE__
+    usage.peak_rss_kb = static_cast<size_t>(rusage_data.ru_maxrss) / 1024;
+#else
+    usage.peak_rss_kb = static_cast<size_t>(rusage_data.ru_maxrss);
+#endif
   }
-
-  pid_t pid = getpid();
-  char command[256];
-  snprintf(command, sizeof(command), "ps -o rss= -p %d", pid);
-
-  FILE* pipe = popen(command, "r");
-  if (pipe) {
-    char buffer[128];
-    if (fgets(buffer, sizeof(buffer), pipe)) {
-      usage.current_rss_kb = atol(buffer);
-    }
-    pclose(pipe);
-  }
-
   return usage;
 }
 
-const std::vector<uint8_t> SMALL_FIELD_DEGREES = {2, 3, 4, 5, 6, 7, 8};
-
-const std::vector<uint8_t> MEDIUM_FIELD_DEGREES = {9,  10, 11, 12,
-                                                   13, 14, 15, 16};
-
-const std::vector<uint8_t> LARGE_FIELD_DEGREES = {17, 18, 19, 20};
-
+// Includes zero operands naturally via seeded field.Random(gen) (works
+// uniformly for standard polynomial representations and Zech-log LOG_ZERO).
 template <typename FieldType>
 std::vector<typename FieldType::element_type> GenerateRandomElements(
-    const std::shared_ptr<FieldType>& field, size_t count, uint32_t seed = 42) {
-  std::mt19937 gen(seed);
+    const FieldType& field, size_t count, uint64_t seed = kDefaultSeed) {
+  std::mt19937_64 gen(seed);
   std::vector<typename FieldType::element_type> elements;
   elements.reserve(count);
-
   for (size_t i = 0; i < count; ++i) {
-    auto elem = field->Random();
-
-    while (elem == 0) {
-      elem = field->Random();
-    }
-    elements.push_back(elem);
+    elements.push_back(field.Random(gen));
   }
-
   return elements;
 }
 
-static void BM_GF2X_Small_Addition(benchmark::State& state) {
-  uint8_t m = static_cast<uint8_t>(state.range(0));
-  auto field = std::make_shared<GaloisFieldBinaryExtension<uint32_t>>(m);
+// Non-zero operands required for division denominators and multiplicative
+// inversion.
+template <typename FieldType>
+std::vector<typename FieldType::element_type> GenerateNonZeroElements(
+    const FieldType& field, size_t count, uint64_t seed = kDenomSeed) {
+  std::mt19937_64 gen(seed);
+  std::vector<typename FieldType::element_type> elements;
+  elements.reserve(count);
+  for (size_t i = 0; i < count; ++i) {
+    auto elem = field.Random(gen);
+    while (field.IsZero(elem)) {
+      elem = field.Random(gen);
+    }
+    elements.push_back(elem);
+  }
+  return elements;
+}
 
-  auto elements = GenerateRandomElements(field, 1000);
+std::vector<uint64_t> GenerateExponents(size_t count, uint64_t max_exp,
+                                        uint64_t seed = kExpSeed) {
+  std::mt19937_64 gen(seed);
+  std::uniform_int_distribution<uint64_t> dist(0, max_exp);
+  std::vector<uint64_t> exponents;
+  exponents.reserve(count);
+  for (size_t i = 0; i < count; ++i) {
+    exponents.push_back(dist(gen));
+  }
+  return exponents;
+}
+
+template <typename FieldType>
+void RecordFieldCounters(benchmark::State& state, const FieldType& field) {
+  state.counters["FieldBytes"] = static_cast<double>(field.MemoryBytes());
+  state.counters["FieldOrder"] = static_cast<double>(field.Order());
+}
+
+template <typename FieldType>
+void BenchAdd(benchmark::State& state, uint8_t m) {
+  auto field = std::make_shared<FieldType>(m);
+  const auto elements = GenerateRandomElements(*field, kNumElements);
   size_t idx = 0;
 
   for (auto _ : state) {
-    auto result = field->Add(elements[idx % elements.size()],
-                             elements[(idx + 1) % elements.size()]);
+    auto result = field->Add(elements[idx & kElementMask],
+                             elements[(idx + 1) & kElementMask]);
     benchmark::DoNotOptimize(result);
-    idx++;
+    ++idx;
   }
 
-  MemoryUsage mem_end = GetMemoryUsage();
-  state.counters["MemoryPeak_KB"] = mem_end.peak_rss_kb;
-  state.counters["FieldOrder"] = field->Order();
+  RecordFieldCounters(state, *field);
 }
 
-static void BM_GF2X_Small_Multiplication(benchmark::State& state) {
-  uint8_t m = static_cast<uint8_t>(state.range(0));
-  auto field = std::make_shared<GaloisFieldBinaryExtension<uint32_t>>(m);
-
-  auto elements = GenerateRandomElements(field, 1000);
+template <typename FieldType>
+void BenchMul(benchmark::State& state, uint8_t m) {
+  auto field = std::make_shared<FieldType>(m);
+  const auto elements = GenerateRandomElements(*field, kNumElements);
   size_t idx = 0;
 
   for (auto _ : state) {
-    auto result = field->Mul(elements[idx % elements.size()],
-                             elements[(idx + 1) % elements.size()]);
+    auto result = field->Mul(elements[idx & kElementMask],
+                             elements[(idx + 1) & kElementMask]);
     benchmark::DoNotOptimize(result);
-    idx++;
+    ++idx;
   }
 
-  MemoryUsage mem_end = GetMemoryUsage();
-  state.counters["MemoryPeak_KB"] = mem_end.peak_rss_kb;
-  state.counters["FieldOrder"] = field->Order();
+  RecordFieldCounters(state, *field);
 }
 
-static void BM_GF2X_Small_Division(benchmark::State& state) {
-  uint8_t m = static_cast<uint8_t>(state.range(0));
-  auto field = std::make_shared<GaloisFieldBinaryExtension<uint32_t>>(m);
-
-  auto elements = GenerateRandomElements(field, 1000);
+template <typename FieldType>
+void BenchDiv(benchmark::State& state, uint8_t m) {
+  auto field = std::make_shared<FieldType>(m);
+  const auto numerators =
+      GenerateRandomElements(*field, kNumElements, kDefaultSeed);
+  const auto denominators =
+      GenerateNonZeroElements(*field, kNumElements, kDenomSeed);
   size_t idx = 0;
 
   for (auto _ : state) {
-    auto result = field->Div(elements[idx % elements.size()],
-                             elements[(idx + 1) % elements.size()]);
+    auto result = field->Div(numerators[idx & kElementMask],
+                             denominators[idx & kElementMask]);
     benchmark::DoNotOptimize(result);
-    idx++;
+    ++idx;
   }
 
-  MemoryUsage mem_end = GetMemoryUsage();
-  state.counters["MemoryPeak_KB"] = mem_end.peak_rss_kb;
-  state.counters["FieldOrder"] = field->Order();
+  RecordFieldCounters(state, *field);
 }
 
-static void BM_GF2X_Small_Inversion(benchmark::State& state) {
-  uint8_t m = static_cast<uint8_t>(state.range(0));
-  auto field = std::make_shared<GaloisFieldBinaryExtension<uint32_t>>(m);
-
-  auto elements = GenerateRandomElements(field, 1000);
+template <typename FieldType>
+void BenchInv(benchmark::State& state, uint8_t m) {
+  auto field = std::make_shared<FieldType>(m);
+  const auto elements =
+      GenerateNonZeroElements(*field, kNumElements, kDefaultSeed);
   size_t idx = 0;
 
   for (auto _ : state) {
-    auto result = field->Inv(elements[idx % elements.size()]);
+    auto result = field->Inv(elements[idx & kElementMask]);
     benchmark::DoNotOptimize(result);
-    idx++;
+    ++idx;
   }
 
-  MemoryUsage mem_end = GetMemoryUsage();
-  state.counters["MemoryPeak_KB"] = mem_end.peak_rss_kb;
-  state.counters["FieldOrder"] = field->Order();
+  RecordFieldCounters(state, *field);
 }
 
-static void BM_GF2X_Small_Exponentiation(benchmark::State& state) {
-  uint8_t m = static_cast<uint8_t>(state.range(0));
-  auto field = std::make_shared<GaloisFieldBinaryExtension<uint32_t>>(m);
-
-  auto elements = GenerateRandomElements(field, 1000);
+template <typename FieldType>
+void BenchPow(benchmark::State& state, uint8_t m, uint64_t max_exp) {
+  auto field = std::make_shared<FieldType>(m);
+  const auto elements = GenerateRandomElements(*field, kNumElements);
+  const auto exponents = GenerateExponents(kNumElements, max_exp);
   size_t idx = 0;
 
   for (auto _ : state) {
-    auto result = field->Pow(elements[idx % elements.size()],
-                             static_cast<uint64_t>(idx % 256 + 1));
+    auto result =
+        field->Pow(elements[idx & kElementMask], exponents[idx & kElementMask]);
     benchmark::DoNotOptimize(result);
-    idx++;
+    ++idx;
   }
 
-  MemoryUsage mem_end = GetMemoryUsage();
-  state.counters["MemoryPeak_KB"] = mem_end.peak_rss_kb;
-  state.counters["FieldOrder"] = field->Order();
+  RecordFieldCounters(state, *field);
 }
 
-static void BM_GF2XLOG_Small_Addition(benchmark::State& state) {
-  uint8_t m = static_cast<uint8_t>(state.range(0));
-  auto field = std::make_shared<GFBELogTables<uint32_t>>(m);
+// ============================================================================
+// Small fields: GF(2^2) .. GF(2^8) (uint32_t)
+// ============================================================================
 
-  auto elements = GenerateRandomElements(field, 1000);
-  size_t idx = 0;
-
-  for (auto _ : state) {
-    auto result = field->Add(elements[idx % elements.size()],
-                             elements[(idx + 1) % elements.size()]);
-    benchmark::DoNotOptimize(result);
-    idx++;
-  }
-
-  MemoryUsage mem_end = GetMemoryUsage();
-  state.counters["MemoryPeak_KB"] = mem_end.peak_rss_kb;
-  state.counters["FieldOrder"] = field->Order();
+void BM_GF2X_Small_Addition(benchmark::State& state) {
+  BenchAdd<GaloisFieldBinaryExtension<uint32_t>>(
+      state, static_cast<uint8_t>(state.range(0)));
+}
+void BM_GF2X_Small_Multiplication(benchmark::State& state) {
+  BenchMul<GaloisFieldBinaryExtension<uint32_t>>(
+      state, static_cast<uint8_t>(state.range(0)));
+}
+void BM_GF2X_Small_Division(benchmark::State& state) {
+  BenchDiv<GaloisFieldBinaryExtension<uint32_t>>(
+      state, static_cast<uint8_t>(state.range(0)));
+}
+void BM_GF2X_Small_Inversion(benchmark::State& state) {
+  BenchInv<GaloisFieldBinaryExtension<uint32_t>>(
+      state, static_cast<uint8_t>(state.range(0)));
+}
+void BM_GF2X_Small_Exponentiation(benchmark::State& state) {
+  BenchPow<GaloisFieldBinaryExtension<uint32_t>>(
+      state, static_cast<uint8_t>(state.range(0)), 256);
 }
 
-static void BM_GF2XLOG_Small_Multiplication(benchmark::State& state) {
-  uint8_t m = static_cast<uint8_t>(state.range(0));
-  auto field = std::make_shared<GFBELogTables<uint32_t>>(m);
-
-  auto elements = GenerateRandomElements(field, 1000);
-  size_t idx = 0;
-
-  for (auto _ : state) {
-    auto result = field->Mul(elements[idx % elements.size()],
-                             elements[(idx + 1) % elements.size()]);
-    benchmark::DoNotOptimize(result);
-    idx++;
-  }
-
-  MemoryUsage mem_end = GetMemoryUsage();
-  state.counters["MemoryPeak_KB"] = mem_end.peak_rss_kb;
-  state.counters["FieldOrder"] = field->Order();
+void BM_GF2XLOG_Small_Addition(benchmark::State& state) {
+  BenchAdd<GFBELogTables<uint32_t>>(state,
+                                    static_cast<uint8_t>(state.range(0)));
+}
+void BM_GF2XLOG_Small_Multiplication(benchmark::State& state) {
+  BenchMul<GFBELogTables<uint32_t>>(state,
+                                    static_cast<uint8_t>(state.range(0)));
+}
+void BM_GF2XLOG_Small_Division(benchmark::State& state) {
+  BenchDiv<GFBELogTables<uint32_t>>(state,
+                                    static_cast<uint8_t>(state.range(0)));
+}
+void BM_GF2XLOG_Small_Inversion(benchmark::State& state) {
+  BenchInv<GFBELogTables<uint32_t>>(state,
+                                    static_cast<uint8_t>(state.range(0)));
+}
+void BM_GF2XLOG_Small_Exponentiation(benchmark::State& state) {
+  BenchPow<GFBELogTables<uint32_t>>(state, static_cast<uint8_t>(state.range(0)),
+                                    256);
 }
 
-static void BM_GF2XLOG_Small_Division(benchmark::State& state) {
-  uint8_t m = static_cast<uint8_t>(state.range(0));
-  auto field = std::make_shared<GFBELogTables<uint32_t>>(m);
-
-  auto elements = GenerateRandomElements(field, 1000);
-  size_t idx = 0;
-
-  for (auto _ : state) {
-    auto result = field->Div(elements[idx % elements.size()],
-                             elements[(idx + 1) % elements.size()]);
-    benchmark::DoNotOptimize(result);
-    idx++;
-  }
-
-  MemoryUsage mem_end = GetMemoryUsage();
-  state.counters["MemoryPeak_KB"] = mem_end.peak_rss_kb;
-  state.counters["FieldOrder"] = field->Order();
+void BM_GF2XLOGOPT_Small_Addition(benchmark::State& state) {
+  BenchAdd<GFBELogTablesOpt<uint32_t>>(state,
+                                       static_cast<uint8_t>(state.range(0)));
+}
+void BM_GF2XLOGOPT_Small_Multiplication(benchmark::State& state) {
+  BenchMul<GFBELogTablesOpt<uint32_t>>(state,
+                                       static_cast<uint8_t>(state.range(0)));
+}
+void BM_GF2XLOGOPT_Small_Division(benchmark::State& state) {
+  BenchDiv<GFBELogTablesOpt<uint32_t>>(state,
+                                       static_cast<uint8_t>(state.range(0)));
+}
+void BM_GF2XLOGOPT_Small_Inversion(benchmark::State& state) {
+  BenchInv<GFBELogTablesOpt<uint32_t>>(state,
+                                       static_cast<uint8_t>(state.range(0)));
+}
+void BM_GF2XLOGOPT_Small_Exponentiation(benchmark::State& state) {
+  BenchPow<GFBELogTablesOpt<uint32_t>>(
+      state, static_cast<uint8_t>(state.range(0)), 256);
 }
 
-static void BM_GF2XLOG_Small_Inversion(benchmark::State& state) {
-  uint8_t m = static_cast<uint8_t>(state.range(0));
-  auto field = std::make_shared<GFBELogTables<uint32_t>>(m);
-
-  auto elements = GenerateRandomElements(field, 1000);
-  size_t idx = 0;
-
-  for (auto _ : state) {
-    auto result = field->Inv(elements[idx % elements.size()]);
-    benchmark::DoNotOptimize(result);
-    idx++;
-  }
-
-  MemoryUsage mem_end = GetMemoryUsage();
-  state.counters["MemoryPeak_KB"] = mem_end.peak_rss_kb;
-  state.counters["FieldOrder"] = field->Order();
+void BM_GF2XZECH_Small_Addition(benchmark::State& state) {
+  BenchAdd<GFBEZechLogTables<uint32_t>>(state,
+                                        static_cast<uint8_t>(state.range(0)));
+}
+void BM_GF2XZECH_Small_Multiplication(benchmark::State& state) {
+  BenchMul<GFBEZechLogTables<uint32_t>>(state,
+                                        static_cast<uint8_t>(state.range(0)));
+}
+void BM_GF2XZECH_Small_Division(benchmark::State& state) {
+  BenchDiv<GFBEZechLogTables<uint32_t>>(state,
+                                        static_cast<uint8_t>(state.range(0)));
+}
+void BM_GF2XZECH_Small_Inversion(benchmark::State& state) {
+  BenchInv<GFBEZechLogTables<uint32_t>>(state,
+                                        static_cast<uint8_t>(state.range(0)));
+}
+void BM_GF2XZECH_Small_Exponentiation(benchmark::State& state) {
+  BenchPow<GFBEZechLogTables<uint32_t>>(
+      state, static_cast<uint8_t>(state.range(0)), 256);
 }
 
-static void BM_GF2XLOG_Small_Exponentiation(benchmark::State& state) {
-  uint8_t m = static_cast<uint8_t>(state.range(0));
-  auto field = std::make_shared<GFBELogTables<uint32_t>>(m);
+// ============================================================================
+// Medium fields: GF(2^9) .. GF(2^16) (uint32_t)
+// ============================================================================
 
-  auto elements = GenerateRandomElements(field, 1000);
-  size_t idx = 0;
-
-  for (auto _ : state) {
-    auto result = field->Pow(elements[idx % elements.size()],
-                             static_cast<uint64_t>(idx % 256 + 1));
-    benchmark::DoNotOptimize(result);
-    idx++;
-  }
-
-  MemoryUsage mem_end = GetMemoryUsage();
-  state.counters["MemoryPeak_KB"] = mem_end.peak_rss_kb;
-  state.counters["FieldOrder"] = field->Order();
+void BM_GF2X_Medium_Addition(benchmark::State& state) {
+  BenchAdd<GaloisFieldBinaryExtension<uint32_t>>(
+      state, static_cast<uint8_t>(state.range(0)));
+}
+void BM_GF2X_Medium_Multiplication(benchmark::State& state) {
+  BenchMul<GaloisFieldBinaryExtension<uint32_t>>(
+      state, static_cast<uint8_t>(state.range(0)));
+}
+void BM_GF2X_Medium_Division(benchmark::State& state) {
+  BenchDiv<GaloisFieldBinaryExtension<uint32_t>>(
+      state, static_cast<uint8_t>(state.range(0)));
+}
+void BM_GF2X_Medium_Inversion(benchmark::State& state) {
+  BenchInv<GaloisFieldBinaryExtension<uint32_t>>(
+      state, static_cast<uint8_t>(state.range(0)));
+}
+void BM_GF2X_Medium_Exponentiation(benchmark::State& state) {
+  BenchPow<GaloisFieldBinaryExtension<uint32_t>>(
+      state, static_cast<uint8_t>(state.range(0)), 1024);
 }
 
-static void BM_GF2XLOGOPT_Small_Addition(benchmark::State& state) {
-  uint8_t m = static_cast<uint8_t>(state.range(0));
-  auto field = std::make_shared<GFBELogTablesOpt<uint32_t>>(m);
-
-  auto elements = GenerateRandomElements(field, 1000);
-  size_t idx = 0;
-
-  for (auto _ : state) {
-    auto result = field->Add(elements[idx % elements.size()],
-                             elements[(idx + 1) % elements.size()]);
-    benchmark::DoNotOptimize(result);
-    idx++;
-  }
-
-  MemoryUsage mem_end = GetMemoryUsage();
-  state.counters["MemoryPeak_KB"] = mem_end.peak_rss_kb;
-  state.counters["FieldOrder"] = field->Order();
+void BM_GF2XLOG_Medium_Addition(benchmark::State& state) {
+  BenchAdd<GFBELogTables<uint32_t>>(state,
+                                    static_cast<uint8_t>(state.range(0)));
+}
+void BM_GF2XLOG_Medium_Multiplication(benchmark::State& state) {
+  BenchMul<GFBELogTables<uint32_t>>(state,
+                                    static_cast<uint8_t>(state.range(0)));
+}
+void BM_GF2XLOG_Medium_Division(benchmark::State& state) {
+  BenchDiv<GFBELogTables<uint32_t>>(state,
+                                    static_cast<uint8_t>(state.range(0)));
+}
+void BM_GF2XLOG_Medium_Inversion(benchmark::State& state) {
+  BenchInv<GFBELogTables<uint32_t>>(state,
+                                    static_cast<uint8_t>(state.range(0)));
+}
+void BM_GF2XLOG_Medium_Exponentiation(benchmark::State& state) {
+  BenchPow<GFBELogTables<uint32_t>>(state, static_cast<uint8_t>(state.range(0)),
+                                    1024);
 }
 
-static void BM_GF2XLOGOPT_Small_Multiplication(benchmark::State& state) {
-  uint8_t m = static_cast<uint8_t>(state.range(0));
-  auto field = std::make_shared<GFBELogTablesOpt<uint32_t>>(m);
-
-  auto elements = GenerateRandomElements(field, 1000);
-  size_t idx = 0;
-
-  for (auto _ : state) {
-    auto result = field->Mul(elements[idx % elements.size()],
-                             elements[(idx + 1) % elements.size()]);
-    benchmark::DoNotOptimize(result);
-    idx++;
-  }
-
-  MemoryUsage mem_end = GetMemoryUsage();
-  state.counters["MemoryPeak_KB"] = mem_end.peak_rss_kb;
-  state.counters["FieldOrder"] = field->Order();
+void BM_GF2XLOGOPT_Medium_Addition(benchmark::State& state) {
+  BenchAdd<GFBELogTablesOpt<uint32_t>>(state,
+                                       static_cast<uint8_t>(state.range(0)));
+}
+void BM_GF2XLOGOPT_Medium_Multiplication(benchmark::State& state) {
+  BenchMul<GFBELogTablesOpt<uint32_t>>(state,
+                                       static_cast<uint8_t>(state.range(0)));
+}
+void BM_GF2XLOGOPT_Medium_Division(benchmark::State& state) {
+  BenchDiv<GFBELogTablesOpt<uint32_t>>(state,
+                                       static_cast<uint8_t>(state.range(0)));
+}
+void BM_GF2XLOGOPT_Medium_Inversion(benchmark::State& state) {
+  BenchInv<GFBELogTablesOpt<uint32_t>>(state,
+                                       static_cast<uint8_t>(state.range(0)));
+}
+void BM_GF2XLOGOPT_Medium_Exponentiation(benchmark::State& state) {
+  BenchPow<GFBELogTablesOpt<uint32_t>>(
+      state, static_cast<uint8_t>(state.range(0)), 1024);
 }
 
-static void BM_GF2XLOGOPT_Small_Division(benchmark::State& state) {
-  uint8_t m = static_cast<uint8_t>(state.range(0));
-  auto field = std::make_shared<GFBELogTablesOpt<uint32_t>>(m);
-
-  auto elements = GenerateRandomElements(field, 1000);
-  size_t idx = 0;
-
-  for (auto _ : state) {
-    auto result = field->Div(elements[idx % elements.size()],
-                             elements[(idx + 1) % elements.size()]);
-    benchmark::DoNotOptimize(result);
-    idx++;
-  }
-
-  MemoryUsage mem_end = GetMemoryUsage();
-  state.counters["MemoryPeak_KB"] = mem_end.peak_rss_kb;
-  state.counters["FieldOrder"] = field->Order();
+void BM_GF2XZECH_Medium_Addition(benchmark::State& state) {
+  BenchAdd<GFBEZechLogTables<uint32_t>>(state,
+                                        static_cast<uint8_t>(state.range(0)));
+}
+void BM_GF2XZECH_Medium_Multiplication(benchmark::State& state) {
+  BenchMul<GFBEZechLogTables<uint32_t>>(state,
+                                        static_cast<uint8_t>(state.range(0)));
+}
+void BM_GF2XZECH_Medium_Division(benchmark::State& state) {
+  BenchDiv<GFBEZechLogTables<uint32_t>>(state,
+                                        static_cast<uint8_t>(state.range(0)));
+}
+void BM_GF2XZECH_Medium_Inversion(benchmark::State& state) {
+  BenchInv<GFBEZechLogTables<uint32_t>>(state,
+                                        static_cast<uint8_t>(state.range(0)));
+}
+void BM_GF2XZECH_Medium_Exponentiation(benchmark::State& state) {
+  BenchPow<GFBEZechLogTables<uint32_t>>(
+      state, static_cast<uint8_t>(state.range(0)), 1024);
 }
 
-static void BM_GF2XLOGOPT_Small_Inversion(benchmark::State& state) {
-  uint8_t m = static_cast<uint8_t>(state.range(0));
-  auto field = std::make_shared<GFBELogTablesOpt<uint32_t>>(m);
+// ============================================================================
+// Large fields: GF(2^17) .. GF(2^20) (matching uint32_t across all 4)
+// ============================================================================
 
-  auto elements = GenerateRandomElements(field, 1000);
-  size_t idx = 0;
-
-  for (auto _ : state) {
-    auto result = field->Inv(elements[idx % elements.size()]);
-    benchmark::DoNotOptimize(result);
-    idx++;
-  }
-
-  MemoryUsage mem_end = GetMemoryUsage();
-  state.counters["MemoryPeak_KB"] = mem_end.peak_rss_kb;
-  state.counters["FieldOrder"] = field->Order();
+void BM_GF2X_Large_Addition(benchmark::State& state) {
+  BenchAdd<GaloisFieldBinaryExtension<uint32_t>>(
+      state, static_cast<uint8_t>(state.range(0)));
+}
+void BM_GF2X_Large_Multiplication(benchmark::State& state) {
+  BenchMul<GaloisFieldBinaryExtension<uint32_t>>(
+      state, static_cast<uint8_t>(state.range(0)));
+}
+void BM_GF2X_Large_Division(benchmark::State& state) {
+  BenchDiv<GaloisFieldBinaryExtension<uint32_t>>(
+      state, static_cast<uint8_t>(state.range(0)));
+}
+void BM_GF2X_Large_Inversion(benchmark::State& state) {
+  BenchInv<GaloisFieldBinaryExtension<uint32_t>>(
+      state, static_cast<uint8_t>(state.range(0)));
+}
+void BM_GF2X_Large_Exponentiation(benchmark::State& state) {
+  BenchPow<GaloisFieldBinaryExtension<uint32_t>>(
+      state, static_cast<uint8_t>(state.range(0)), 4096);
 }
 
-static void BM_GF2XLOGOPT_Small_Exponentiation(benchmark::State& state) {
-  uint8_t m = static_cast<uint8_t>(state.range(0));
-  auto field = std::make_shared<GFBELogTablesOpt<uint32_t>>(m);
-
-  auto elements = GenerateRandomElements(field, 1000);
-  size_t idx = 0;
-
-  for (auto _ : state) {
-    auto result = field->Pow(elements[idx % elements.size()],
-                             static_cast<uint64_t>(idx % 256 + 1));
-    benchmark::DoNotOptimize(result);
-    idx++;
-  }
-
-  MemoryUsage mem_end = GetMemoryUsage();
-  state.counters["MemoryPeak_KB"] = mem_end.peak_rss_kb;
-  state.counters["FieldOrder"] = field->Order();
+void BM_GF2XLOG_Large_Addition(benchmark::State& state) {
+  BenchAdd<GFBELogTables<uint32_t>>(state,
+                                    static_cast<uint8_t>(state.range(0)));
+}
+void BM_GF2XLOG_Large_Multiplication(benchmark::State& state) {
+  BenchMul<GFBELogTables<uint32_t>>(state,
+                                    static_cast<uint8_t>(state.range(0)));
+}
+void BM_GF2XLOG_Large_Division(benchmark::State& state) {
+  BenchDiv<GFBELogTables<uint32_t>>(state,
+                                    static_cast<uint8_t>(state.range(0)));
+}
+void BM_GF2XLOG_Large_Inversion(benchmark::State& state) {
+  BenchInv<GFBELogTables<uint32_t>>(state,
+                                    static_cast<uint8_t>(state.range(0)));
+}
+void BM_GF2XLOG_Large_Exponentiation(benchmark::State& state) {
+  BenchPow<GFBELogTables<uint32_t>>(state, static_cast<uint8_t>(state.range(0)),
+                                    4096);
 }
 
-static void BM_GF2XZECH_Small_Addition(benchmark::State& state) {
-  uint8_t m = static_cast<uint8_t>(state.range(0));
-  auto field = std::make_shared<GFBEZechLogTables<uint32_t>>(m);
-
-  std::mt19937 gen(42);
-  std::uniform_int_distribution<uint64_t> dis(0, field->Order() - 2);
-
-  std::vector<uint32_t> log_elements;
-  for (size_t i = 0; i < 1000; ++i) {
-    log_elements.push_back(static_cast<uint32_t>(dis(gen)));
-  }
-
-  size_t idx = 0;
-
-  for (auto _ : state) {
-    auto result = field->Add(log_elements[idx % log_elements.size()],
-                             log_elements[(idx + 1) % log_elements.size()]);
-    benchmark::DoNotOptimize(result);
-    idx++;
-  }
-
-  MemoryUsage mem_end = GetMemoryUsage();
-  state.counters["MemoryPeak_KB"] = mem_end.peak_rss_kb;
-  state.counters["FieldOrder"] = field->Order();
+void BM_GF2XLOGOPT_Large_Addition(benchmark::State& state) {
+  BenchAdd<GFBELogTablesOpt<uint32_t>>(state,
+                                       static_cast<uint8_t>(state.range(0)));
+}
+void BM_GF2XLOGOPT_Large_Multiplication(benchmark::State& state) {
+  BenchMul<GFBELogTablesOpt<uint32_t>>(state,
+                                       static_cast<uint8_t>(state.range(0)));
+}
+void BM_GF2XLOGOPT_Large_Division(benchmark::State& state) {
+  BenchDiv<GFBELogTablesOpt<uint32_t>>(state,
+                                       static_cast<uint8_t>(state.range(0)));
+}
+void BM_GF2XLOGOPT_Large_Inversion(benchmark::State& state) {
+  BenchInv<GFBELogTablesOpt<uint32_t>>(state,
+                                       static_cast<uint8_t>(state.range(0)));
+}
+void BM_GF2XLOGOPT_Large_Exponentiation(benchmark::State& state) {
+  BenchPow<GFBELogTablesOpt<uint32_t>>(
+      state, static_cast<uint8_t>(state.range(0)), 4096);
 }
 
-static void BM_GF2XZECH_Small_Multiplication(benchmark::State& state) {
-  uint8_t m = static_cast<uint8_t>(state.range(0));
-  auto field = std::make_shared<GFBEZechLogTables<uint32_t>>(m);
-
-  std::mt19937 gen(42);
-  std::uniform_int_distribution<uint64_t> dis(0, field->Order() - 2);
-
-  std::vector<uint32_t> log_elements;
-  for (size_t i = 0; i < 1000; ++i) {
-    log_elements.push_back(static_cast<uint32_t>(dis(gen)));
-  }
-
-  size_t idx = 0;
-
-  for (auto _ : state) {
-    auto result = field->Mul(log_elements[idx % log_elements.size()],
-                             log_elements[(idx + 1) % log_elements.size()]);
-    benchmark::DoNotOptimize(result);
-    idx++;
-  }
-
-  MemoryUsage mem_end = GetMemoryUsage();
-  state.counters["MemoryPeak_KB"] = mem_end.peak_rss_kb;
-  state.counters["FieldOrder"] = field->Order();
+void BM_GF2XZECH_Large_Addition(benchmark::State& state) {
+  BenchAdd<GFBEZechLogTables<uint32_t>>(state,
+                                        static_cast<uint8_t>(state.range(0)));
+}
+void BM_GF2XZECH_Large_Multiplication(benchmark::State& state) {
+  BenchMul<GFBEZechLogTables<uint32_t>>(state,
+                                        static_cast<uint8_t>(state.range(0)));
+}
+void BM_GF2XZECH_Large_Division(benchmark::State& state) {
+  BenchDiv<GFBEZechLogTables<uint32_t>>(state,
+                                        static_cast<uint8_t>(state.range(0)));
+}
+void BM_GF2XZECH_Large_Inversion(benchmark::State& state) {
+  BenchInv<GFBEZechLogTables<uint32_t>>(state,
+                                        static_cast<uint8_t>(state.range(0)));
+}
+void BM_GF2XZECH_Large_Exponentiation(benchmark::State& state) {
+  BenchPow<GFBEZechLogTables<uint32_t>>(
+      state, static_cast<uint8_t>(state.range(0)), 4096);
 }
 
-static void BM_GF2XZECH_Small_Division(benchmark::State& state) {
-  uint8_t m = static_cast<uint8_t>(state.range(0));
-  auto field = std::make_shared<GFBEZechLogTables<uint32_t>>(m);
+// ============================================================================
+// GF(2^8) uint8_t comparison across GF2X, GF2XLOG, GF2XZECH
+// ============================================================================
 
-  std::mt19937 gen(42);
-  std::uniform_int_distribution<uint64_t> dis(0, field->Order() - 2);
-
-  std::vector<uint32_t> log_elements;
-  for (size_t i = 0; i < 1000; ++i) {
-    log_elements.push_back(static_cast<uint32_t>(dis(gen)));
-  }
-
-  size_t idx = 0;
-
-  for (auto _ : state) {
-    auto result = field->Div(log_elements[idx % log_elements.size()],
-                             log_elements[(idx + 1) % log_elements.size()]);
-    benchmark::DoNotOptimize(result);
-    idx++;
-  }
-
-  MemoryUsage mem_end = GetMemoryUsage();
-  state.counters["MemoryPeak_KB"] = mem_end.peak_rss_kb;
-  state.counters["FieldOrder"] = field->Order();
+void BM_GF2X_U8_GF256_Addition(benchmark::State& state) {
+  BenchAdd<GF2X<uint8_t>>(state, 8);
+}
+void BM_GF2X_U8_GF256_Multiplication(benchmark::State& state) {
+  BenchMul<GF2X<uint8_t>>(state, 8);
+}
+void BM_GF2X_U8_GF256_Division(benchmark::State& state) {
+  BenchDiv<GF2X<uint8_t>>(state, 8);
+}
+void BM_GF2X_U8_GF256_Inversion(benchmark::State& state) {
+  BenchInv<GF2X<uint8_t>>(state, 8);
+}
+void BM_GF2X_U8_GF256_Exponentiation(benchmark::State& state) {
+  BenchPow<GF2X<uint8_t>>(state, 8, 256);
 }
 
-static void BM_GF2XZECH_Small_Inversion(benchmark::State& state) {
-  uint8_t m = static_cast<uint8_t>(state.range(0));
-  auto field = std::make_shared<GFBEZechLogTables<uint32_t>>(m);
-
-  std::mt19937 gen(42);
-  std::uniform_int_distribution<uint64_t> dis(0, field->Order() - 2);
-
-  std::vector<uint32_t> log_elements;
-  for (size_t i = 0; i < 1000; ++i) {
-    log_elements.push_back(static_cast<uint32_t>(dis(gen)));
-  }
-
-  size_t idx = 0;
-
-  for (auto _ : state) {
-    auto result = field->Inv(log_elements[idx % log_elements.size()]);
-    benchmark::DoNotOptimize(result);
-    idx++;
-  }
-
-  MemoryUsage mem_end = GetMemoryUsage();
-  state.counters["MemoryPeak_KB"] = mem_end.peak_rss_kb;
-  state.counters["FieldOrder"] = field->Order();
+void BM_GF2XLOG_U8_GF256_Addition(benchmark::State& state) {
+  BenchAdd<GF2XLOG<uint8_t>>(state, 8);
+}
+void BM_GF2XLOG_U8_GF256_Multiplication(benchmark::State& state) {
+  BenchMul<GF2XLOG<uint8_t>>(state, 8);
+}
+void BM_GF2XLOG_U8_GF256_Division(benchmark::State& state) {
+  BenchDiv<GF2XLOG<uint8_t>>(state, 8);
+}
+void BM_GF2XLOG_U8_GF256_Inversion(benchmark::State& state) {
+  BenchInv<GF2XLOG<uint8_t>>(state, 8);
+}
+void BM_GF2XLOG_U8_GF256_Exponentiation(benchmark::State& state) {
+  BenchPow<GF2XLOG<uint8_t>>(state, 8, 256);
 }
 
-static void BM_GF2XZECH_Small_Exponentiation(benchmark::State& state) {
-  uint8_t m = static_cast<uint8_t>(state.range(0));
-  auto field = std::make_shared<GFBEZechLogTables<uint32_t>>(m);
-
-  std::mt19937 gen(42);
-  std::uniform_int_distribution<uint64_t> dis(0, field->Order() - 2);
-
-  std::vector<uint32_t> log_elements;
-  for (size_t i = 0; i < 1000; ++i) {
-    log_elements.push_back(static_cast<uint32_t>(dis(gen)));
-  }
-
-  size_t idx = 0;
-
-  for (auto _ : state) {
-    auto result = field->Pow(log_elements[idx % log_elements.size()],
-                             static_cast<uint64_t>(idx % 256 + 1));
-    benchmark::DoNotOptimize(result);
-    idx++;
-  }
-
-  MemoryUsage mem_end = GetMemoryUsage();
-  state.counters["MemoryPeak_KB"] = mem_end.peak_rss_kb;
-  state.counters["FieldOrder"] = field->Order();
+void BM_GF2XZECH_U8_GF256_Addition(benchmark::State& state) {
+  BenchAdd<GF2XZECH<uint8_t>>(state, 8);
+}
+void BM_GF2XZECH_U8_GF256_Multiplication(benchmark::State& state) {
+  BenchMul<GF2XZECH<uint8_t>>(state, 8);
+}
+void BM_GF2XZECH_U8_GF256_Division(benchmark::State& state) {
+  BenchDiv<GF2XZECH<uint8_t>>(state, 8);
+}
+void BM_GF2XZECH_U8_GF256_Inversion(benchmark::State& state) {
+  BenchInv<GF2XZECH<uint8_t>>(state, 8);
+}
+void BM_GF2XZECH_U8_GF256_Exponentiation(benchmark::State& state) {
+  BenchPow<GF2XZECH<uint8_t>>(state, 8, 256);
 }
 
-static void BM_GF2X_Medium_Addition(benchmark::State& state) {
-  uint8_t m = static_cast<uint8_t>(state.range(0));
-  auto field = std::make_shared<GaloisFieldBinaryExtension<uint32_t>>(m);
-
-  auto elements = GenerateRandomElements(field, 500);
-  size_t idx = 0;
-
-  for (auto _ : state) {
-    auto result = field->Add(elements[idx % elements.size()],
-                             elements[(idx + 1) % elements.size()]);
-    benchmark::DoNotOptimize(result);
-    idx++;
-  }
-
-  MemoryUsage mem_end = GetMemoryUsage();
-  state.counters["MemoryPeak_KB"] = mem_end.peak_rss_kb;
-  state.counters["FieldOrder"] = field->Order();
-}
-
-static void BM_GF2X_Medium_Multiplication(benchmark::State& state) {
-  uint8_t m = static_cast<uint8_t>(state.range(0));
-  auto field = std::make_shared<GaloisFieldBinaryExtension<uint32_t>>(m);
-
-  auto elements = GenerateRandomElements(field, 500);
-  size_t idx = 0;
-
-  for (auto _ : state) {
-    auto result = field->Mul(elements[idx % elements.size()],
-                             elements[(idx + 1) % elements.size()]);
-    benchmark::DoNotOptimize(result);
-    idx++;
-  }
-
-  MemoryUsage mem_end = GetMemoryUsage();
-  state.counters["MemoryPeak_KB"] = mem_end.peak_rss_kb;
-  state.counters["FieldOrder"] = field->Order();
-}
-
-static void BM_GF2X_Medium_Division(benchmark::State& state) {
-  uint8_t m = static_cast<uint8_t>(state.range(0));
-  auto field = std::make_shared<GaloisFieldBinaryExtension<uint32_t>>(m);
-
-  auto elements = GenerateRandomElements(field, 500);
-  size_t idx = 0;
-
-  for (auto _ : state) {
-    auto result = field->Div(elements[idx % elements.size()],
-                             elements[(idx + 1) % elements.size()]);
-    benchmark::DoNotOptimize(result);
-    idx++;
-  }
-
-  MemoryUsage mem_end = GetMemoryUsage();
-  state.counters["MemoryPeak_KB"] = mem_end.peak_rss_kb;
-  state.counters["FieldOrder"] = field->Order();
-}
-
-static void BM_GF2X_Medium_Inversion(benchmark::State& state) {
-  uint8_t m = static_cast<uint8_t>(state.range(0));
-  auto field = std::make_shared<GaloisFieldBinaryExtension<uint32_t>>(m);
-
-  auto elements = GenerateRandomElements(field, 500);
-  size_t idx = 0;
-
-  for (auto _ : state) {
-    auto result = field->Inv(elements[idx % elements.size()]);
-    benchmark::DoNotOptimize(result);
-    idx++;
-  }
-
-  MemoryUsage mem_end = GetMemoryUsage();
-  state.counters["MemoryPeak_KB"] = mem_end.peak_rss_kb;
-  state.counters["FieldOrder"] = field->Order();
-}
-
-static void BM_GF2X_Medium_Exponentiation(benchmark::State& state) {
-  uint8_t m = static_cast<uint8_t>(state.range(0));
-  auto field = std::make_shared<GaloisFieldBinaryExtension<uint32_t>>(m);
-
-  auto elements = GenerateRandomElements(field, 500);
-  size_t idx = 0;
-
-  for (auto _ : state) {
-    auto result = field->Pow(elements[idx % elements.size()],
-                             static_cast<uint64_t>(idx % 1024 + 1));
-    benchmark::DoNotOptimize(result);
-    idx++;
-  }
-
-  MemoryUsage mem_end = GetMemoryUsage();
-  state.counters["MemoryPeak_KB"] = mem_end.peak_rss_kb;
-  state.counters["FieldOrder"] = field->Order();
-}
-
-static void BM_GF2XLOG_Medium_Addition(benchmark::State& state) {
-  uint8_t m = static_cast<uint8_t>(state.range(0));
-  auto field = std::make_shared<GFBELogTables<uint32_t>>(m);
-
-  auto elements = GenerateRandomElements(field, 500);
-  size_t idx = 0;
-
-  for (auto _ : state) {
-    auto result = field->Add(elements[idx % elements.size()],
-                             elements[(idx + 1) % elements.size()]);
-    benchmark::DoNotOptimize(result);
-    idx++;
-  }
-
-  MemoryUsage mem_end = GetMemoryUsage();
-  state.counters["MemoryPeak_KB"] = mem_end.peak_rss_kb;
-  state.counters["FieldOrder"] = field->Order();
-}
-
-static void BM_GF2XLOG_Medium_Multiplication(benchmark::State& state) {
-  uint8_t m = static_cast<uint8_t>(state.range(0));
-  auto field = std::make_shared<GFBELogTables<uint32_t>>(m);
-
-  auto elements = GenerateRandomElements(field, 500);
-  size_t idx = 0;
-
-  for (auto _ : state) {
-    auto result = field->Mul(elements[idx % elements.size()],
-                             elements[(idx + 1) % elements.size()]);
-    benchmark::DoNotOptimize(result);
-    idx++;
-  }
-
-  MemoryUsage mem_end = GetMemoryUsage();
-  state.counters["MemoryPeak_KB"] = mem_end.peak_rss_kb;
-  state.counters["FieldOrder"] = field->Order();
-}
-
-static void BM_GF2XLOG_Medium_Division(benchmark::State& state) {
-  uint8_t m = static_cast<uint8_t>(state.range(0));
-  auto field = std::make_shared<GFBELogTables<uint32_t>>(m);
-
-  auto elements = GenerateRandomElements(field, 500);
-  size_t idx = 0;
-
-  for (auto _ : state) {
-    auto result = field->Div(elements[idx % elements.size()],
-                             elements[(idx + 1) % elements.size()]);
-    benchmark::DoNotOptimize(result);
-    idx++;
-  }
-
-  MemoryUsage mem_end = GetMemoryUsage();
-  state.counters["MemoryPeak_KB"] = mem_end.peak_rss_kb;
-  state.counters["FieldOrder"] = field->Order();
-}
-
-static void BM_GF2XLOG_Medium_Inversion(benchmark::State& state) {
-  uint8_t m = static_cast<uint8_t>(state.range(0));
-  auto field = std::make_shared<GFBELogTables<uint32_t>>(m);
-
-  auto elements = GenerateRandomElements(field, 500);
-  size_t idx = 0;
-
-  for (auto _ : state) {
-    auto result = field->Inv(elements[idx % elements.size()]);
-    benchmark::DoNotOptimize(result);
-    idx++;
-  }
-
-  MemoryUsage mem_end = GetMemoryUsage();
-  state.counters["MemoryPeak_KB"] = mem_end.peak_rss_kb;
-  state.counters["FieldOrder"] = field->Order();
-}
-
-static void BM_GF2XLOG_Medium_Exponentiation(benchmark::State& state) {
-  uint8_t m = static_cast<uint8_t>(state.range(0));
-  auto field = std::make_shared<GFBELogTables<uint32_t>>(m);
-
-  auto elements = GenerateRandomElements(field, 500);
-  size_t idx = 0;
-
-  for (auto _ : state) {
-    auto result = field->Pow(elements[idx % elements.size()],
-                             static_cast<uint64_t>(idx % 1024 + 1));
-    benchmark::DoNotOptimize(result);
-    idx++;
-  }
-
-  MemoryUsage mem_end = GetMemoryUsage();
-  state.counters["MemoryPeak_KB"] = mem_end.peak_rss_kb;
-  state.counters["FieldOrder"] = field->Order();
-}
-
-static void BM_GF2XLOGOPT_Medium_Addition(benchmark::State& state) {
-  uint8_t m = static_cast<uint8_t>(state.range(0));
-  auto field = std::make_shared<GFBELogTablesOpt<uint32_t>>(m);
-
-  auto elements = GenerateRandomElements(field, 500);
-  size_t idx = 0;
-
-  for (auto _ : state) {
-    auto result = field->Add(elements[idx % elements.size()],
-                             elements[(idx + 1) % elements.size()]);
-    benchmark::DoNotOptimize(result);
-    idx++;
-  }
-
-  MemoryUsage mem_end = GetMemoryUsage();
-  state.counters["MemoryPeak_KB"] = mem_end.peak_rss_kb;
-  state.counters["FieldOrder"] = field->Order();
-}
-
-static void BM_GF2XLOGOPT_Medium_Multiplication(benchmark::State& state) {
-  uint8_t m = static_cast<uint8_t>(state.range(0));
-  auto field = std::make_shared<GFBELogTablesOpt<uint32_t>>(m);
-
-  auto elements = GenerateRandomElements(field, 500);
-  size_t idx = 0;
-
-  for (auto _ : state) {
-    auto result = field->Mul(elements[idx % elements.size()],
-                             elements[(idx + 1) % elements.size()]);
-    benchmark::DoNotOptimize(result);
-    idx++;
-  }
-
-  MemoryUsage mem_end = GetMemoryUsage();
-  state.counters["MemoryPeak_KB"] = mem_end.peak_rss_kb;
-  state.counters["FieldOrder"] = field->Order();
-}
-
-static void BM_GF2XLOGOPT_Medium_Division(benchmark::State& state) {
-  uint8_t m = static_cast<uint8_t>(state.range(0));
-  auto field = std::make_shared<GFBELogTablesOpt<uint32_t>>(m);
-
-  auto elements = GenerateRandomElements(field, 500);
-  size_t idx = 0;
-
-  for (auto _ : state) {
-    auto result = field->Div(elements[idx % elements.size()],
-                             elements[(idx + 1) % elements.size()]);
-    benchmark::DoNotOptimize(result);
-    idx++;
-  }
-
-  MemoryUsage mem_end = GetMemoryUsage();
-  state.counters["MemoryPeak_KB"] = mem_end.peak_rss_kb;
-  state.counters["FieldOrder"] = field->Order();
-}
-
-static void BM_GF2XLOGOPT_Medium_Inversion(benchmark::State& state) {
-  uint8_t m = static_cast<uint8_t>(state.range(0));
-  auto field = std::make_shared<GFBELogTablesOpt<uint32_t>>(m);
-
-  auto elements = GenerateRandomElements(field, 500);
-  size_t idx = 0;
-
-  for (auto _ : state) {
-    auto result = field->Inv(elements[idx % elements.size()]);
-    benchmark::DoNotOptimize(result);
-    idx++;
-  }
-
-  MemoryUsage mem_end = GetMemoryUsage();
-  state.counters["MemoryPeak_KB"] = mem_end.peak_rss_kb;
-  state.counters["FieldOrder"] = field->Order();
-}
-
-static void BM_GF2XLOGOPT_Medium_Exponentiation(benchmark::State& state) {
-  uint8_t m = static_cast<uint8_t>(state.range(0));
-  auto field = std::make_shared<GFBELogTablesOpt<uint32_t>>(m);
-
-  auto elements = GenerateRandomElements(field, 500);
-  size_t idx = 0;
-
-  for (auto _ : state) {
-    auto result = field->Pow(elements[idx % elements.size()],
-                             static_cast<uint64_t>(idx % 1024 + 1));
-    benchmark::DoNotOptimize(result);
-    idx++;
-  }
-
-  MemoryUsage mem_end = GetMemoryUsage();
-  state.counters["MemoryPeak_KB"] = mem_end.peak_rss_kb;
-  state.counters["FieldOrder"] = field->Order();
-}
-
-static void BM_GF2XZECH_Medium_Addition(benchmark::State& state) {
-  uint8_t m = static_cast<uint8_t>(state.range(0));
-  auto field = std::make_shared<GFBEZechLogTables<uint32_t>>(m);
-
-  std::mt19937 gen(42);
-  std::uniform_int_distribution<uint64_t> dis(0, field->Order() - 2);
-
-  std::vector<uint32_t> log_elements;
-  for (size_t i = 0; i < 500; ++i) {
-    log_elements.push_back(static_cast<uint32_t>(dis(gen)));
-  }
-
-  size_t idx = 0;
-
-  for (auto _ : state) {
-    auto result = field->Add(log_elements[idx % log_elements.size()],
-                             log_elements[(idx + 1) % log_elements.size()]);
-    benchmark::DoNotOptimize(result);
-    idx++;
-  }
-
-  MemoryUsage mem_end = GetMemoryUsage();
-  state.counters["MemoryPeak_KB"] = mem_end.peak_rss_kb;
-  state.counters["FieldOrder"] = field->Order();
-}
-
-static void BM_GF2XZECH_Medium_Multiplication(benchmark::State& state) {
-  uint8_t m = static_cast<uint8_t>(state.range(0));
-  auto field = std::make_shared<GFBEZechLogTables<uint32_t>>(m);
-
-  std::mt19937 gen(42);
-  std::uniform_int_distribution<uint64_t> dis(0, field->Order() - 2);
-
-  std::vector<uint32_t> log_elements;
-  for (size_t i = 0; i < 500; ++i) {
-    log_elements.push_back(static_cast<uint32_t>(dis(gen)));
-  }
-
-  size_t idx = 0;
-
-  for (auto _ : state) {
-    auto result = field->Mul(log_elements[idx % log_elements.size()],
-                             log_elements[(idx + 1) % log_elements.size()]);
-    benchmark::DoNotOptimize(result);
-    idx++;
-  }
-
-  MemoryUsage mem_end = GetMemoryUsage();
-  state.counters["MemoryPeak_KB"] = mem_end.peak_rss_kb;
-  state.counters["FieldOrder"] = field->Order();
-}
-
-static void BM_GF2XZECH_Medium_Division(benchmark::State& state) {
-  uint8_t m = static_cast<uint8_t>(state.range(0));
-  auto field = std::make_shared<GFBEZechLogTables<uint32_t>>(m);
-
-  std::mt19937 gen(42);
-  std::uniform_int_distribution<uint64_t> dis(0, field->Order() - 2);
-
-  std::vector<uint32_t> log_elements;
-  for (size_t i = 0; i < 500; ++i) {
-    log_elements.push_back(static_cast<uint32_t>(dis(gen)));
-  }
-
-  size_t idx = 0;
-
-  for (auto _ : state) {
-    auto result = field->Div(log_elements[idx % log_elements.size()],
-                             log_elements[(idx + 1) % log_elements.size()]);
-    benchmark::DoNotOptimize(result);
-    idx++;
-  }
-
-  MemoryUsage mem_end = GetMemoryUsage();
-  state.counters["MemoryPeak_KB"] = mem_end.peak_rss_kb;
-  state.counters["FieldOrder"] = field->Order();
-}
-
-static void BM_GF2XZECH_Medium_Inversion(benchmark::State& state) {
-  uint8_t m = static_cast<uint8_t>(state.range(0));
-  auto field = std::make_shared<GFBEZechLogTables<uint32_t>>(m);
-
-  std::mt19937 gen(42);
-  std::uniform_int_distribution<uint64_t> dis(0, field->Order() - 2);
-
-  std::vector<uint32_t> log_elements;
-  for (size_t i = 0; i < 500; ++i) {
-    log_elements.push_back(static_cast<uint32_t>(dis(gen)));
-  }
-
-  size_t idx = 0;
-
-  for (auto _ : state) {
-    auto result = field->Inv(log_elements[idx % log_elements.size()]);
-    benchmark::DoNotOptimize(result);
-    idx++;
-  }
-
-  MemoryUsage mem_end = GetMemoryUsage();
-  state.counters["MemoryPeak_KB"] = mem_end.peak_rss_kb;
-  state.counters["FieldOrder"] = field->Order();
-}
-
-static void BM_GF2XZECH_Medium_Exponentiation(benchmark::State& state) {
-  uint8_t m = static_cast<uint8_t>(state.range(0));
-  auto field = std::make_shared<GFBEZechLogTables<uint32_t>>(m);
-
-  std::mt19937 gen(42);
-  std::uniform_int_distribution<uint64_t> dis(0, field->Order() - 2);
-
-  std::vector<uint32_t> log_elements;
-  for (size_t i = 0; i < 500; ++i) {
-    log_elements.push_back(static_cast<uint32_t>(dis(gen)));
-  }
-
-  size_t idx = 0;
-
-  for (auto _ : state) {
-    auto result = field->Pow(log_elements[idx % log_elements.size()],
-                             static_cast<uint64_t>(idx % 1024 + 1));
-    benchmark::DoNotOptimize(result);
-    idx++;
-  }
-
-  MemoryUsage mem_end = GetMemoryUsage();
-  state.counters["MemoryPeak_KB"] = mem_end.peak_rss_kb;
-  state.counters["FieldOrder"] = field->Order();
-}
-
-static void BM_GF2X_Large_Addition(benchmark::State& state) {
-  uint8_t m = static_cast<uint8_t>(state.range(0));
-  auto field = std::make_shared<GaloisFieldBinaryExtension<uint64_t>>(m);
-
-  auto elements = GenerateRandomElements(field, 200);
-  size_t idx = 0;
-
-  for (auto _ : state) {
-    auto result = field->Add(elements[idx % elements.size()],
-                             elements[(idx + 1) % elements.size()]);
-    benchmark::DoNotOptimize(result);
-    idx++;
-  }
-
-  MemoryUsage mem_end = GetMemoryUsage();
-  state.counters["MemoryPeak_KB"] = mem_end.peak_rss_kb;
-  state.counters["FieldOrder"] = field->Order();
-}
-
-static void BM_GF2X_Large_Multiplication(benchmark::State& state) {
-  uint8_t m = static_cast<uint8_t>(state.range(0));
-  auto field = std::make_shared<GaloisFieldBinaryExtension<uint64_t>>(m);
-
-  auto elements = GenerateRandomElements(field, 200);
-  size_t idx = 0;
-
-  for (auto _ : state) {
-    auto result = field->Mul(elements[idx % elements.size()],
-                             elements[(idx + 1) % elements.size()]);
-    benchmark::DoNotOptimize(result);
-    idx++;
-  }
-
-  MemoryUsage mem_end = GetMemoryUsage();
-  state.counters["MemoryPeak_KB"] = mem_end.peak_rss_kb;
-  state.counters["FieldOrder"] = field->Order();
-}
-
-static void BM_GF2X_Large_Division(benchmark::State& state) {
-  uint8_t m = static_cast<uint8_t>(state.range(0));
-  auto field = std::make_shared<GaloisFieldBinaryExtension<uint64_t>>(m);
-
-  auto elements = GenerateRandomElements(field, 200);
-  size_t idx = 0;
-
-  for (auto _ : state) {
-    auto result = field->Div(elements[idx % elements.size()],
-                             elements[(idx + 1) % elements.size()]);
-    benchmark::DoNotOptimize(result);
-    idx++;
-  }
-
-  MemoryUsage mem_end = GetMemoryUsage();
-  state.counters["MemoryPeak_KB"] = mem_end.peak_rss_kb;
-  state.counters["FieldOrder"] = field->Order();
-}
-
-static void BM_GF2X_Large_Inversion(benchmark::State& state) {
-  uint8_t m = static_cast<uint8_t>(state.range(0));
-  auto field = std::make_shared<GaloisFieldBinaryExtension<uint64_t>>(m);
-
-  auto elements = GenerateRandomElements(field, 200);
-  size_t idx = 0;
-
-  for (auto _ : state) {
-    auto result = field->Inv(elements[idx % elements.size()]);
-    benchmark::DoNotOptimize(result);
-    idx++;
-  }
-
-  MemoryUsage mem_end = GetMemoryUsage();
-  state.counters["MemoryPeak_KB"] = mem_end.peak_rss_kb;
-  state.counters["FieldOrder"] = field->Order();
-}
-
-static void BM_GF2X_Large_Exponentiation(benchmark::State& state) {
-  uint8_t m = static_cast<uint8_t>(state.range(0));
-  auto field = std::make_shared<GaloisFieldBinaryExtension<uint64_t>>(m);
-
-  auto elements = GenerateRandomElements(field, 200);
-  size_t idx = 0;
-
-  for (auto _ : state) {
-    auto result = field->Pow(elements[idx % elements.size()],
-                             static_cast<uint64_t>(idx % 4096 + 1));
-    benchmark::DoNotOptimize(result);
-    idx++;
-  }
-
-  MemoryUsage mem_end = GetMemoryUsage();
-  state.counters["MemoryPeak_KB"] = mem_end.peak_rss_kb;
-  state.counters["FieldOrder"] = field->Order();
-}
-
-static void BM_GF2XLOG_Large_Addition(benchmark::State& state) {
-  uint8_t m = static_cast<uint8_t>(state.range(0));
-  auto field = std::make_shared<GFBELogTables<uint64_t>>(m);
-
-  auto elements = GenerateRandomElements(field, 200);
-  size_t idx = 0;
-
-  for (auto _ : state) {
-    auto result = field->Add(elements[idx % elements.size()],
-                             elements[(idx + 1) % elements.size()]);
-    benchmark::DoNotOptimize(result);
-    idx++;
-  }
-
-  MemoryUsage mem_end = GetMemoryUsage();
-  state.counters["MemoryPeak_KB"] = mem_end.peak_rss_kb;
-  state.counters["FieldOrder"] = field->Order();
-}
-
-static void BM_GF2XLOG_Large_Multiplication(benchmark::State& state) {
-  uint8_t m = static_cast<uint8_t>(state.range(0));
-  auto field = std::make_shared<GFBELogTables<uint64_t>>(m);
-
-  auto elements = GenerateRandomElements(field, 200);
-  size_t idx = 0;
-
-  for (auto _ : state) {
-    auto result = field->Mul(elements[idx % elements.size()],
-                             elements[(idx + 1) % elements.size()]);
-    benchmark::DoNotOptimize(result);
-    idx++;
-  }
-
-  MemoryUsage mem_end = GetMemoryUsage();
-  state.counters["MemoryPeak_KB"] = mem_end.peak_rss_kb;
-  state.counters["FieldOrder"] = field->Order();
-}
-
-static void BM_GF2XLOG_Large_Division(benchmark::State& state) {
-  uint8_t m = static_cast<uint8_t>(state.range(0));
-  auto field = std::make_shared<GFBELogTables<uint64_t>>(m);
-
-  auto elements = GenerateRandomElements(field, 200);
-  size_t idx = 0;
-
-  for (auto _ : state) {
-    auto result = field->Div(elements[idx % elements.size()],
-                             elements[(idx + 1) % elements.size()]);
-    benchmark::DoNotOptimize(result);
-    idx++;
-  }
-
-  MemoryUsage mem_end = GetMemoryUsage();
-  state.counters["MemoryPeak_KB"] = mem_end.peak_rss_kb;
-  state.counters["FieldOrder"] = field->Order();
-}
-
-static void BM_GF2XLOG_Large_Inversion(benchmark::State& state) {
-  uint8_t m = static_cast<uint8_t>(state.range(0));
-  auto field = std::make_shared<GFBELogTables<uint64_t>>(m);
-
-  auto elements = GenerateRandomElements(field, 200);
-  size_t idx = 0;
-
-  for (auto _ : state) {
-    auto result = field->Inv(elements[idx % elements.size()]);
-    benchmark::DoNotOptimize(result);
-    idx++;
-  }
-
-  MemoryUsage mem_end = GetMemoryUsage();
-  state.counters["MemoryPeak_KB"] = mem_end.peak_rss_kb;
-  state.counters["FieldOrder"] = field->Order();
-}
-
-static void BM_GF2XLOG_Large_Exponentiation(benchmark::State& state) {
-  uint8_t m = static_cast<uint8_t>(state.range(0));
-  auto field = std::make_shared<GFBELogTables<uint64_t>>(m);
-
-  auto elements = GenerateRandomElements(field, 200);
-  size_t idx = 0;
-
-  for (auto _ : state) {
-    auto result = field->Pow(elements[idx % elements.size()],
-                             static_cast<uint64_t>(idx % 4096 + 1));
-    benchmark::DoNotOptimize(result);
-    idx++;
-  }
-
-  MemoryUsage mem_end = GetMemoryUsage();
-  state.counters["MemoryPeak_KB"] = mem_end.peak_rss_kb;
-  state.counters["FieldOrder"] = field->Order();
-}
-
-static void BM_GF2XLOGOPT_Large_Addition(benchmark::State& state) {
-  uint8_t m = static_cast<uint8_t>(state.range(0));
-  auto field = std::make_shared<GFBELogTablesOpt<uint64_t>>(m);
-
-  auto elements = GenerateRandomElements(field, 200);
-  size_t idx = 0;
-
-  for (auto _ : state) {
-    auto result = field->Add(elements[idx % elements.size()],
-                             elements[(idx + 1) % elements.size()]);
-    benchmark::DoNotOptimize(result);
-    idx++;
-  }
-
-  MemoryUsage mem_end = GetMemoryUsage();
-  state.counters["MemoryPeak_KB"] = mem_end.peak_rss_kb;
-  state.counters["FieldOrder"] = field->Order();
-}
-
-static void BM_GF2XLOGOPT_Large_Multiplication(benchmark::State& state) {
-  uint8_t m = static_cast<uint8_t>(state.range(0));
-  auto field = std::make_shared<GFBELogTablesOpt<uint64_t>>(m);
-
-  auto elements = GenerateRandomElements(field, 200);
-  size_t idx = 0;
-
-  for (auto _ : state) {
-    auto result = field->Mul(elements[idx % elements.size()],
-                             elements[(idx + 1) % elements.size()]);
-    benchmark::DoNotOptimize(result);
-    idx++;
-  }
-
-  MemoryUsage mem_end = GetMemoryUsage();
-  state.counters["MemoryPeak_KB"] = mem_end.peak_rss_kb;
-  state.counters["FieldOrder"] = field->Order();
-}
-
-static void BM_GF2XLOGOPT_Large_Division(benchmark::State& state) {
-  uint8_t m = static_cast<uint8_t>(state.range(0));
-  auto field = std::make_shared<GFBELogTablesOpt<uint64_t>>(m);
-
-  auto elements = GenerateRandomElements(field, 200);
-  size_t idx = 0;
-
-  for (auto _ : state) {
-    auto result = field->Div(elements[idx % elements.size()],
-                             elements[(idx + 1) % elements.size()]);
-    benchmark::DoNotOptimize(result);
-    idx++;
-  }
-
-  MemoryUsage mem_end = GetMemoryUsage();
-  state.counters["MemoryPeak_KB"] = mem_end.peak_rss_kb;
-  state.counters["FieldOrder"] = field->Order();
-}
-
-static void BM_GF2XLOGOPT_Large_Inversion(benchmark::State& state) {
-  uint8_t m = static_cast<uint8_t>(state.range(0));
-  auto field = std::make_shared<GFBELogTablesOpt<uint64_t>>(m);
-
-  auto elements = GenerateRandomElements(field, 200);
-  size_t idx = 0;
-
-  for (auto _ : state) {
-    auto result = field->Inv(elements[idx % elements.size()]);
-    benchmark::DoNotOptimize(result);
-    idx++;
-  }
-
-  MemoryUsage mem_end = GetMemoryUsage();
-  state.counters["MemoryPeak_KB"] = mem_end.peak_rss_kb;
-  state.counters["FieldOrder"] = field->Order();
-}
-
-static void BM_GF2XLOGOPT_Large_Exponentiation(benchmark::State& state) {
-  uint8_t m = static_cast<uint8_t>(state.range(0));
-  auto field = std::make_shared<GFBELogTablesOpt<uint64_t>>(m);
-
-  auto elements = GenerateRandomElements(field, 200);
-  size_t idx = 0;
-
-  for (auto _ : state) {
-    auto result = field->Pow(elements[idx % elements.size()],
-                             static_cast<uint64_t>(idx % 4096 + 1));
-    benchmark::DoNotOptimize(result);
-    idx++;
-  }
-
-  MemoryUsage mem_end = GetMemoryUsage();
-  state.counters["MemoryPeak_KB"] = mem_end.peak_rss_kb;
-  state.counters["FieldOrder"] = field->Order();
-}
-
-static void BM_GF2XZECH_Large_Addition(benchmark::State& state) {
-  uint8_t m = static_cast<uint8_t>(state.range(0));
-  auto field = std::make_shared<GFBEZechLogTables<uint32_t>>(m);
-
-  std::mt19937 gen(42);
-  std::uniform_int_distribution<uint64_t> dis(0, field->Order() - 2);
-
-  std::vector<uint32_t> log_elements;
-  for (size_t i = 0; i < 200; ++i) {
-    log_elements.push_back(static_cast<uint32_t>(dis(gen)));
-  }
-
-  size_t idx = 0;
-
-  for (auto _ : state) {
-    auto result = field->Add(log_elements[idx % log_elements.size()],
-                             log_elements[(idx + 1) % log_elements.size()]);
-    benchmark::DoNotOptimize(result);
-    idx++;
-  }
-
-  MemoryUsage mem_end = GetMemoryUsage();
-  state.counters["MemoryPeak_KB"] = mem_end.peak_rss_kb;
-  state.counters["FieldOrder"] = field->Order();
-}
-
-static void BM_GF2XZECH_Large_Multiplication(benchmark::State& state) {
-  uint8_t m = static_cast<uint8_t>(state.range(0));
-  auto field = std::make_shared<GFBEZechLogTables<uint32_t>>(m);
-
-  std::mt19937 gen(42);
-  std::uniform_int_distribution<uint64_t> dis(0, field->Order() - 2);
-
-  std::vector<uint32_t> log_elements;
-  for (size_t i = 0; i < 200; ++i) {
-    log_elements.push_back(static_cast<uint32_t>(dis(gen)));
-  }
-
-  size_t idx = 0;
-
-  for (auto _ : state) {
-    auto result = field->Mul(log_elements[idx % log_elements.size()],
-                             log_elements[(idx + 1) % log_elements.size()]);
-    benchmark::DoNotOptimize(result);
-    idx++;
-  }
-
-  MemoryUsage mem_end = GetMemoryUsage();
-  state.counters["MemoryPeak_KB"] = mem_end.peak_rss_kb;
-  state.counters["FieldOrder"] = field->Order();
-}
-
-static void BM_GF2XZECH_Large_Division(benchmark::State& state) {
-  uint8_t m = static_cast<uint8_t>(state.range(0));
-  auto field = std::make_shared<GFBEZechLogTables<uint32_t>>(m);
-
-  std::mt19937 gen(42);
-  std::uniform_int_distribution<uint64_t> dis(0, field->Order() - 2);
-
-  std::vector<uint32_t> log_elements;
-  for (size_t i = 0; i < 200; ++i) {
-    log_elements.push_back(static_cast<uint32_t>(dis(gen)));
-  }
-
-  size_t idx = 0;
-
-  for (auto _ : state) {
-    auto result = field->Div(log_elements[idx % log_elements.size()],
-                             log_elements[(idx + 1) % log_elements.size()]);
-    benchmark::DoNotOptimize(result);
-    idx++;
-  }
-
-  MemoryUsage mem_end = GetMemoryUsage();
-  state.counters["MemoryPeak_KB"] = mem_end.peak_rss_kb;
-  state.counters["FieldOrder"] = field->Order();
-}
-
-static void BM_GF2XZECH_Large_Inversion(benchmark::State& state) {
-  uint8_t m = static_cast<uint8_t>(state.range(0));
-  auto field = std::make_shared<GFBEZechLogTables<uint32_t>>(m);
-
-  std::mt19937 gen(42);
-  std::uniform_int_distribution<uint64_t> dis(0, field->Order() - 2);
-
-  std::vector<uint32_t> log_elements;
-  for (size_t i = 0; i < 200; ++i) {
-    log_elements.push_back(static_cast<uint32_t>(dis(gen)));
-  }
-
-  size_t idx = 0;
-
-  for (auto _ : state) {
-    auto result = field->Inv(log_elements[idx % log_elements.size()]);
-    benchmark::DoNotOptimize(result);
-    idx++;
-  }
-
-  MemoryUsage mem_end = GetMemoryUsage();
-  state.counters["MemoryPeak_KB"] = mem_end.peak_rss_kb;
-  state.counters["FieldOrder"] = field->Order();
-}
-
-static void BM_GF2XZECH_Large_Exponentiation(benchmark::State& state) {
-  uint8_t m = static_cast<uint8_t>(state.range(0));
-  auto field = std::make_shared<GFBEZechLogTables<uint32_t>>(m);
-
-  std::mt19937 gen(42);
-  std::uniform_int_distribution<uint64_t> dis(0, field->Order() - 2);
-
-  std::vector<uint32_t> log_elements;
-  for (size_t i = 0; i < 200; ++i) {
-    log_elements.push_back(static_cast<uint32_t>(dis(gen)));
-  }
-
-  size_t idx = 0;
-
-  for (auto _ : state) {
-    auto result = field->Pow(log_elements[idx % log_elements.size()],
-                             static_cast<uint64_t>(idx % 4096 + 1));
-    benchmark::DoNotOptimize(result);
-    idx++;
-  }
-
-  MemoryUsage mem_end = GetMemoryUsage();
-  state.counters["MemoryPeak_KB"] = mem_end.peak_rss_kb;
-  state.counters["FieldOrder"] = field->Order();
-}
-
-BENCHMARK(BM_GF2X_Small_Addition)->DenseRange(2, 8);
-BENCHMARK(BM_GF2X_Small_Multiplication)->DenseRange(2, 8);
-BENCHMARK(BM_GF2X_Small_Division)->DenseRange(2, 8);
-BENCHMARK(BM_GF2X_Small_Inversion)->DenseRange(2, 8);
-BENCHMARK(BM_GF2X_Small_Exponentiation)->DenseRange(2, 8);
-
-BENCHMARK(BM_GF2XLOG_Small_Addition)->DenseRange(2, 8);
-BENCHMARK(BM_GF2XLOG_Small_Multiplication)->DenseRange(2, 8);
-BENCHMARK(BM_GF2XLOG_Small_Division)->DenseRange(2, 8);
-BENCHMARK(BM_GF2XLOG_Small_Inversion)->DenseRange(2, 8);
-BENCHMARK(BM_GF2XLOG_Small_Exponentiation)->DenseRange(2, 8);
-
-BENCHMARK(BM_GF2XLOGOPT_Small_Addition)->DenseRange(2, 8);
-BENCHMARK(BM_GF2XLOGOPT_Small_Multiplication)->DenseRange(2, 8);
-BENCHMARK(BM_GF2XLOGOPT_Small_Division)->DenseRange(2, 8);
-BENCHMARK(BM_GF2XLOGOPT_Small_Inversion)->DenseRange(2, 8);
-BENCHMARK(BM_GF2XLOGOPT_Small_Exponentiation)->DenseRange(2, 8);
-
-BENCHMARK(BM_GF2XZECH_Small_Addition)->DenseRange(2, 8);
-BENCHMARK(BM_GF2XZECH_Small_Multiplication)->DenseRange(2, 8);
-BENCHMARK(BM_GF2XZECH_Small_Division)->DenseRange(2, 8);
-BENCHMARK(BM_GF2XZECH_Small_Inversion)->DenseRange(2, 8);
-BENCHMARK(BM_GF2XZECH_Small_Exponentiation)->DenseRange(2, 8);
-
-BENCHMARK(BM_GF2X_Medium_Addition)->DenseRange(9, 16);
-BENCHMARK(BM_GF2X_Medium_Multiplication)->DenseRange(9, 16);
-BENCHMARK(BM_GF2X_Medium_Division)->DenseRange(9, 16);
-BENCHMARK(BM_GF2X_Medium_Inversion)->DenseRange(9, 16);
-BENCHMARK(BM_GF2X_Medium_Exponentiation)->DenseRange(9, 16);
-
-BENCHMARK(BM_GF2XLOG_Medium_Addition)->DenseRange(9, 16);
-BENCHMARK(BM_GF2XLOG_Medium_Multiplication)->DenseRange(9, 16);
-BENCHMARK(BM_GF2XLOG_Medium_Division)->DenseRange(9, 16);
-BENCHMARK(BM_GF2XLOG_Medium_Inversion)->DenseRange(9, 16);
-BENCHMARK(BM_GF2XLOG_Medium_Exponentiation)->DenseRange(9, 16);
-
-BENCHMARK(BM_GF2XLOGOPT_Medium_Addition)->DenseRange(9, 16);
-BENCHMARK(BM_GF2XLOGOPT_Medium_Multiplication)->DenseRange(9, 16);
-BENCHMARK(BM_GF2XLOGOPT_Medium_Division)->DenseRange(9, 16);
-BENCHMARK(BM_GF2XLOGOPT_Medium_Inversion)->DenseRange(9, 16);
-BENCHMARK(BM_GF2XLOGOPT_Medium_Exponentiation)->DenseRange(9, 16);
-
-BENCHMARK(BM_GF2XZECH_Medium_Addition)->DenseRange(9, 16);
-BENCHMARK(BM_GF2XZECH_Medium_Multiplication)->DenseRange(9, 16);
-BENCHMARK(BM_GF2XZECH_Medium_Division)->DenseRange(9, 16);
-BENCHMARK(BM_GF2XZECH_Medium_Inversion)->DenseRange(9, 16);
-BENCHMARK(BM_GF2XZECH_Medium_Exponentiation)->DenseRange(9, 16);
-
-BENCHMARK(BM_GF2X_Large_Addition)->DenseRange(17, 20);
-BENCHMARK(BM_GF2X_Large_Multiplication)->DenseRange(17, 20);
-BENCHMARK(BM_GF2X_Large_Division)->DenseRange(17, 20);
-BENCHMARK(BM_GF2X_Large_Inversion)->DenseRange(17, 20);
-BENCHMARK(BM_GF2X_Large_Exponentiation)->DenseRange(17, 20);
-
-BENCHMARK(BM_GF2XLOG_Large_Addition)->DenseRange(17, 20);
-BENCHMARK(BM_GF2XLOG_Large_Multiplication)->DenseRange(17, 20);
-BENCHMARK(BM_GF2XLOG_Large_Division)->DenseRange(17, 20);
-BENCHMARK(BM_GF2XLOG_Large_Inversion)->DenseRange(17, 20);
-BENCHMARK(BM_GF2XLOG_Large_Exponentiation)->DenseRange(17, 20);
-
-BENCHMARK(BM_GF2XLOGOPT_Large_Addition)->DenseRange(17, 20);
-BENCHMARK(BM_GF2XLOGOPT_Large_Multiplication)->DenseRange(17, 20);
-BENCHMARK(BM_GF2XLOGOPT_Large_Division)->DenseRange(17, 20);
-BENCHMARK(BM_GF2XLOGOPT_Large_Inversion)->DenseRange(17, 20);
-BENCHMARK(BM_GF2XLOGOPT_Large_Exponentiation)->DenseRange(17, 20);
-
-BENCHMARK(BM_GF2XZECH_Large_Addition)->DenseRange(17, 20);
-BENCHMARK(BM_GF2XZECH_Large_Multiplication)->DenseRange(17, 20);
-BENCHMARK(BM_GF2XZECH_Large_Division)->DenseRange(17, 20);
-BENCHMARK(BM_GF2XZECH_Large_Inversion)->DenseRange(17, 20);
-BENCHMARK(BM_GF2XZECH_Large_Exponentiation)->DenseRange(17, 20);
-
-BENCHMARK_MAIN();
+}  // namespace
+
+BENCHMARK(BM_GF2X_Small_Addition)
+    ->DenseRange(2, 8)
+    ->Unit(benchmark::kNanosecond);
+BENCHMARK(BM_GF2X_Small_Multiplication)
+    ->DenseRange(2, 8)
+    ->Unit(benchmark::kNanosecond);
+BENCHMARK(BM_GF2X_Small_Division)
+    ->DenseRange(2, 8)
+    ->Unit(benchmark::kNanosecond);
+BENCHMARK(BM_GF2X_Small_Inversion)
+    ->DenseRange(2, 8)
+    ->Unit(benchmark::kNanosecond);
+BENCHMARK(BM_GF2X_Small_Exponentiation)
+    ->DenseRange(2, 8)
+    ->Unit(benchmark::kNanosecond);
+
+BENCHMARK(BM_GF2XLOG_Small_Addition)
+    ->DenseRange(2, 8)
+    ->Unit(benchmark::kNanosecond);
+BENCHMARK(BM_GF2XLOG_Small_Multiplication)
+    ->DenseRange(2, 8)
+    ->Unit(benchmark::kNanosecond);
+BENCHMARK(BM_GF2XLOG_Small_Division)
+    ->DenseRange(2, 8)
+    ->Unit(benchmark::kNanosecond);
+BENCHMARK(BM_GF2XLOG_Small_Inversion)
+    ->DenseRange(2, 8)
+    ->Unit(benchmark::kNanosecond);
+BENCHMARK(BM_GF2XLOG_Small_Exponentiation)
+    ->DenseRange(2, 8)
+    ->Unit(benchmark::kNanosecond);
+
+BENCHMARK(BM_GF2XLOGOPT_Small_Addition)
+    ->DenseRange(2, 8)
+    ->Unit(benchmark::kNanosecond);
+BENCHMARK(BM_GF2XLOGOPT_Small_Multiplication)
+    ->DenseRange(2, 8)
+    ->Unit(benchmark::kNanosecond);
+BENCHMARK(BM_GF2XLOGOPT_Small_Division)
+    ->DenseRange(2, 8)
+    ->Unit(benchmark::kNanosecond);
+BENCHMARK(BM_GF2XLOGOPT_Small_Inversion)
+    ->DenseRange(2, 8)
+    ->Unit(benchmark::kNanosecond);
+BENCHMARK(BM_GF2XLOGOPT_Small_Exponentiation)
+    ->DenseRange(2, 8)
+    ->Unit(benchmark::kNanosecond);
+
+BENCHMARK(BM_GF2XZECH_Small_Addition)
+    ->DenseRange(2, 8)
+    ->Unit(benchmark::kNanosecond);
+BENCHMARK(BM_GF2XZECH_Small_Multiplication)
+    ->DenseRange(2, 8)
+    ->Unit(benchmark::kNanosecond);
+BENCHMARK(BM_GF2XZECH_Small_Division)
+    ->DenseRange(2, 8)
+    ->Unit(benchmark::kNanosecond);
+BENCHMARK(BM_GF2XZECH_Small_Inversion)
+    ->DenseRange(2, 8)
+    ->Unit(benchmark::kNanosecond);
+BENCHMARK(BM_GF2XZECH_Small_Exponentiation)
+    ->DenseRange(2, 8)
+    ->Unit(benchmark::kNanosecond);
+
+BENCHMARK(BM_GF2X_Medium_Addition)
+    ->DenseRange(9, 16)
+    ->Unit(benchmark::kNanosecond);
+BENCHMARK(BM_GF2X_Medium_Multiplication)
+    ->DenseRange(9, 16)
+    ->Unit(benchmark::kNanosecond);
+BENCHMARK(BM_GF2X_Medium_Division)
+    ->DenseRange(9, 16)
+    ->Unit(benchmark::kNanosecond);
+BENCHMARK(BM_GF2X_Medium_Inversion)
+    ->DenseRange(9, 16)
+    ->Unit(benchmark::kNanosecond);
+BENCHMARK(BM_GF2X_Medium_Exponentiation)
+    ->DenseRange(9, 16)
+    ->Unit(benchmark::kNanosecond);
+
+BENCHMARK(BM_GF2XLOG_Medium_Addition)
+    ->DenseRange(9, 16)
+    ->Unit(benchmark::kNanosecond);
+BENCHMARK(BM_GF2XLOG_Medium_Multiplication)
+    ->DenseRange(9, 16)
+    ->Unit(benchmark::kNanosecond);
+BENCHMARK(BM_GF2XLOG_Medium_Division)
+    ->DenseRange(9, 16)
+    ->Unit(benchmark::kNanosecond);
+BENCHMARK(BM_GF2XLOG_Medium_Inversion)
+    ->DenseRange(9, 16)
+    ->Unit(benchmark::kNanosecond);
+BENCHMARK(BM_GF2XLOG_Medium_Exponentiation)
+    ->DenseRange(9, 16)
+    ->Unit(benchmark::kNanosecond);
+
+BENCHMARK(BM_GF2XLOGOPT_Medium_Addition)
+    ->DenseRange(9, 16)
+    ->Unit(benchmark::kNanosecond);
+BENCHMARK(BM_GF2XLOGOPT_Medium_Multiplication)
+    ->DenseRange(9, 16)
+    ->Unit(benchmark::kNanosecond);
+BENCHMARK(BM_GF2XLOGOPT_Medium_Division)
+    ->DenseRange(9, 16)
+    ->Unit(benchmark::kNanosecond);
+BENCHMARK(BM_GF2XLOGOPT_Medium_Inversion)
+    ->DenseRange(9, 16)
+    ->Unit(benchmark::kNanosecond);
+BENCHMARK(BM_GF2XLOGOPT_Medium_Exponentiation)
+    ->DenseRange(9, 16)
+    ->Unit(benchmark::kNanosecond);
+
+BENCHMARK(BM_GF2XZECH_Medium_Addition)
+    ->DenseRange(9, 16)
+    ->Unit(benchmark::kNanosecond);
+BENCHMARK(BM_GF2XZECH_Medium_Multiplication)
+    ->DenseRange(9, 16)
+    ->Unit(benchmark::kNanosecond);
+BENCHMARK(BM_GF2XZECH_Medium_Division)
+    ->DenseRange(9, 16)
+    ->Unit(benchmark::kNanosecond);
+BENCHMARK(BM_GF2XZECH_Medium_Inversion)
+    ->DenseRange(9, 16)
+    ->Unit(benchmark::kNanosecond);
+BENCHMARK(BM_GF2XZECH_Medium_Exponentiation)
+    ->DenseRange(9, 16)
+    ->Unit(benchmark::kNanosecond);
+
+BENCHMARK(BM_GF2X_Large_Addition)
+    ->DenseRange(17, 20)
+    ->Unit(benchmark::kNanosecond);
+BENCHMARK(BM_GF2X_Large_Multiplication)
+    ->DenseRange(17, 20)
+    ->Unit(benchmark::kNanosecond);
+BENCHMARK(BM_GF2X_Large_Division)
+    ->DenseRange(17, 20)
+    ->Unit(benchmark::kNanosecond);
+BENCHMARK(BM_GF2X_Large_Inversion)
+    ->DenseRange(17, 20)
+    ->Unit(benchmark::kNanosecond);
+BENCHMARK(BM_GF2X_Large_Exponentiation)
+    ->DenseRange(17, 20)
+    ->Unit(benchmark::kNanosecond);
+
+BENCHMARK(BM_GF2XLOG_Large_Addition)
+    ->DenseRange(17, 20)
+    ->Unit(benchmark::kNanosecond);
+BENCHMARK(BM_GF2XLOG_Large_Multiplication)
+    ->DenseRange(17, 20)
+    ->Unit(benchmark::kNanosecond);
+BENCHMARK(BM_GF2XLOG_Large_Division)
+    ->DenseRange(17, 20)
+    ->Unit(benchmark::kNanosecond);
+BENCHMARK(BM_GF2XLOG_Large_Inversion)
+    ->DenseRange(17, 20)
+    ->Unit(benchmark::kNanosecond);
+BENCHMARK(BM_GF2XLOG_Large_Exponentiation)
+    ->DenseRange(17, 20)
+    ->Unit(benchmark::kNanosecond);
+
+BENCHMARK(BM_GF2XLOGOPT_Large_Addition)
+    ->DenseRange(17, 20)
+    ->Unit(benchmark::kNanosecond);
+BENCHMARK(BM_GF2XLOGOPT_Large_Multiplication)
+    ->DenseRange(17, 20)
+    ->Unit(benchmark::kNanosecond);
+BENCHMARK(BM_GF2XLOGOPT_Large_Division)
+    ->DenseRange(17, 20)
+    ->Unit(benchmark::kNanosecond);
+BENCHMARK(BM_GF2XLOGOPT_Large_Inversion)
+    ->DenseRange(17, 20)
+    ->Unit(benchmark::kNanosecond);
+BENCHMARK(BM_GF2XLOGOPT_Large_Exponentiation)
+    ->DenseRange(17, 20)
+    ->Unit(benchmark::kNanosecond);
+
+BENCHMARK(BM_GF2XZECH_Large_Addition)
+    ->DenseRange(17, 20)
+    ->Unit(benchmark::kNanosecond);
+BENCHMARK(BM_GF2XZECH_Large_Multiplication)
+    ->DenseRange(17, 20)
+    ->Unit(benchmark::kNanosecond);
+BENCHMARK(BM_GF2XZECH_Large_Division)
+    ->DenseRange(17, 20)
+    ->Unit(benchmark::kNanosecond);
+BENCHMARK(BM_GF2XZECH_Large_Inversion)
+    ->DenseRange(17, 20)
+    ->Unit(benchmark::kNanosecond);
+BENCHMARK(BM_GF2XZECH_Large_Exponentiation)
+    ->DenseRange(17, 20)
+    ->Unit(benchmark::kNanosecond);
+
+BENCHMARK(BM_GF2X_U8_GF256_Addition)->Unit(benchmark::kNanosecond);
+BENCHMARK(BM_GF2X_U8_GF256_Multiplication)->Unit(benchmark::kNanosecond);
+BENCHMARK(BM_GF2X_U8_GF256_Division)->Unit(benchmark::kNanosecond);
+BENCHMARK(BM_GF2X_U8_GF256_Inversion)->Unit(benchmark::kNanosecond);
+BENCHMARK(BM_GF2X_U8_GF256_Exponentiation)->Unit(benchmark::kNanosecond);
+
+BENCHMARK(BM_GF2XLOG_U8_GF256_Addition)->Unit(benchmark::kNanosecond);
+BENCHMARK(BM_GF2XLOG_U8_GF256_Multiplication)->Unit(benchmark::kNanosecond);
+BENCHMARK(BM_GF2XLOG_U8_GF256_Division)->Unit(benchmark::kNanosecond);
+BENCHMARK(BM_GF2XLOG_U8_GF256_Inversion)->Unit(benchmark::kNanosecond);
+BENCHMARK(BM_GF2XLOG_U8_GF256_Exponentiation)->Unit(benchmark::kNanosecond);
+
+BENCHMARK(BM_GF2XZECH_U8_GF256_Addition)->Unit(benchmark::kNanosecond);
+BENCHMARK(BM_GF2XZECH_U8_GF256_Multiplication)->Unit(benchmark::kNanosecond);
+BENCHMARK(BM_GF2XZECH_U8_GF256_Division)->Unit(benchmark::kNanosecond);
+BENCHMARK(BM_GF2XZECH_U8_GF256_Inversion)->Unit(benchmark::kNanosecond);
+BENCHMARK(BM_GF2XZECH_U8_GF256_Exponentiation)->Unit(benchmark::kNanosecond);

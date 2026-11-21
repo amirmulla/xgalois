@@ -17,8 +17,8 @@ else
     exit 1
 fi
 
-# Run sphinx-build
-sphinx-build -b html . _build/html --keep-going
+# Run sphinx-build (treat warnings as errors)
+sphinx-build -W -b html . _build/html
 
 echo ""
 echo "Documentation successfully built at: _build/html/index.html"

@@ -1,0 +1,155 @@
+# xgalois
+
+**xgalois** is a modern, header-only C++23 library for high-performance finite-field arithmetic, polynomial algebra, finite-field linear algebra, communication channel modeling, and algebraic error-correcting codes over arbitrary Galois fields $\mathrm{GF}(p^m)$.
+
+## Key Capabilities
+
+- **Finite Fields (`xg::GaloisFieldBase`, `xg::GF`)**
+  - **Binary Field $\mathrm{GF}(2)$** (`GF2`): specialized bitwise arithmetic and bulk array kernels.
+  - **Prime Fields $\mathrm{GF}(p)$** (`GFP`, `GFPLOG`): division-free Barrett reduction up to $p \le 2^{63} - 1$, Tonelli–Shanks square roots, Baby-Step Giant-Step (BSGS) and Pohlig–Hellman discrete logarithms, and log-table acceleration (`GFPLOG`).
+  - **Binary Extension Fields $\mathrm{GF}(2^m)$** (`GF2X`, `GF2XLOG`, `GF2XZECH`): hardware-accelerated carry-less multiplication (`PCLMULQDQ` / `SSSE3` with portable fallback) up to $\mathrm{GF}(2^{64})$, optimized log/antilog tables, and Zech logarithm tables; built-in embedded Conway and irreducible polynomial databases.
+  - **General Prime Extension Fields $\mathrm{GF}(p^m)$** (`GFPX`): compact `ExtensionElement` polynomial representation with Frobenius, Trace, Norm, Minimal Polynomial, BSGS discrete log, and Tonelli–Shanks square root.
+  - **Unified Runtime Factory** (`xg::GF(...)`) returning a type-safe `std::variant` (`GaloisFieldVariant`), plus zero-overhead direct constructors and C++23 concepts (`FiniteField`, `UnsignedFieldWord`).
+- **Contiguous Field Arrays (`xg::GFArray`, `xg::GFMatrix`)**
+  - Stores a single `std::shared_ptr<GaloisField>` alongside a packed `xt::xarray<storage_type>` buffer, avoiding per-element reference-count overhead and unlocking bulk span/SIMD kernels (`AddArray`, `SubArray`, `MulArray`, `ScalarMulArray`, `FmaArray`, `DotProduct`, Montgomery `BatchInv`).
+- **Polynomial Algebra (`xg::PolynomialDense`, `xg::utils`)**
+  - Dense polynomials with Karatsuba multiplication, Euclidean `DivRem`, `PowMod`, `Derivative`, Horner/batch evaluation (`EvalBatch`), and composition.
+  - Exact algorithms over arbitrary $\mathrm{GF}(q)$: `PolynomialGcd`, `PolynomialLcm`, `PolynomialDenseExtendedGcd`, Rabin irreducibility (`IsIrreducible`) and primitivity (`IsPrimitive`) tests, square-free / distinct-degree / Cantor–Zassenhaus complete factorization (`Factor`), `FindRoots`, `ChienSearch`, and $O(k^2)$ Newton interpolation (`Interpolate`).
+- **Finite-Field Linear Algebra (`xg::linalg`)**
+  - Bit-packed `uint64_t` **M4RI** engine for $\mathrm{GF}(2)$ matrices alongside cache-friendly FMA kernels for arbitrary fields.
+  - `dot`, `vdot`, `outer`, `cross`, `kron`, `matrix_power`, `row_echelon`, `rref`, `matrix_rank`, `trace`, `det`, `inv`, `solve`, `nullspace`, `left_nullspace`, `row_space`, `column_space`, `systematic_form`, `plu`, and division-free Berkowitz `characteristic_poly`.
+- **Coding Theory (`xg::coding`)**
+  - `LinearCode` (generator/parity-check duality, puncturing, shortening) with classic factories: `HammingCode`, `ExtendedHammingCode`, `BinaryGolayCode`, `ExtendedBinaryGolayCode`, `TernaryGolayCode`, and `ReedMullerCode`.
+  - `CyclicCode` and `BCHCode` (binary and non-binary, narrow- and general-sense, with algebraic Berlekamp–Massey / Chien / Forney decoding).
+  - `GeneralizedReedSolomonCode` (`ReedSolomon`, `ExtendedReedSolomon`, general GRS) with `BerlekampMassey`, `Sugiyama`, and `PGZ` decoders supporting full **Errors-and-Erasures** decoding up to $2e + s \le n - k$ and structured `DecodingResult`.
+  - Exact arbitrary-precision Singleton/MDS and Hamming/perfection bound checks (`IsMDS`, `SatisfiesHammingBound`, `IsPerfectCode`).
+- **Channels & Simulation (`xg::channel`)**
+  - `BinarySymmetricChannel` (BSC), `QarySymmetricChannel` (QSC), `QaryErasureChannel` / `BinaryErasureChannel` (QEC/BEC), `ErrorErasureChannel`, `StaticErrorRateChannel`, and BPSK `AWGNChannel` with exact LLR computation.
+  - Deterministic, seeded Monte Carlo BER/SER/FER evaluation via `SimulateCodePerformance`.
+
+## Requirements
+
+- **Compiler**: C++23-capable compiler (`g++ 13+` or `clang++ 17+`)
+- **Build System**: [Bazel](https://bazel.build/) 8 or 9 (pure Bzlmod via `MODULE.bazel`)
+- **Documentation (optional)**: Doxygen and Python 3.10+ (`sphinx`, `furo`, `breathe`, `exhale`)
+
+## Quickstart
+
+```cpp
+#include <iostream>
+#include <memory>
+#include <random>
+
+#include "xgalois/channel/channel.hpp"
+#include "xgalois/coding/coding.hpp"
+#include "xgalois/field/gf_array.hpp"
+#include "xgalois/field/gf_binary.hpp"
+
+int main() {
+  using Field = xg::GF2XLOG<uint8_t>;  // GF(2^8) with optimized log tables
+  auto gf256 = std::make_shared<Field>(8);
+
+  // Classic CCSDS Reed-Solomon RS(255, 223) code (d = 33, corrects up to 16 errors)
+  auto rs = xg::coding::GeneralizedReedSolomonCode<Field>::ReedSolomon(
+      gf256, /*length=*/255, /*dimension=*/223);
+
+  // Encode a random 223-symbol message
+  std::mt19937_64 rng(42);
+  auto msg = xg::GFArray<Field>::Random(gf256, {223}, rng);
+  auto codeword = rs.Encode(msg);
+
+  // Transmit through an Error-and-Erasure channel (10 errors + 12 erasures; 2*10 + 12 = 32 <= 32)
+  xg::channel::ErrorErasureChannel<Field> ch(gf256, 255, 10, 12, /*seed=*/7);
+  auto tx = ch.transmit_with_erasures(codeword);
+
+  // Decode with Berlekamp-Massey + Chien search + Forney (errors & erasures)
+  auto res = rs.DecodeWithErasures(tx.received, tx.erasure_positions);
+  std::cout << "Decoded OK: " << std::boolalpha << res.Ok()
+            << " (errors=" << res.num_errors
+            << ", erasures=" << res.num_erasures
+            << ", matches=" << (res.message == msg) << ")\n";
+  return 0;
+}
+```
+
+## Build, Test, Benchmarks & Docs
+
+```bash
+# Build library and all examples
+bazel build //xgalois/... //example/...
+
+# Run all unit tests
+bazel test //test/...
+
+# Run the aggregated test suite with error output
+bazel test //test:galois_field_tests --test_output=errors
+
+# Run an example binary
+bazel run //example:coding_example
+```
+
+### Sanitizers & Coverage
+
+Configured in `.bazelrc`:
+
+```bash
+# AddressSanitizer
+bazel test --config=asan //test:galois_field_tests
+
+# UndefinedBehaviorSanitizer
+bazel test --config=ubsan //test:galois_field_tests
+
+# ThreadSanitizer
+bazel test --config=tsan //test:galois_field_tests
+
+# Code coverage (LCOV)
+bazel coverage --config=coverage //test:galois_field_tests
+```
+
+### Native Benchmarks
+
+Use `--config=native` (`-c opt -O3 -march=native`) to enable `PCLMULQDQ` / `SSSE3` / native SIMD tuning:
+
+```bash
+bazel run --config=native //benchmark/gf_binary_extension/src:gf_binary_extension_benchmark
+bazel run --config=native //benchmark/gf_prime/src:gf_prime_benchmark
+```
+
+### Building Documentation
+
+Requires Doxygen and Python 3.10+:
+
+```bash
+cd doc
+python3 -m venv .venv
+source .venv/bin/activate
+pip install -r requirements.txt
+./build.sh
+```
+
+The generated HTML documentation is written to `doc/_build/html/index.html`.
+
+## Architecture
+
+```text
+xgalois/
+├── xgalois/
+│   ├── field/       # gf_base, gf_concepts, gf_element, gf_array, gf_prime, gf_binary, gf_extension, gf_factory
+│   ├── poly/        # PolynomialDense (Karatsuba, DivRem, PowMod, Derivative, EvalBatch)
+│   ├── utils/       # math (primality, factorization), field helpers, poly (GCD, Rabin, Cantor-Zassenhaus, Interpolate)
+│   ├── linalg/      # Contiguous GFArray linear algebra + bit-packed GF(2) M4RI engine
+│   ├── channel/     # BSC, QSC, QEC/BEC, ErrorErasure, StaticErrorRate, AWGN-LLR, SimulateCodePerformance
+│   ├── coding/      # LinearCode, Hamming, Golay, ReedMuller, CyclicCode, BCHCode, GRS/RS, encoders & decoders
+│   ├── databases/   # Embedded Conway and irreducible polynomial databases
+│   └── BUILD.bazel  # Granular targets (:field_core, :gf_array, :field, :poly, :linalg, :channel, :coding, :xgalois)
+├── test/            # Unit, differential, algebraic-property, ODR, DB-integrity, and fuzz tests (GoogleTest)
+├── benchmark/       # Google Benchmark suites for prime, binary extension, and Zech implementations
+├── example/         # End-to-end runnable examples for every module
+├── doc/             # Sphinx + Breathe + Exhale API documentation
+├── MODULE.bazel     # Pure Bzlmod dependency manifest
+└── .bazelrc         # C++23, strict warnings, opt/native/dbg, ASan/UBSan/TSan, and coverage configs
+```
+
+## License
+
+Licensed under the [MIT License](LICENSE).

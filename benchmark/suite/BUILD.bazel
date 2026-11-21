@@ -1,0 +1,17 @@
+"""
+High-level xgalois benchmark suite covering GFArray bulk kernels,
+GaloisFieldElement overhead, PolynomialDense arithmetic, linear algebra
+(M4RI GF(2) and GF(2^8)), Reed-Solomon(255, 223) coding throughput, and
+field construction latency.
+"""
+
+load("@rules_cc//cc:defs.bzl", "cc_binary")
+
+cc_binary(
+    name = "xgalois_suite_benchmark",
+    srcs = ["xgalois_suite_benchmark.cpp"],
+    deps = [
+        "//xgalois",
+        "@google_benchmark//:benchmark_main",
+    ],
+)
