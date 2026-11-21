@@ -101,6 +101,7 @@ cc_library(
     deps = [
         ":field_core",
         ":gf_array",
+        ":poly",
         "@xtensor",
         "@xtl",
     ],
