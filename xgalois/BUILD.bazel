@@ -24,7 +24,21 @@ cc_library(
     name = "field_core",
     hdrs = [
         "field/gf_base.hpp",
+        "field/gf_concepts.hpp",
         "field/gf_element.hpp",
+    ],
+    deps = [
+        ":utils_math",
+    ],
+)
+
+cc_library(
+    name = "gf_array",
+    hdrs = ["field/gf_array.hpp"],
+    deps = [
+        ":field_core",
+        "@xtensor",
+        "@xtl",
     ],
 )
 
@@ -66,15 +80,18 @@ cc_library(
     hdrs = glob(
         ["field/*.hpp"],
         exclude = [
+            "field/gf_array.hpp",
             "field/gf_base.hpp",
+            "field/gf_concepts.hpp",
             "field/gf_element.hpp",
         ],
     ),
     deps = [
         ":databases",
         ":field_core",
-        ":poly",
-        ":utils",
+        ":gf_array",
+        ":utils_field",
+        ":utils_math",
     ],
 )
 
@@ -83,6 +100,7 @@ cc_library(
     hdrs = glob(["linalg/*.hpp"]),
     deps = [
         ":field_core",
+        ":gf_array",
         "@xtensor",
         "@xtl",
     ],
@@ -93,6 +111,7 @@ cc_library(
     hdrs = glob(["channel/*.hpp"]),
     deps = [
         ":field_core",
+        ":gf_array",
         "@xtensor",
         "@xtl",
     ],
@@ -103,6 +122,7 @@ cc_library(
     hdrs = glob(["coding/**/*.hpp"]),
     deps = [
         ":field_core",
+        ":gf_array",
         ":linalg",
         ":poly",
         "@xtensor",

@@ -28,6 +28,19 @@ cc_test(
     ],
 )
 
+# Exhaustive & differential oracle tests for all table-backed field implementations
+cc_test(
+    name = "gf_tables_test",
+    size = "large",
+    timeout = "long",
+    srcs = ["field/gf_tables_test.cpp"],
+    deps = [
+        "//xgalois",
+        "@googletest//:gtest",
+        "@googletest//:gtest_main",
+    ],
+)
+
 cc_test(
     name = "gf_extension_test",
     size = "large",
@@ -190,6 +203,7 @@ test_suite(
         ":gf_extension_test",
         ":gf_factory_test",
         ":gf_prime_test",
+        ":gf_tables_test",
         ":interface_test",
         ":linalg_binary_test",
         ":linalg_prime_test",
