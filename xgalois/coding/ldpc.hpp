@@ -384,7 +384,7 @@ class LDPCCode : public AbstractLinearCode<GaloisFieldBinary> {
 
   LDPCCode(std::shared_ptr<GaloisFieldBinary> field,
            const matrix_type &dense_parity_check)
-      : LDPCCode(std::move(field),
+      : LDPCCode(field,
                  SparseBinaryMatrix::FromDense(
                      ValidateDenseH(field, dense_parity_check)),
                  PrivateConstructTag{}) {}
