@@ -2,194 +2,245 @@
 
 #include <gtest/gtest.h>
 
+#include <cstddef>
+#include <cstdint>
+#include <memory>
+#include <random>
+#include <vector>
+
+#include "xgalois/field/gf_binary.hpp"
+#include "xgalois/field/gf_extension.hpp"
+#include "xgalois/field/gf_prime.hpp"
+
+namespace {
+
 using namespace xg;
 using namespace xg::coding;
 
-class CodingTest : public ::testing::Test {
- protected:
-  void SetUp() override {
-    gf2 = std::make_shared<GaloisFieldPrime<uint8_t>>(2);
-    gf3 = std::make_shared<GaloisFieldPrime<uint8_t>>(3);
-    gf4 = std::make_shared<GaloisFieldBinary<uint8_t>>(2);
-    gf8 = std::make_shared<GaloisFieldBinary<uint8_t>>(3);
-    gf16 = std::make_shared<GaloisFieldBinary<uint8_t>>(4);
-  }
-
-  std::shared_ptr<GaloisFieldBase<uint8_t>> gf2, gf3, gf4, gf8, gf16;
-};
-
-TEST_F(CodingTest, ReedSolomonCreation) {
-  auto rs_code = CreateReedSolomonCode(gf16, 15, 11);
-
-  EXPECT_EQ(rs_code->Length(), 15);
-  EXPECT_EQ(rs_code->Dimension(), 11);
-  EXPECT_EQ(rs_code->MinimumDistance(), 5);
-  EXPECT_TRUE(IsMDS(*rs_code));
-  EXPECT_EQ(ErrorCorrectionCapability(*rs_code), 2);
-}
-
-TEST_F(CodingTest, GeneralizedReedSolomon) {
-  std::vector<uint8_t> eval_points = {1, 2, 3, 4, 5};
-  std::vector<uint8_t> multipliers = {1, 1, 2, 2, 3};
-
-  auto grs_code =
-      CreateGeneralizedReedSolomonCode(gf8, eval_points, multipliers, 3);
-
-  EXPECT_EQ(grs_code->Length(), 5);
-  EXPECT_EQ(grs_code->Dimension(), 3);
-  EXPECT_EQ(grs_code->MinimumDistance(), 3);
-  EXPECT_TRUE(IsMDS(*grs_code));
-}
-
-TEST_F(CodingTest, CyclicCode) {
-  std::vector<uint8_t> gen_coeffs = {1, 1, 0, 1};
-  auto gen_poly = xg::poly::PolyDense<uint8_t>(gen_coeffs, gf2);
-
-  auto cyclic_code = CreateCyclicCode(gf2, 7, gen_poly);
-
-  EXPECT_EQ(cyclic_code->Length(), 7);
-  EXPECT_EQ(cyclic_code->Dimension(), 4);
-  EXPECT_EQ(cyclic_code->GeneratorPolynomial().Degree(), 3);
-}
-
-TEST_F(CodingTest, EncodingDecoding) {
-  auto rs_code = CreateReedSolomonCode(gf8, 7, 4);
-
-  std::vector<uint8_t> message = {1, 2, 3, 4};
-
-  auto codeword = rs_code->Encode(message);
-  EXPECT_EQ(codeword.size(), 7);
-
-  EXPECT_TRUE(rs_code->Contains(codeword));
-
-  auto decoded = rs_code->DecodeToMessage(codeword);
-  EXPECT_EQ(decoded, message);
-
-  auto unencoded = rs_code->Unencode(codeword);
-  EXPECT_EQ(unencoded, message);
-}
-
-TEST_F(CodingTest, ErrorCorrection) {
-  auto rs_code = CreateReedSolomonCode(gf8, 7, 3);
-
-  std::vector<uint8_t> message = {1, 2, 3};
-  auto codeword = rs_code->Encode(message);
-
-  auto received = codeword;
-  received[0] = (received[0] + 1) % 8;
-
-  auto corrected = rs_code->DecodeToCode(received);
-  EXPECT_EQ(corrected, codeword);
-
-  auto decoded_message = rs_code->DecodeToMessage(received);
-  EXPECT_EQ(decoded_message, message);
-}
-
-TEST_F(CodingTest, CyclicShift) {
-  std::vector<uint8_t> gen_coeffs = {1, 1, 0, 1};
-  auto gen_poly = xg::poly::PolyDense<uint8_t>(gen_coeffs, gf2);
-  auto cyclic_code = CreateCyclicCode(gf2, 7, gen_poly);
-
-  std::vector<uint8_t> message = {1, 0, 1, 1};
-  auto codeword = cyclic_code->Encode(message);
-
-  auto shifted = cyclic_code->CyclicShift(codeword, 1);
-  EXPECT_TRUE(cyclic_code->Contains(shifted));
-
-  auto shifted2 = cyclic_code->CyclicShift(shifted, 1);
-  EXPECT_TRUE(cyclic_code->Contains(shifted2));
-}
-
-TEST_F(CodingTest, CodeBounds) {
-  auto rs_code = CreateReedSolomonCode(gf16, 15, 11);
-
-  EXPECT_TRUE(SatisfiesSingletonBound(*rs_code));
-  EXPECT_TRUE(IsMDS(*rs_code));
-
-  EXPECT_TRUE(SatisfiesHammingBound(*rs_code));
-
-  EXPECT_FALSE(IsPerfectCode(*rs_code));
-}
-
-TEST_F(CodingTest, EncoderDecoderRegistration) {
-  auto rs_code = CreateReedSolomonCode(gf8, 7, 4);
-
-  auto encoders = rs_code->AvailableEncoders();
-  EXPECT_GT(encoders.size(), 0);
-
-  auto decoders = rs_code->AvailableDecoders();
-  EXPECT_GT(decoders.size(), 0);
-
-  auto encoder = rs_code->GetEncoder("GRSEncoder");
-  EXPECT_NE(encoder, nullptr);
-
-  auto decoder = rs_code->GetDecoder("GRSDecoder");
-  EXPECT_NE(decoder, nullptr);
-}
-
-TEST_F(CodingTest, PolynomialOperations) {
-  auto rs_code = CreateReedSolomonCode(gf8, 7, 4);
-
-  std::vector<uint8_t> coeffs = {1, 2, 3, 4};
-  auto poly = xg::poly::PolyDense<uint8_t>(coeffs, gf8);
-
-  auto codeword = rs_code->EncodePolynomial(poly);
-  EXPECT_EQ(codeword.size(), 7);
-  EXPECT_TRUE(rs_code->Contains(codeword));
-
-  auto decoded_poly = rs_code->DecodeToPolynomial(codeword);
-  EXPECT_EQ(decoded_poly.Degree(), poly.Degree());
-
-  for (size_t i = 0; i <= poly.Degree(); ++i) {
-    EXPECT_EQ(decoded_poly.GetCoefficient(i), poly.GetCoefficient(i));
-  }
-}
-
-TEST_F(CodingTest, DistanceCalculations) {
-  auto rs_code = CreateReedSolomonCode(gf8, 7, 4);
-
-  std::vector<uint8_t> word1 = {1, 2, 3, 4, 5, 6, 7};
-  std::vector<uint8_t> word2 = {1, 2, 3, 0, 0, 6, 7};
-
-  size_t distance = rs_code->Distance(word1, word2);
-  EXPECT_EQ(distance, 2);
-
-  std::vector<uint8_t> word3 = {0, 2, 0, 4, 0, 6, 0};
-  size_t weight = rs_code->Weight(word3);
-  EXPECT_EQ(weight, 3);
-}
-
-TEST_F(CodingTest, DualCodes) {
-  auto rs_code = CreateReedSolomonCode(gf8, 7, 4);
-  auto dual_code = rs_code->DualCode();
-
-  EXPECT_EQ(dual_code->Length(), 7);
-  EXPECT_EQ(dual_code->Dimension(), 3);
-
-  EXPECT_TRUE(IsMDS(*dual_code));
-}
-
-TEST_F(CodingTest, SystematicEncoding) {
-  auto rs_code = CreateReedSolomonCode(gf8, 7, 4);
-
-  std::vector<uint8_t> message = {1, 2, 3, 4};
-
-  auto encoder = rs_code->GetEncoder("GRSEncoder");
-  auto sys_encoder = dynamic_cast<GRSEncoder<uint8_t> *>(encoder.get());
-
-  if (sys_encoder) {
-    auto sys_codeword = sys_encoder->SystematicEncode(message);
-    EXPECT_EQ(sys_codeword.size(), 7);
-    EXPECT_TRUE(rs_code->Contains(sys_codeword));
-
-    auto sys_positions = rs_code->SystematicPositions();
-    for (size_t i = 0; i < message.size(); ++i) {
-      EXPECT_EQ(sys_codeword[sys_positions[i]], message[i]);
+template <typename GaloisField>
+GFArray<GaloisField> MakeWord(const std::shared_ptr<GaloisField> &field,
+                              const std::vector<uint64_t> &vals) {
+  using StorageType = typename GaloisField::element_type;
+  using RawArray = typename GFArray<GaloisField>::raw_array_type;
+  using ShapeType = typename GFArray<GaloisField>::shape_type;
+  RawArray raw = RawArray::from_shape(ShapeType{vals.size()});
+  for (std::size_t i = 0; i < vals.size(); ++i) {
+    if constexpr (std::is_integral_v<StorageType>) {
+      raw(i) = field->SetElementValue(static_cast<StorageType>(vals[i]));
+    } else {
+      raw(i) = field->FromInt(vals[i]);
     }
   }
+  return GFArray<GaloisField>::FromRaw(field, std::move(raw));
 }
 
-int main(int argc, char **argv) {
-  ::testing::InitGoogleTest(&argc, argv);
-  return RUN_ALL_TESTS();
+TEST(CodingTest, CreateReedSolomonOverPrimeAndBinaryFields) {
+  // GF(7): 2 is NOT a primitive root mod 7 (order 3); MultiplicativeGenerator()
+  // returns a true primitive root (e.g., 3), so length 6 succeeds cleanly!
+  auto gf7 = std::make_shared<GaloisFieldPrime<uint8_t>>(7);
+  auto rs7 = CreateReedSolomonCode(gf7, 6, 4);
+  EXPECT_EQ(rs7.Length(), 6U);
+  EXPECT_EQ(rs7.Dimension(), 4U);
+  EXPECT_EQ(rs7.MinimumDistance(), 3U);
+  EXPECT_EQ(Redundancy(rs7), 2U);
+  EXPECT_EQ(ErrorCorrectionCapability(rs7), 1U);
+  EXPECT_TRUE(IsMDSCode(rs7));
+  EXPECT_TRUE(SatisfiesSingletonBound(rs7));
+  EXPECT_TRUE(SatisfiesHammingBound(rs7));
+
+  // GF(17): 2 has order 8 < 16, whereas MultiplicativeGenerator() has order 16.
+  auto gf17 = std::make_shared<GaloisFieldPrime<uint16_t>>(17);
+  auto rs17 = CreateReedSolomonCode(gf17, 16, 12);
+  EXPECT_EQ(rs17.Length(), 16U);
+  EXPECT_EQ(rs17.Dimension(), 12U);
+  EXPECT_EQ(rs17.MinimumDistance(), 5U);
+  EXPECT_EQ(ErrorCorrectionCapability(rs17), 2U);
+  EXPECT_TRUE(IsMDSCode(rs17));
+
+  // GF(2^4)
+  auto gf16 = std::make_shared<GaloisFieldBinaryExtension<uint8_t>>(4);
+  auto rs16 = CreateReedSolomonCode(gf16, 15, 11);
+  EXPECT_EQ(rs16.Length(), 15U);
+  EXPECT_EQ(rs16.Dimension(), 11U);
+  EXPECT_EQ(rs16.MinimumDistance(), 5U);
+  EXPECT_EQ(ErrorCorrectionCapability(rs16), 2U);
+  EXPECT_TRUE(IsMDSCode(rs16));
+  EXPECT_TRUE(SatisfiesHammingBound(rs16));
+  EXPECT_FALSE(IsPerfectCode(rs16));
 }
+
+TEST(CodingTest, HammingBoundAndPerfectCodes) {
+  // Binary Hamming [7, 4, 3]: V_2(7, 1) = 1 + 7 = 8 = 2^3 => perfect!
+  auto hamming7 = HammingCode(3);
+  EXPECT_EQ(hamming7.Length(), 7U);
+  EXPECT_EQ(hamming7.Dimension(), 4U);
+  EXPECT_EQ(hamming7.MinimumDistance(), 3U);
+  EXPECT_EQ(ErrorCorrectionCapability(hamming7), 1U);
+  EXPECT_TRUE(SatisfiesSingletonBound(hamming7));
+  EXPECT_FALSE(IsMDSCode(hamming7));
+  EXPECT_TRUE(SatisfiesHammingBound(hamming7));
+  EXPECT_TRUE(IsPerfectCode(hamming7));
+
+  // Extended binary Hamming [8, 4, 4]: t = 1, V_2(8, 1) = 9 < 16 => not
+  // perfect.
+  auto ext_hamming8 = ExtendedHammingCode(3);
+  EXPECT_TRUE(SatisfiesHammingBound(ext_hamming8));
+  EXPECT_FALSE(IsPerfectCode(ext_hamming8));
+
+  // Binary Golay [23, 12, 7]: V_2(23, 3) = 1 + 23 + 253 + 1771 = 2048 = 2^11 =>
+  // perfect!
+  auto golay23 = BinaryGolayCode();
+  EXPECT_EQ(golay23.Length(), 23U);
+  EXPECT_EQ(golay23.Dimension(), 12U);
+  EXPECT_EQ(golay23.MinimumDistance(), 7U);
+  EXPECT_EQ(ErrorCorrectionCapability(golay23), 3U);
+  EXPECT_TRUE(SatisfiesSingletonBound(golay23));
+  EXPECT_TRUE(SatisfiesHammingBound(golay23));
+  EXPECT_TRUE(IsPerfectCode(golay23));
+
+  // Extended binary Golay [24, 12, 8]: not perfect.
+  auto golay24 = ExtendedBinaryGolayCode();
+  EXPECT_TRUE(SatisfiesHammingBound(golay24));
+  EXPECT_FALSE(IsPerfectCode(golay24));
+
+  // Ternary Golay [11, 6, 5]: V_3(11, 2) = 1 + 22 + 220 = 243 = 3^5 => perfect!
+  auto golay11 = TernaryGolayCode();
+  EXPECT_EQ(golay11.MinimumDistance(), 5U);
+  EXPECT_EQ(ErrorCorrectionCapability(golay11), 2U);
+  EXPECT_TRUE(SatisfiesHammingBound(golay11));
+  EXPECT_TRUE(IsPerfectCode(golay11));
+
+  // Large RS(255, 223) over GF(2^8): 256^32 = 2^256 overflows uint64/uint128;
+  // verify overflow-free exact Hamming bound check succeeds.
+  auto gf256 = std::make_shared<GF2XLOG<uint8_t>>(8);
+  auto rs255 = CreateReedSolomonCode(gf256, 255, 223);
+  EXPECT_EQ(SingletonBound(255, 223), 33U);
+  EXPECT_TRUE(SatisfiesSingletonBound(rs255));
+  EXPECT_TRUE(IsMDSCode(rs255));
+  EXPECT_TRUE(SatisfiesHammingBound(rs255));
+  EXPECT_FALSE(IsPerfectCode(rs255));
+}
+
+TEST(CodingTest, EndToEndPrimeAndBinaryExtensionCodes) {
+  std::mt19937_64 rng(12345);
+
+  // Prime field GF(17) RS(16, 10) -> corrects up to 3 errors
+  {
+    auto gf17 = std::make_shared<GaloisFieldPrime<uint16_t>>(17);
+    auto rs = CreateReedSolomonCode(gf17, 16, 10);
+    auto msg = GFArray<GaloisFieldPrime<uint16_t>>::Random(gf17, {10}, rng);
+    auto cw = rs.Encode(msg);
+    EXPECT_TRUE(rs.Contains(cw));
+    EXPECT_EQ(rs.Unencode(cw), msg);
+
+    auto rx = cw;
+    rx.Raw(1) = gf17->Add(rx.Raw(1), gf17->SetElementValue(5));
+    rx.Raw(7) = gf17->Add(rx.Raw(7), gf17->SetElementValue(11));
+    rx.Raw(14) = gf17->Add(rx.Raw(14), gf17->SetElementValue(3));
+
+    auto res = rs.DecodeWithResult(rx);
+    ASSERT_TRUE(res.Ok());
+    EXPECT_EQ(res.codeword, cw);
+    EXPECT_EQ(res.message, msg);
+    EXPECT_EQ(res.num_errors, 3U);
+  }
+
+  // Binary extension field GF(2^4) Extended RS(16, 12) -> corrects up to 2
+  // errors including at alpha = 0
+  {
+    auto gf16 = std::make_shared<GaloisFieldBinaryExtension<uint8_t>>(4);
+    auto ext_rs = CreateExtendedReedSolomonCode(gf16, 16, 12);
+    auto msg =
+        GFArray<GaloisFieldBinaryExtension<uint8_t>>::Random(gf16, {12}, rng);
+    auto cw = ext_rs.Encode(msg);
+    EXPECT_TRUE(ext_rs.Contains(cw));
+
+    auto rx = cw;
+    rx.Raw(0) = gf16->Add(rx.Raw(0), gf16->SetElementValue(9));
+    rx.Raw(11) = gf16->Add(rx.Raw(11), gf16->SetElementValue(4));
+
+    auto res = ext_rs.DecodeWithResult(rx, "Sugiyama");
+    ASSERT_TRUE(res.Ok());
+    EXPECT_EQ(res.codeword, cw);
+    EXPECT_EQ(res.message, msg);
+    EXPECT_EQ(res.num_errors, 2U);
+  }
+
+  // General extension field GF(3^2) GRS(9, 5) with alpha_0 = 0
+  {
+    auto gf9 = std::make_shared<GaloisFieldExtension<uint8_t>>(
+        std::pair<uint64_t, uint64_t>{3, 2});
+    auto ext_rs = CreateExtendedReedSolomonCode(gf9, 9, 5);
+    auto msg = GFArray<GaloisFieldExtension<uint8_t>>::Random(gf9, {5}, rng);
+    auto cw = ext_rs.Encode(msg);
+    EXPECT_TRUE(ext_rs.Contains(cw));
+
+    auto rx = cw;
+    rx.Raw(0) = gf9->Add(rx.Raw(0), gf9->FromInt(4));
+    rx.Raw(6) = gf9->Add(rx.Raw(6), gf9->FromInt(7));
+
+    auto res = ext_rs.DecodeWithResult(rx);
+    ASSERT_TRUE(res.Ok());
+    EXPECT_EQ(res.codeword, cw);
+    EXPECT_EQ(res.message, msg);
+    EXPECT_EQ(res.num_errors, 2U);
+  }
+}
+
+TEST(CodingTest, EncoderDecoderRegistrationAndUtilities) {
+  auto gf8 = std::make_shared<GaloisFieldBinaryExtension<uint8_t>>(3);
+  auto rs = CreateReedSolomonCode(gf8, 7, 4);
+
+  EXPECT_EQ(rs.DefaultEncoder(), "GRS");
+  EXPECT_EQ(rs.DefaultDecoder(), "BerlekampMassey");
+  EXPECT_NE(rs.GetEncoder("GRS"), nullptr);
+  EXPECT_NE(rs.GetEncoder("GRSSystematic"), nullptr);
+  EXPECT_NE(rs.GetEncoder("GeneratorMatrix"), nullptr);
+  EXPECT_NE(rs.GetDecoder("BerlekampMassey"), nullptr);
+  EXPECT_NE(rs.GetDecoder("Sugiyama"), nullptr);
+  EXPECT_NE(rs.GetDecoder("PGZ"), nullptr);
+  EXPECT_NE(rs.GetDecoder("GRS"), nullptr);
+
+  // Distance & Weight
+  auto w1 = MakeWord(gf8, {1, 2, 3, 4, 5, 6, 7});
+  auto w2 = MakeWord(gf8, {1, 2, 3, 0, 0, 6, 7});
+  EXPECT_EQ(rs.Distance(w1, w2), 2U);
+  auto w3 = MakeWord(gf8, {0, 2, 0, 4, 0, 6, 0});
+  EXPECT_EQ(rs.Weight(w3), 3U);
+
+  // Polynomial encode / decode round-trip
+  auto poly = PolynomialDense<GaloisFieldBinaryExtension<uint8_t>>::FromRaw(
+      {1, 2, 3, 4}, gf8);
+  auto cw = rs.EncodePolynomial(poly);
+  EXPECT_TRUE(rs.Contains(cw));
+  auto decoded_poly = rs.DecodeToPolynomial(cw);
+  EXPECT_EQ(decoded_poly, poly);
+
+  // Dual code
+  auto dual = rs.DualCode();
+  EXPECT_EQ(dual.Length(), 7U);
+  EXPECT_EQ(dual.Dimension(), 3U);
+  EXPECT_TRUE(IsMDSCode(dual));
+}
+
+TEST(CodingTest, CyclicCodeFactory) {
+  auto gf2 = std::make_shared<GaloisFieldBinary>();
+  // g(x) = 1 + x + x^3 divides x^7 - 1 => [7, 4, 3] cyclic Hamming code.
+  auto gen_poly =
+      PolynomialDense<GaloisFieldBinary>::FromRaw({1, 1, 0, 1}, gf2);
+  auto cyclic = CreateCyclicCode(gf2, 7, gen_poly);
+
+  EXPECT_EQ(cyclic.Length(), 7U);
+  EXPECT_EQ(cyclic.Dimension(), 4U);
+  EXPECT_EQ(cyclic.GeneratorPolynomial().Degree(), 3);
+
+  auto msg = MakeWord(gf2, {1, 0, 1, 1});
+  auto cw = cyclic.Encode(msg);
+  EXPECT_TRUE(cyclic.Contains(cw));
+  EXPECT_EQ(cyclic.Unencode(cw), msg);
+
+  auto shifted = cyclic.CyclicShift(cw, 1);
+  EXPECT_TRUE(cyclic.Contains(shifted));
+}
+
+}  // namespace

@@ -122,10 +122,13 @@ cc_library(
     name = "coding",
     hdrs = glob(["coding/**/*.hpp"]),
     deps = [
+        ":field",
         ":field_core",
         ":gf_array",
         ":linalg",
         ":poly",
+        ":utils_math",
+        ":utils_poly",
         "@xtensor",
         "@xtl",
     ],

@@ -1,327 +1,512 @@
-#ifndef XGALOIS_CODING_GRS_HPP
-#define XGALOIS_CODING_GRS_HPP
+#ifndef XGALOIS_CODING_GRS_HPP_
+#define XGALOIS_CODING_GRS_HPP_
 
+#include <cstddef>
+#include <cstdint>
 #include <memory>
+#include <optional>
+#include <span>
+#include <stdexcept>
+#include <string>
+#include <utility>
 #include <vector>
-#include <xtensor/containers/xadapt.hpp>
-#include <xtensor/containers/xarray.hpp>
-#include <xtensor/views/xview.hpp>
 
 #include "xgalois/coding/abstract_linear_code.hpp"
+#include "xgalois/field/gf_array.hpp"
+#include "xgalois/field/gf_element.hpp"
 #include "xgalois/poly/poly_dense.hpp"
+#include "xgalois/utils/poly.hpp"
 
 namespace xg {
 namespace coding {
 
 template <typename GaloisField>
+class GeneratorMatrixEncoder;
+template <typename GaloisField>
 class GRSEncoder;
+template <typename GaloisField>
+class GRSSystematicEncoder;
 template <typename GaloisField>
 class GRSDecoder;
 template <typename GaloisField>
 class BerlekampMasseyDecoder;
+template <typename GaloisField>
+class SugiyamaDecoder;
 
 template <typename GaloisField>
 class GeneralizedReedSolomonCode : public AbstractLinearCode<GaloisField> {
  public:
-  using element_type = xg::GaloisFieldElement<GaloisField>;
-  using codeword_type = xt::xarray<GaloisField>;
-  using message_type = xt::xarray<GaloisField>;
-  using matrix_type = xt::xarray<GaloisField>;
-  using vector_type = xt::xarray<GaloisField>;
-  using polynomial_type = xg::PolynomialDense<GaloisField>;
+  using Base = AbstractLinearCode<GaloisField>;
+  using field_type = GaloisField;
+  using element_type = GaloisFieldElement<GaloisField>;
+  using storage_type = typename GaloisField::element_type;
+  using codeword_type = GFArray<GaloisField>;
+  using message_type = GFArray<GaloisField>;
+  using matrix_type = GFMatrix<GaloisField>;
+  using vector_type = GFArray<GaloisField>;
+  using polynomial_type = PolynomialDense<GaloisField>;
 
   GeneralizedReedSolomonCode(std::shared_ptr<GaloisField> field,
-                             const xt::xarray<GaloisField>& evaluation_points,
-                             const xt::xarray<GaloisField>& column_multipliers,
-                             size_t dimension)
-      : AbstractLinearCode<GaloisField>(evaluation_points.size(), dimension,
-                                        "GRSEncoder", "GRSDecoder",
-                                        Metric::HAMMING),
-        field_(field),
-        evaluation_points_(evaluation_points),
+                             const vector_type &evaluation_points,
+                             const vector_type &column_multipliers,
+                             std::size_t dimension)
+      : Base(std::move(field), evaluation_points.Size(), dimension,
+             Metric::HAMMING, "GRS", "BerlekampMassey"),
+        eval_points_(evaluation_points),
         column_multipliers_(column_multipliers) {
-    if (evaluation_points.size() != column_multipliers.size()) {
+    if (!eval_points_.HasField() || eval_points_.Field() != this->field_ ||
+        eval_points_.Dimension() != 1) {
       throw std::invalid_argument(
-          "Evaluation points and column multipliers must have same size");
+          "GeneralizedReedSolomonCode: evaluation points must be a 1D GFArray "
+          "over the code's field");
+    }
+    if (!column_multipliers_.HasField() ||
+        column_multipliers_.Field() != this->field_ ||
+        column_multipliers_.Dimension() != 1) {
+      throw std::invalid_argument(
+          "GeneralizedReedSolomonCode: column multipliers must be a 1D GFArray "
+          "over the code's field");
+    }
+    if (eval_points_.Size() != column_multipliers_.Size()) {
+      throw std::invalid_argument(
+          "GeneralizedReedSolomonCode: evaluation points and column "
+          "multipliers must have the same size");
+    }
+    if (this->dimension_ == 0 || this->dimension_ > this->length_) {
+      throw std::invalid_argument(
+          "GeneralizedReedSolomonCode: dimension must satisfy 1 <= k <= n");
+    }
+    const uint64_t q = this->field_->Order();
+    if (q != 0 && this->length_ > static_cast<std::size_t>(q)) {
+      throw std::invalid_argument(
+          "GeneralizedReedSolomonCode: code length cannot exceed field order");
     }
 
-    if (dimension > evaluation_points.size()) {
-      throw std::invalid_argument(
-          "Dimension cannot exceed number of evaluation points");
-    }
-
-    for (size_t i = 0; i < evaluation_points.size(); ++i) {
-      for (size_t j = i + 1; j < evaluation_points.size(); ++j) {
-        if (evaluation_points(i) == evaluation_points(j)) {
-          throw std::invalid_argument("Evaluation points must be distinct");
+    const auto eval_span = eval_points_.RawSpan();
+    const auto mult_span = column_multipliers_.RawSpan();
+    for (std::size_t i = 0; i < this->length_; ++i) {
+      if (this->field_->IsZero(mult_span[i])) {
+        throw std::invalid_argument(
+            "GeneralizedReedSolomonCode: column multipliers must be non-zero");
+      }
+      if (this->field_->IsZero(eval_span[i])) {
+        zero_eval_index_ = i;
+      }
+      for (std::size_t j = i + 1; j < this->length_; ++j) {
+        if (eval_span[i] == eval_span[j]) {
+          throw std::invalid_argument(
+              "GeneralizedReedSolomonCode: evaluation points must be distinct");
         }
       }
     }
 
-    for (size_t i = 0; i < column_multipliers.size(); ++i) {
-      if (column_multipliers(i) == element_type{}) {
-        throw std::invalid_argument("Column multipliers must be non-zero");
-      }
-    }
-
-    BuildMatrices();
-
+    BuildPrecomputedData();
     RegisterEncodersAndDecoders();
   }
 
-  static std::unique_ptr<GeneralizedReedSolomonCode<GaloisField>>
-  StandardReedSolomon(std::shared_ptr<GaloisField> field,
-                      const xt::xarray<GaloisField>& evaluation_points,
-                      size_t dimension) {
-    xt::xarray<GaloisField> multipliers =
-        xt::ones<GaloisField>({evaluation_points.size()});
-    return std::make_unique<GeneralizedReedSolomonCode>(
-        field, evaluation_points, multipliers, dimension);
+  static GeneralizedReedSolomonCode StandardReedSolomon(
+      std::shared_ptr<GaloisField> field, const vector_type &evaluation_points,
+      std::size_t dimension) {
+    if (!field) {
+      throw std::invalid_argument(
+          "StandardReedSolomon: field pointer cannot be null");
+    }
+    auto multipliers = vector_type::Ones(field, {evaluation_points.Size()});
+    return GeneralizedReedSolomonCode(std::move(field), evaluation_points,
+                                      multipliers, dimension);
   }
 
-  static std::unique_ptr<GeneralizedReedSolomonCode<GaloisField>> ReedSolomon(
-      std::shared_ptr<GaloisField> field, size_t length, size_t dimension,
-      const element_type& primitive_element) {
-    xt::xarray<GaloisField> evaluation_points =
-        xt::zeros<GaloisField>({length});
-    xt::xarray<GaloisField> multipliers = xt::ones<GaloisField>({length});
-
-    element_type power = element_type(1);
-    for (size_t i = 0; i < length; ++i) {
-      evaluation_points(i) = power;
-      power = field->Mul(power, primitive_element);
+  static GeneralizedReedSolomonCode ReedSolomon(
+      std::shared_ptr<GaloisField> field, std::size_t length,
+      std::size_t dimension, const element_type &primitive_element) {
+    if (!field) {
+      throw std::invalid_argument("ReedSolomon: field pointer cannot be null");
+    }
+    if (length == 0) {
+      throw std::invalid_argument("ReedSolomon: length must be positive");
+    }
+    const uint64_t q = field->Order();
+    if (q != 0 && length > static_cast<std::size_t>(q - 1)) {
+      throw std::invalid_argument(
+          "ReedSolomon: primitive RS length cannot exceed field->Order() - 1");
+    }
+    if (!primitive_element.HasField() || primitive_element.Field() != field) {
+      throw std::invalid_argument(
+          "ReedSolomon: primitive element must belong to the code's field");
+    }
+    if (primitive_element.IsZero()) {
+      throw std::invalid_argument(
+          "ReedSolomon: primitive element cannot be zero");
     }
 
-    return std::make_unique<GeneralizedReedSolomonCode>(
-        field, evaluation_points, multipliers, dimension);
+    using RawArray = typename vector_type::raw_array_type;
+    using ShapeType = typename vector_type::shape_type;
+    RawArray eval_raw = RawArray::from_shape(ShapeType{length});
+    const storage_type alpha = primitive_element.RawValue();
+    storage_type power = field->MultiplicativeIdentity();
+    for (std::size_t i = 0; i < length; ++i) {
+      eval_raw(i) = power;
+      if (i + 1 < length) {
+        power = field->Mul(power, alpha);
+      }
+    }
+
+    auto eval_points = vector_type::FromRaw(field, std::move(eval_raw));
+    auto multipliers = vector_type::Ones(field, {length});
+    return GeneralizedReedSolomonCode(std::move(field), eval_points,
+                                      multipliers, dimension);
   }
 
-  std::shared_ptr<GaloisField> Field() const override { return field_; }
+  static GeneralizedReedSolomonCode ReedSolomon(
+      std::shared_ptr<GaloisField> field, std::size_t length,
+      std::size_t dimension) {
+    if (!field) {
+      throw std::invalid_argument("ReedSolomon: field pointer cannot be null");
+    }
+    const auto gen =
+        element_type::FromInternal(field->MultiplicativeGenerator(), field);
+    return ReedSolomon(std::move(field), length, dimension, gen);
+  }
 
-  matrix_type GeneratorMatrix() const override { return generator_matrix_; }
+  static GeneralizedReedSolomonCode ExtendedReedSolomon(
+      std::shared_ptr<GaloisField> field, std::size_t length,
+      std::size_t dimension, const element_type &primitive_element) {
+    if (!field) {
+      throw std::invalid_argument(
+          "ExtendedReedSolomon: field pointer cannot be null");
+    }
+    if (length == 0) {
+      throw std::invalid_argument(
+          "ExtendedReedSolomon: length must be positive");
+    }
+    const uint64_t q = field->Order();
+    if (q != 0 && length > static_cast<std::size_t>(q)) {
+      throw std::invalid_argument(
+          "ExtendedReedSolomon: length cannot exceed field->Order()");
+    }
+    if (!primitive_element.HasField() || primitive_element.Field() != field) {
+      throw std::invalid_argument(
+          "ExtendedReedSolomon: primitive element must belong to the code's "
+          "field");
+    }
+    if (primitive_element.IsZero()) {
+      throw std::invalid_argument(
+          "ExtendedReedSolomon: primitive element cannot be zero");
+    }
 
-  matrix_type ParityCheckMatrix() const override {
+    using RawArray = typename vector_type::raw_array_type;
+    using ShapeType = typename vector_type::shape_type;
+    RawArray eval_raw = RawArray::from_shape(ShapeType{length});
+    eval_raw(0) = field->AdditiveIdentity();
+    const storage_type alpha = primitive_element.RawValue();
+    storage_type power = field->MultiplicativeIdentity();
+    for (std::size_t i = 1; i < length; ++i) {
+      eval_raw(i) = power;
+      if (i + 1 < length) {
+        power = field->Mul(power, alpha);
+      }
+    }
+
+    auto eval_points = vector_type::FromRaw(field, std::move(eval_raw));
+    auto multipliers = vector_type::Ones(field, {length});
+    return GeneralizedReedSolomonCode(std::move(field), eval_points,
+                                      multipliers, dimension);
+  }
+
+  static GeneralizedReedSolomonCode ExtendedReedSolomon(
+      std::shared_ptr<GaloisField> field, std::size_t length,
+      std::size_t dimension) {
+    if (!field) {
+      throw std::invalid_argument(
+          "ExtendedReedSolomon: field pointer cannot be null");
+    }
+    const auto gen =
+        element_type::FromInternal(field->MultiplicativeGenerator(), field);
+    return ExtendedReedSolomon(std::move(field), length, dimension, gen);
+  }
+
+  const matrix_type &GeneratorMatrix() const override {
+    return generator_matrix_;
+  }
+
+  const matrix_type &ParityCheckMatrix() const override {
     return parity_check_matrix_;
   }
 
-  size_t MinimumDistance() const override {
-    return this->length_ - this->dimension_ + 1;
+  matrix_type SystematicGeneratorMatrix() const override {
+    return linalg::systematic_form(generator_matrix_).G_sys;
   }
 
-  std::unique_ptr<AbstractLinearCode<GaloisField>> DualCode() const override {
-    return ComputeDualCode();
-  }
+  const vector_type &EvaluationPoints() const noexcept { return eval_points_; }
 
-  std::string ToString() const override {
-    return "[" + std::to_string(this->length_) + ", " +
-           std::to_string(this->dimension_) + ", " +
-           std::to_string(MinimumDistance()) + "] GRS code over GF(" +
-           std::to_string(field_->Order()) + ")";
-  }
-
-  const xt::xarray<GaloisField>& EvaluationPoints() const {
-    return evaluation_points_;
-  }
-
-  const xt::xarray<GaloisField>& ColumnMultipliers() const {
+  const vector_type &ColumnMultipliers() const noexcept {
     return column_multipliers_;
   }
 
-  codeword_type EncodePolynomial(const polynomial_type& message_poly) const {
-    if (message_poly.Degree() >= this->dimension_) {
+  const vector_type &DualMultipliers() const noexcept {
+    return dual_multipliers_;
+  }
+
+  const std::vector<storage_type> &ColumnMultiplierInverses() const noexcept {
+    return column_multiplier_inverses_;
+  }
+
+  std::optional<std::size_t> ZeroEvaluationIndex() const noexcept {
+    return zero_eval_index_;
+  }
+
+  const std::vector<std::size_t> &NonZeroEvalIndices() const noexcept {
+    return nonzero_eval_indices_;
+  }
+
+  std::span<const storage_type> NonZeroEvalInverses() const noexcept {
+    return std::span<const storage_type>(nonzero_eval_inverses_);
+  }
+
+  const storage_type &EvalInverseAt(std::size_t index) const {
+    return eval_inv_lookup_[index];
+  }
+
+  std::size_t MinimumDistance() const override {
+    return this->length_ - this->dimension_ + 1;
+  }
+
+  bool IsMDS() const noexcept { return true; }
+
+  GeneralizedReedSolomonCode DualCode() const {
+    if (this->dimension_ == this->length_) {
       throw std::invalid_argument(
-          "Message polynomial degree must be less than dimension");
+          "DualCode: dual of full-dimension GRS code has dimension 0");
+    }
+    return GeneralizedReedSolomonCode(this->field_, eval_points_,
+                                      dual_multipliers_,
+                                      this->length_ - this->dimension_);
+  }
+
+  codeword_type EncodePolynomial(const polynomial_type &message_poly) const {
+    if (!message_poly.HasField() || message_poly.Field() != this->field_) {
+      throw std::invalid_argument(
+          "EncodePolynomial: polynomial field mismatch");
+    }
+    if (!message_poly.IsZero() &&
+        static_cast<std::size_t>(message_poly.Degree()) >= this->dimension_) {
+      throw std::invalid_argument(
+          "EncodePolynomial: message polynomial degree must be less than code "
+          "dimension");
     }
 
-    codeword_type codeword = xt::zeros<GaloisField>({this->length_});
-    for (size_t i = 0; i < this->length_; ++i) {
-      element_type eval = message_poly.Evaluate(evaluation_points_(i));
-      codeword(i) = field_->Mul(eval, column_multipliers_(i));
+    const std::vector<storage_type> evals =
+        message_poly.EvalBatch(eval_points_.RawSpan());
+    using RawArray = typename codeword_type::raw_array_type;
+    using ShapeType = typename codeword_type::shape_type;
+    RawArray raw = RawArray::from_shape(ShapeType{this->length_});
+    this->field_->MulArray(std::span<storage_type>(raw.data(), this->length_),
+                           std::span<const storage_type>(evals),
+                           column_multipliers_.RawSpan());
+    return codeword_type::FromRaw(this->field_, std::move(raw));
+  }
+
+  polynomial_type InterpolateCodeword(const codeword_type &codeword) const {
+    if (!codeword.HasField() || codeword.Field() != this->field_) {
+      throw std::invalid_argument(
+          "InterpolateCodeword: codeword field mismatch");
+    }
+    if (codeword.Dimension() != 1 || codeword.Size() != this->length_) {
+      throw std::invalid_argument(
+          "InterpolateCodeword: codeword must be 1D with size equal to code "
+          "length");
     }
 
-    return codeword;
+    const std::size_t k = this->dimension_;
+    std::vector<storage_type> ys(k);
+    const auto cw_span = codeword.RawSpan();
+    this->field_->MulArray(
+        std::span<storage_type>(ys), cw_span.subspan(0, k),
+        std::span<const storage_type>(column_multiplier_inverses_.data(), k));
+    return utils::InterpolateRaw(this->field_,
+                                 eval_points_.RawSpan().subspan(0, k),
+                                 std::span<const storage_type>(ys));
   }
 
-  polynomial_type DecodeToPolynomial(const codeword_type& received_word) const {
-    auto decoder = this->GetDecoder();
-    auto corrected = decoder->DecodeToCode(received_word);
-
-    return InterpolateFromCodeword(corrected);
+  polynomial_type DecodeToPolynomial(const codeword_type &received_word) const {
+    const auto corrected = this->DecodeToCode(received_word);
+    return InterpolateCodeword(corrected);
   }
 
-  bool IsMDS() const {
-    return MinimumDistance() == this->length_ - this->dimension_ + 1;
-  }
-
-  xt::xarray<size_t> SystematicPositions() const {
-    xt::xarray<size_t> positions = xt::zeros<size_t>({this->dimension_});
-    for (size_t i = 0; i < this->dimension_; ++i) {
-      positions(i) = i;
+  std::vector<std::size_t> SystematicPositions() const {
+    std::vector<std::size_t> positions(this->dimension_);
+    for (std::size_t i = 0; i < this->dimension_; ++i) {
+      positions[i] = i;
     }
     return positions;
   }
 
+  std::string ToString() const override {
+    const uint64_t q = this->field_->Order();
+    const std::string field_str = (q == 0) ? "2^64" : std::to_string(q);
+    return "[" + std::to_string(this->length_) + ", " +
+           std::to_string(this->dimension_) + ", " +
+           std::to_string(MinimumDistance()) + "] GRS code over GF(" +
+           field_str + ")";
+  }
+
  private:
-  std::shared_ptr<GaloisField> field_;
-  xt::xarray<GaloisField> evaluation_points_;
-  xt::xarray<GaloisField> column_multipliers_;
+  void BuildPrecomputedData() {
+    const std::size_t n = this->length_;
+    const std::size_t k = this->dimension_;
+    const std::size_t r = n - k;
+    const auto eval_span = eval_points_.RawSpan();
+    const auto mult_span = column_multipliers_.RawSpan();
+    const storage_type zero = this->field_->AdditiveIdentity();
+    const storage_type one = this->field_->MultiplicativeIdentity();
+
+    // 1. Precompute column multiplier inverses via Montgomery BatchInv.
+    column_multiplier_inverses_.resize(n);
+    this->field_->BatchInv(std::span<storage_type>(column_multiplier_inverses_),
+                           mult_span);
+
+    // 2. Precompute dual multipliers w_j = (v_j * prod_{l != j}(a_j - a_l))^-1
+    //    using a single field inversion via Montgomery BatchInv.
+    std::vector<storage_type> denoms(n);
+    for (std::size_t j = 0; j < n; ++j) {
+      storage_type prod = one;
+      const storage_type &aj = eval_span[j];
+      for (std::size_t l = 0; l < n; ++l) {
+        if (l != j) {
+          prod = this->field_->Mul(prod, this->field_->Sub(aj, eval_span[l]));
+        }
+      }
+      denoms[j] = this->field_->Mul(mult_span[j], prod);
+    }
+
+    using RawArray = typename vector_type::raw_array_type;
+    using ShapeType = typename vector_type::shape_type;
+    RawArray dual_raw = RawArray::from_shape(ShapeType{n});
+    this->field_->BatchInv(std::span<storage_type>(dual_raw.data(), n),
+                           std::span<const storage_type>(denoms));
+    dual_multipliers_ = vector_type::FromRaw(this->field_, std::move(dual_raw));
+    const auto dual_span = dual_multipliers_.RawSpan();
+
+    // 3. Build generator matrix G_{i,j} = v_j * alpha_j^i (0^0 = 1).
+    RawArray gen_raw = RawArray::from_shape(ShapeType{k, n});
+    storage_type *gen_data = gen_raw.data();
+    for (std::size_t j = 0; j < n; ++j) {
+      const storage_type &aj = eval_span[j];
+      const storage_type &vj = mult_span[j];
+      storage_type pow = one;
+      for (std::size_t i = 0; i < k; ++i) {
+        gen_data[i * n + j] = this->field_->Mul(vj, pow);
+        if (i + 1 < k) {
+          pow = this->field_->Mul(pow, aj);
+        }
+      }
+    }
+    generator_matrix_ = matrix_type::FromRaw(this->field_, std::move(gen_raw));
+
+    // 4. Build parity-check matrix H_{i,j} = w_j * alpha_j^i (0^0 = 1).
+    if (r == 0) {
+      parity_check_matrix_ = matrix_type::Zeros(this->field_, {0, n});
+    } else {
+      RawArray h_raw = RawArray::from_shape(ShapeType{r, n});
+      storage_type *h_data = h_raw.data();
+      for (std::size_t j = 0; j < n; ++j) {
+        const storage_type &aj = eval_span[j];
+        const storage_type &wj = dual_span[j];
+        storage_type pow = one;
+        for (std::size_t i = 0; i < r; ++i) {
+          h_data[i * n + j] = this->field_->Mul(wj, pow);
+          if (i + 1 < r) {
+            pow = this->field_->Mul(pow, aj);
+          }
+        }
+      }
+      parity_check_matrix_ =
+          matrix_type::FromRaw(this->field_, std::move(h_raw));
+    }
+
+    // 5. Cache non-zero evaluation point inverses (1 BatchInv) for fast Chien
+    //    search and Forney evaluation.
+    nonzero_eval_indices_.clear();
+    nonzero_eval_indices_.reserve(n);
+    std::vector<storage_type> nonzero_vals;
+    nonzero_vals.reserve(n);
+    for (std::size_t j = 0; j < n; ++j) {
+      if (!this->field_->IsZero(eval_span[j])) {
+        nonzero_eval_indices_.push_back(j);
+        nonzero_vals.push_back(eval_span[j]);
+      }
+    }
+    nonzero_eval_inverses_.resize(nonzero_vals.size());
+    this->field_->BatchInv(std::span<storage_type>(nonzero_eval_inverses_),
+                           std::span<const storage_type>(nonzero_vals));
+    eval_inv_lookup_.assign(n, zero);
+    for (std::size_t idx = 0; idx < nonzero_eval_indices_.size(); ++idx) {
+      eval_inv_lookup_[nonzero_eval_indices_[idx]] =
+          nonzero_eval_inverses_[idx];
+    }
+  }
+
+  void RegisterEncodersAndDecoders();
+
+  vector_type eval_points_;
+  vector_type column_multipliers_;
+  std::vector<storage_type> column_multiplier_inverses_;
+  vector_type dual_multipliers_;
   matrix_type generator_matrix_;
   matrix_type parity_check_matrix_;
-
-  void BuildMatrices() {
-    BuildGeneratorMatrix();
-    BuildParityCheckMatrix();
-  }
-
-  void BuildGeneratorMatrix() {
-    size_t k = this->dimension_;
-    size_t n = this->length_;
-
-    generator_matrix_ = matrix_type(k, n);
-
-    for (size_t i = 0; i < k; ++i) {
-      for (size_t j = 0; j < n; ++j) {
-        element_type power = field_->Pow(evaluation_points_(j), i);
-        element_type entry = field_->Mul(column_multipliers_(j), power);
-        generator_matrix_.Set(i, j, entry);
-      }
-    }
-  }
-
-  void BuildParityCheckMatrix() {
-    size_t k = this->dimension_;
-    size_t n = this->length_;
-    size_t r = n - k;
-
-    parity_check_matrix_ = matrix_type(r, n);
-
-    auto dual_multipliers = ComputeDualMultipliers();
-
-    for (size_t i = 0; i < r; ++i) {
-      for (size_t j = 0; j < n; ++j) {
-        element_type power = field_->Pow(evaluation_points_(j), i);
-        element_type entry = field_->Mul(dual_multipliers(j), power);
-        parity_check_matrix_.Set(i, j, entry);
-      }
-    }
-  }
-
-  xt::xarray<GaloisField> ComputeDualMultipliers() const {
-    xt::xarray<GaloisField> dual_multipliers =
-        xt::zeros<GaloisField>({this->length_});
-
-    for (size_t j = 0; j < this->length_; ++j) {
-      element_type product = element_type(1);
-      for (size_t i = 0; i < this->length_; ++i) {
-        if (i != j) {
-          element_type diff =
-              field_->Sub(evaluation_points_(j), evaluation_points_(i));
-          product = field_->Mul(product, diff);
-        }
-      }
-
-      element_type denominator = field_->Mul(column_multipliers_(j), product);
-      dual_multipliers(j) = field_->Inv(denominator);
-    }
-
-    return dual_multipliers;
-  }
-
-  std::unique_ptr<AbstractLinearCode<GaloisField>> ComputeDualCode() const {
-    auto dual_multipliers = ComputeDualMultipliers();
-    size_t dual_dimension = this->length_ - this->dimension_;
-
-    return std::make_unique<GeneralizedReedSolomonCode>(
-        field_, evaluation_points_, dual_multipliers, dual_dimension);
-  }
-
-  polynomial_type InterpolateFromCodeword(const codeword_type& codeword) const {
-    xt::xarray<GaloisField> values = xt::zeros<GaloisField>({this->length_});
-
-    for (size_t i = 0; i < this->length_; ++i) {
-      values(i) = field_->Div(codeword(i), column_multipliers_(i));
-    }
-
-    xt::xarray<GaloisField> points = xt::zeros<GaloisField>({this->dimension_});
-    xt::xarray<GaloisField> vals = xt::zeros<GaloisField>({this->dimension_});
-
-    for (size_t i = 0; i < this->dimension_; ++i) {
-      points(i) = evaluation_points_(i);
-      vals(i) = values(i);
-    }
-
-    return LagrangeInterpolation(points, vals);
-  }
-
-  polynomial_type LagrangeInterpolation(
-      const xt::xarray<GaloisField>& points,
-      const xt::xarray<GaloisField>& values) const {
-    if (points.size() != values.size()) {
-      throw std::invalid_argument("Points and values must have same size");
-    }
-
-    size_t n = points.size();
-    xt::xarray<GaloisField> result_coeffs = xt::zeros<GaloisField>({n});
-
-    for (size_t i = 0; i < n; ++i) {
-      xt::xarray<GaloisField> basis_coeffs = xt::ones<GaloisField>({1});
-
-      for (size_t j = 0; j < n; ++j) {
-        if (i != j) {
-          element_type denominator = field_->Sub(points(i), points(j));
-          element_type inv_denom = field_->Inv(denominator);
-
-          xt::xarray<GaloisField> new_coeffs =
-              xt::zeros<GaloisField>({basis_coeffs.size() + 1});
-          for (size_t k = 0; k < basis_coeffs.size(); ++k) {
-            new_coeffs(k) = field_->Add(
-                new_coeffs(k),
-                field_->Mul(basis_coeffs(k), field_->Neg(points(j))));
-            new_coeffs(k + 1) = field_->Add(new_coeffs(k + 1), basis_coeffs(k));
-          }
-
-          for (size_t k = 0; k < new_coeffs.size(); ++k) {
-            new_coeffs(k) = field_->Mul(new_coeffs(k), inv_denom);
-          }
-
-          basis_coeffs = new_coeffs;
-        }
-      }
-
-      for (size_t k = 0; k < basis_coeffs.size() && k < result_coeffs.size();
-           ++k) {
-        element_type term = field_->Mul(values(i), basis_coeffs(k));
-        result_coeffs(k) = field_->Add(result_coeffs(k), term);
-      }
-    }
-
-    std::vector<GaloisField> coeffs_vec(result_coeffs.size());
-    for (size_t i = 0; i < result_coeffs.size(); ++i) {
-      coeffs_vec[i] = result_coeffs(i);
-    }
-
-    return polynomial_type(coeffs_vec, field_);
-  }
-
-  void RegisterEncodersAndDecoders() {
-    this->RegisterEncoder(
-        "GRSEncoder", [](const AbstractCode<GaloisField>* code) {
-          return std::make_unique<GRSEncoder<GaloisField>>(code);
-        });
-
-    this->RegisterDecoder(
-        "GRSDecoder", [](const AbstractCode<GaloisField>* code) {
-          return std::make_unique<GRSDecoder<GaloisField>>(code);
-        });
-
-    this->RegisterDecoder(
-        "BerlekampMassey", [](const AbstractCode<GaloisField>* code) {
-          return std::make_unique<BerlekampMasseyDecoder<GaloisField>>(code);
-        });
-  }
+  std::optional<std::size_t> zero_eval_index_;
+  std::vector<std::size_t> nonzero_eval_indices_;
+  std::vector<storage_type> nonzero_eval_inverses_;
+  std::vector<storage_type> eval_inv_lookup_;
 };
 
 }  // namespace coding
 }  // namespace xg
 
-#endif
+// clang-format off
+#include "xgalois/coding/decoder/grs_decoder.hpp"
+#include "xgalois/coding/decoder/berlekamp_massey_decoder.hpp"
+#include "xgalois/coding/decoder/sugiyama_decoder.hpp"
+#include "xgalois/coding/encoder/generator_matrix_encoder.hpp"
+#include "xgalois/coding/encoder/grs_encoder.hpp"
+// clang-format on
+
+namespace xg {
+namespace coding {
+
+template <typename GaloisField>
+inline void
+GeneralizedReedSolomonCode<GaloisField>::RegisterEncodersAndDecoders() {
+  this->RegisterEncoder("GRS", [](const AbstractCode<GaloisField> &code) {
+    return std::make_shared<GRSEncoder<GaloisField>>(code);
+  });
+  this->RegisterEncoder(
+      "GRSSystematic", [](const AbstractCode<GaloisField> &code) {
+        return std::make_shared<GRSSystematicEncoder<GaloisField>>(code);
+      });
+  this->RegisterEncoder(
+      "GeneratorMatrix", [](const AbstractCode<GaloisField> &code) {
+        const auto &lin =
+            dynamic_cast<const AbstractLinearCode<GaloisField> &>(code);
+        return std::make_shared<GeneratorMatrixEncoder<GaloisField>>(lin);
+      });
+
+  this->RegisterDecoder(
+      "BerlekampMassey", [](const AbstractCode<GaloisField> &code) {
+        return std::make_shared<BerlekampMasseyDecoder<GaloisField>>(code);
+      });
+  this->RegisterDecoder("Sugiyama", [](const AbstractCode<GaloisField> &code) {
+    return std::make_shared<SugiyamaDecoder<GaloisField>>(code);
+  });
+  this->RegisterDecoder("PGZ", [](const AbstractCode<GaloisField> &code) {
+    return std::make_shared<GRSDecoder<GaloisField>>(code);
+  });
+  this->RegisterDecoder("GRS", [](const AbstractCode<GaloisField> &code) {
+    return std::make_shared<BerlekampMasseyDecoder<GaloisField>>(code);
+  });
+}
+
+}  // namespace coding
+}  // namespace xg
+
+#endif  // XGALOIS_CODING_GRS_HPP_

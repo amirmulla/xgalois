@@ -1,8 +1,11 @@
-#ifndef XGALOIS_CODING_ENCODER_HPP
-#define XGALOIS_CODING_ENCODER_HPP
+#ifndef XGALOIS_CODING_ENCODER_ENCODER_HPP_
+#define XGALOIS_CODING_ENCODER_ENCODER_HPP_
 
-#include <xtensor/containers/xarray.hpp>
+#include <cstddef>
+#include <stdexcept>
+#include <string>
 
+#include "xgalois/field/gf_array.hpp"
 #include "xgalois/field/gf_element.hpp"
 
 namespace xg {
@@ -14,29 +17,33 @@ class AbstractCode;
 template <typename GaloisField>
 class Encoder {
  public:
-  using element_type = xg::GaloisFieldElement<GaloisField>;
-  using codeword_type = xt::xarray<element_type>;
-  using message_type = xt::xarray<element_type>;
+  using field_type = GaloisField;
+  using element_type = GaloisFieldElement<GaloisField>;
+  using storage_type = typename GaloisField::element_type;
+  using codeword_type = GFArray<GaloisField>;
+  using message_type = GFArray<GaloisField>;
 
-  explicit Encoder(const AbstractCode<GaloisField>* code) : code_(code) {}
+  explicit Encoder(const AbstractCode<GaloisField> &code) : code_(&code) {}
 
   virtual ~Encoder() = default;
 
-  virtual codeword_type Encode(const message_type& message) const = 0;
+  virtual codeword_type Encode(const message_type &message) const = 0;
 
-  virtual message_type Unencode(const codeword_type& codeword) const = 0;
+  virtual message_type Unencode(const codeword_type &codeword) const = 0;
 
-  virtual size_t MessageLength() const = 0;
+  virtual std::string Name() const = 0;
 
-  const AbstractCode<GaloisField>* GetCode() const { return code_; }
+  const AbstractCode<GaloisField> &Code() const { return *code_; }
 
-  virtual std::string ToString() const = 0;
+  virtual std::string ToString() const {
+    return Name() + " encoder for " + code_->ToString();
+  }
 
  protected:
-  const AbstractCode<GaloisField>* code_;
+  const AbstractCode<GaloisField> *code_;
 };
 
 }  // namespace coding
 }  // namespace xg
 
-#endif
+#endif  // XGALOIS_CODING_ENCODER_ENCODER_HPP_

@@ -219,23 +219,60 @@ cc_test(
     ],
 )
 
-# Placeholder: re-enable once Wave 3 restores coding/ compilation
-# cc_test(
-#     name = "coding_test",
-#     size = "medium",
-#     timeout = "moderate",
-#     srcs = ["coding/coding_test.cpp"],
-#     deps = [
-#         "//xgalois",
-#         "@googletest//:gtest",
-#         "@googletest//:gtest_main",
-#     ],
-# )
+cc_test(
+    name = "coding_test",
+    size = "medium",
+    timeout = "moderate",
+    srcs = ["coding/coding_test.cpp"],
+    deps = [
+        "//xgalois",
+        "@googletest//:gtest",
+        "@googletest//:gtest_main",
+    ],
+)
+
+cc_test(
+    name = "grs_test",
+    size = "large",
+    timeout = "long",
+    srcs = ["coding/grs_test.cpp"],
+    deps = [
+        "//xgalois",
+        "@googletest//:gtest",
+        "@googletest//:gtest_main",
+    ],
+)
+
+cc_test(
+    name = "cyclic_bch_test",
+    size = "large",
+    timeout = "long",
+    srcs = ["coding/cyclic_bch_test.cpp"],
+    deps = [
+        "//xgalois",
+        "@googletest//:gtest",
+        "@googletest//:gtest_main",
+    ],
+)
+
+cc_test(
+    name = "syndrome_linear_test",
+    size = "medium",
+    timeout = "moderate",
+    srcs = ["coding/syndrome_linear_test.cpp"],
+    deps = [
+        "//xgalois",
+        "@googletest//:gtest",
+        "@googletest//:gtest_main",
+    ],
+)
 
 test_suite(
     name = "galois_field_tests",
     tests = [
         ":channel_test",
+        ":coding_test",
+        ":cyclic_bch_test",
         ":field_test",
         ":gf_binary_test",
         ":gf_element_test",
@@ -243,6 +280,7 @@ test_suite(
         ":gf_factory_test",
         ":gf_prime_test",
         ":gf_tables_test",
+        ":grs_test",
         ":interface_test",
         ":linalg_binary_test",
         ":linalg_extension_test",
@@ -252,5 +290,6 @@ test_suite(
         ":poly_algo_test",
         ":poly_dense_test",
         ":poly_test",
+        ":syndrome_linear_test",
     ],
 )
