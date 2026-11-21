@@ -75,21 +75,6 @@ cc_binary(
 )
 
 #==============================================================================
-# XTensor Integration Examples - Advanced tensor operations
-#==============================================================================
-
-# Advanced xtensor integration - demonstrates sophisticated tensor operations,
-# broadcasting, reductions, performance optimization, and practical applications
-# like error correction codes with xgalois fields
-cc_binary(
-    name = "xtensor_example",
-    srcs = ["xtensor/xtensor_example.cpp"],
-    deps = [
-        "//xgalois",
-    ],
-)
-
-#==============================================================================
 # Channel Examples - Updated with modern xgalois API and channel operations
 #==============================================================================
 

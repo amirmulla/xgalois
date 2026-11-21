@@ -49,7 +49,11 @@ doc/api/
 doc/doxyoutput/
 doc/.venv/
 
+# OS junk
+.DS_Store
+
 # Clangd / VSCode
+compile_commands.json
 .vscode/
 .cache/
 

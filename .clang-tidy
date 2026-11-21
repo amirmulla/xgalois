@@ -1,5 +1,15 @@
 ---
-Checks: "clang-diagnostic-*,clang-analyzer-*,google-*,performance-*"
+Checks: >-
+  clang-diagnostic-*,
+  clang-analyzer-*,
+  bugprone-*,
+  google-*,
+  modernize-*,
+  performance-*,
+  readability-*,
+  -modernize-use-trailing-return-type,
+  -readability-identifier-length,
+  -readability-magic-numbers
 WarningsAsErrors: ""
 HeaderFilterRegex: ".*xgalois.*"
 FormatStyle: google

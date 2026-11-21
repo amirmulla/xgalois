@@ -10,8 +10,8 @@ cc_test(
     srcs = ["field/gf_prime_test.cpp"],
     deps = [
         "//xgalois",
-        "@gtest",
-        "@gtest//:gtest_main",
+        "@googletest//:gtest",
+        "@googletest//:gtest_main",
     ],
 )
 
@@ -23,8 +23,8 @@ cc_test(
     srcs = ["field/gf_binary_test.cpp"],
     deps = [
         "//xgalois",
-        "@gtest",
-        "@gtest//:gtest_main",
+        "@googletest//:gtest",
+        "@googletest//:gtest_main",
     ],
 )
 
@@ -35,8 +35,8 @@ cc_test(
     srcs = ["field/gf_extension_test.cpp"],
     deps = [
         "//xgalois",
-        "@gtest",
-        "@gtest//:gtest_main",
+        "@googletest//:gtest",
+        "@googletest//:gtest_main",
     ],
 )
 
@@ -48,8 +48,8 @@ cc_test(
     srcs = ["field/gf_factory_test.cpp"],
     deps = [
         "//xgalois",
-        "@gtest",
-        "@gtest//:gtest_main",
+        "@googletest//:gtest",
+        "@googletest//:gtest_main",
     ],
 )
 
@@ -61,8 +61,8 @@ cc_test(
     srcs = ["poly/poly_dense_test.cpp"],
     deps = [
         "//xgalois",
-        "@gtest",
-        "@gtest//:gtest_main",
+        "@googletest//:gtest",
+        "@googletest//:gtest_main",
     ],
 )
 
@@ -74,8 +74,8 @@ cc_test(
     srcs = ["field/gf_element_test.cpp"],
     deps = [
         "//xgalois",
-        "@gtest",
-        "@gtest//:gtest_main",
+        "@googletest//:gtest",
+        "@googletest//:gtest_main",
     ],
 )
 
@@ -87,8 +87,8 @@ cc_test(
     srcs = ["databases/interface_test.cpp"],
     deps = [
         "//xgalois",
-        "@gtest",
-        "@gtest//:gtest_main",
+        "@googletest//:gtest",
+        "@googletest//:gtest_main",
     ],
 )
 
@@ -100,8 +100,8 @@ cc_test(
     srcs = ["linalg/linalg_prime_test.cpp"],
     deps = [
         "//xgalois",
-        "@gtest",
-        "@gtest//:gtest_main",
+        "@googletest//:gtest",
+        "@googletest//:gtest_main",
     ],
 )
 
@@ -113,8 +113,8 @@ cc_test(
     srcs = ["linalg/linalg_binary_test.cpp"],
     deps = [
         "//xgalois",
-        "@gtest",
-        "@gtest//:gtest_main",
+        "@googletest//:gtest",
+        "@googletest//:gtest_main",
     ],
 )
 
@@ -126,8 +126,8 @@ cc_test(
     srcs = ["utils/math_test.cpp"],
     deps = [
         "//xgalois",
-        "@gtest",
-        "@gtest//:gtest_main",
+        "@googletest//:gtest",
+        "@googletest//:gtest_main",
     ],
 )
 
@@ -139,8 +139,8 @@ cc_test(
     srcs = ["utils/field_test.cpp"],
     deps = [
         "//xgalois",
-        "@gtest",
-        "@gtest//:gtest_main",
+        "@googletest//:gtest",
+        "@googletest//:gtest_main",
     ],
 )
 
@@ -152,8 +152,8 @@ cc_test(
     srcs = ["utils/poly_test.cpp"],
     deps = [
         "//xgalois",
-        "@gtest",
-        "@gtest//:gtest_main",
+        "@googletest//:gtest",
+        "@googletest//:gtest_main",
     ],
 )
 
@@ -162,10 +162,23 @@ cc_test(
     srcs = ["channel/channel_test.cpp"],
     deps = [
         "//xgalois",
-        "@gtest",
-        "@gtest//:gtest_main",
+        "@googletest//:gtest",
+        "@googletest//:gtest_main",
     ],
 )
+
+# Placeholder: re-enable once Wave 3 restores coding/ compilation
+# cc_test(
+#     name = "coding_test",
+#     size = "medium",
+#     timeout = "moderate",
+#     srcs = ["coding/coding_test.cpp"],
+#     deps = [
+#         "//xgalois",
+#         "@googletest//:gtest",
+#         "@googletest//:gtest_main",
+#     ],
+# )
 
 test_suite(
     name = "galois_field_tests",

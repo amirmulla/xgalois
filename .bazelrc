@@ -1,2 +1,20 @@
-common --enable_workspace
-build --action_env=BAZEL_CXXOPTS="-std=c++23 -O3"
+# C++23 standard
+build --cxxopt=-std=c++23
+
+# Strict warning flags for project code without affecting third-party dependencies
+build --per_file_copt=^xgalois/.*@-Wall,-Wextra,-Wpedantic
+
+# Optimization configurations
+build:opt --compilation_mode=opt --copt=-O3
+build:native --config=opt --copt=-march=native
+
+# Debug configuration
+build:dbg --compilation_mode=dbg --copt=-O0 --copt=-g
+
+# Sanitizer configurations
+build:asan --compilation_mode=dbg --copt=-fsanitize=address --copt=-fno-omit-frame-pointer --linkopt=-fsanitize=address
+build:ubsan --compilation_mode=dbg --copt=-fsanitize=undefined --copt=-fno-omit-frame-pointer --linkopt=-fsanitize=undefined --copt=-fno-sanitize-recover=all
+build:tsan --compilation_mode=dbg --copt=-fsanitize=thread --copt=-fno-omit-frame-pointer --linkopt=-fsanitize=thread
+
+# Code coverage configuration
+build:coverage --combined_report=lcov --instrumentation_filter="^//xgalois[/:]"

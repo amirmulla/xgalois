@@ -1,0 +1,108 @@
+name: CI
+
+on:
+  push:
+    branches: [main]
+  pull_request:
+    branches: [main]
+
+jobs:
+  build-and-test:
+    name: Build & Test (${{ matrix.compiler }})
+    runs-on: ubuntu-24.04
+    strategy:
+      fail-fast: false
+      matrix:
+        compiler: [gcc, clang]
+        include:
+          - compiler: gcc
+            cc: gcc
+            cxx: g++
+          - compiler: clang
+            cc: clang
+            cxx: clang++
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+
+      - name: Install Bazelisk
+        uses: bazel-contrib/setup-bazel@0.11.0
+        with:
+          bazelisk-cache: true
+          disk-cache: ${{ github.workflow }}-${{ matrix.compiler }}
+          repository-cache: true
+
+      - name: Build library and examples
+        env:
+          CC: ${{ matrix.cc }}
+          CXX: ${{ matrix.cxx }}
+        run: |
+          bazel build //xgalois/... //example/...
+
+      - name: Run unit tests
+        env:
+          CC: ${{ matrix.cc }}
+          CXX: ${{ matrix.cxx }}
+        run: |
+          bazel test //test:galois_field_tests --test_output=errors
+
+  sanitizers:
+    name: Sanitizers (ASan & UBSan)
+    runs-on: ubuntu-24.04
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+
+      - name: Install Bazelisk
+        uses: bazel-contrib/setup-bazel@0.11.0
+        with:
+          bazelisk-cache: true
+          disk-cache: ${{ github.workflow }}-sanitizers
+          repository-cache: true
+
+      - name: Run tests with ASan
+        run: |
+          bazel test --config=asan //test:galois_field_tests --test_output=errors
+
+      - name: Run tests with UBSan
+        run: |
+          bazel test --config=ubsan //test:galois_field_tests --test_output=errors
+
+  clang-format:
+    name: Clang-Format Check
+    runs-on: ubuntu-24.04
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+
+      - name: Install clang-format
+        run: |
+          sudo apt-get update
+          sudo apt-get install -y clang-format
+
+      - name: Check formatting
+        run: |
+          find xgalois test example -type f \( -name '*.hpp' -o -name '*.cpp' \) \
+            -exec clang-format --dry-run --Werror {} +
+
+  docs:
+    name: Sphinx Documentation Build
+    runs-on: ubuntu-24.04
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+
+      - name: Set up Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+
+      - name: Install Doxygen and Python dependencies
+        run: |
+          sudo apt-get update
+          sudo apt-get install -y doxygen
+          pip install -r doc/requirements.txt
+
+      - name: Build Sphinx documentation
+        run: |
+          sphinx-build -b html doc doc/_build/html
