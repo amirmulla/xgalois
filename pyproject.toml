@@ -1,0 +1,30 @@
+[build-system]
+requires = ["scikit-build-core>=0.9", "nanobind>=2.0"]
+build-backend = "scikit_build_core.build"
+
+[project]
+name = "xgalois"
+version = "1.0.0"
+description = "High-performance C++20 Galois field, algebra, polynomial, linear algebra, and coding theory library"
+readme = "README.md"
+requires-python = ">=3.10"
+dependencies = [
+    "numpy>=1.24",
+]
+
+[project.optional-dependencies]
+sage = []
+dev = [
+    "pytest>=7.0",
+]
+
+[tool.scikit-build]
+minimum-version = "build-system.requires"
+cmake.version = ">=3.20"
+cmake.build-type = "Release"
+wheel.packages = ["python/xgalois"]
+
+[tool.scikit-build.cmake.define]
+XGALOIS_BUILD_PYTHON = "ON"
+XGALOIS_BUILD_TESTS = "OFF"
+XGALOIS_BUILD_EXAMPLES = "OFF"

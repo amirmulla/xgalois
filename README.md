@@ -1,33 +1,17 @@
-# xgalois
+# XGalois (v1.0.0)
 
-**xgalois** is a modern, header-only C++20 library for high-performance finite-field arithmetic, polynomial algebra, finite-field linear algebra, communication channel modeling, and algebraic & modern error-correcting codes over arbitrary Galois fields $\mathrm{GF}(p^m)$.
+**XGalois** is a modern, header-only C++20 computational algebra and coding-theory library for high-performance finite-field arithmetic, abstract algebra, rings, elliptic curves, fast polynomial & linear algebra, communication channel modeling, and classical & modern error-correcting codes over arbitrary Galois fields $\mathrm{GF}(p^m)$.
 
-## Key Capabilities
+## Feature Matrix
 
-- **Finite Fields (`xg::GaloisFieldBase`, `xg::GF`)**
-  - **Binary Field $\mathrm{GF}(2)$** (`GF2`): specialized bitwise arithmetic and bulk array kernels.
-  - **Prime Fields $\mathrm{GF}(p)$** (`GFP`, `GFPLOG`): division-free Barrett reduction up to $p \le 2^{63} - 1$, Tonelli–Shanks square roots, Baby-Step Giant-Step (BSGS) and Pohlig–Hellman discrete logarithms, and log-table acceleration (`GFPLOG`).
-  - **Binary Extension Fields $\mathrm{GF}(2^m)$** (`GF2X`, `GF2XLOG`, `GF2XZECH`, `GF128`): hardware-accelerated carry-less multiplication (`PCLMULQDQ` / `SSSE3` with portable fallback) up to $\mathrm{GF}(2^{64})$ and dedicated $\mathrm{GF}(2^{128})$ (`xgalois/field/gf128.hpp`, `UInt128`, Karatsuba `PCLMULQDQ`, AES-GCM NIST SP 800-38D `GhashMul` modulo $x^{128} + x^7 + x^2 + x + 1$, and general carry-less Barrett reduction); optimized log/antilog tables, Zech logarithm tables, and built-in embedded Conway and irreducible polynomial databases.
-  - **General Prime Extension Fields $\mathrm{GF}(p^m)$** (`GFPX`): compact `ExtensionElement` polynomial representation with Frobenius, Trace, Norm, Minimal Polynomial, BSGS discrete log, and Tonelli–Shanks square root.
-  - **Unified Runtime Factory** (`xg::GF(...)`) returning a type-safe `std::variant` (`GaloisFieldVariant`), plus zero-overhead direct constructors and C++20 concepts (`FiniteField`, `UnsignedFieldWord`).
-- **Contiguous Field Arrays (`xg::GFArray`, `xg::GFMatrix`)**
-  - Stores a single `std::shared_ptr<GaloisField>` alongside a packed `xt::xarray<storage_type>` buffer, avoiding per-element reference-count overhead and unlocking bulk span/SIMD kernels (`AddArray`, `SubArray`, `MulArray`, `ScalarMulArray`, `FmaArray`, `DotProduct`, Montgomery `BatchInv`).
-- **Polynomial Algebra (`xg::PolynomialDense`, `xg::utils`)**
-  - Dense polynomials with Karatsuba multiplication, Euclidean `DivRem`, `PowMod`, `Derivative`, Horner/batch evaluation (`EvalBatch`), and composition.
-  - Exact algorithms over arbitrary $\mathrm{GF}(q)$: `PolynomialGcd`, `PolynomialLcm`, `PolynomialDenseExtendedGcd`, Rabin irreducibility (`IsIrreducible`) and primitivity (`IsPrimitive`) tests, square-free / distinct-degree / Cantor–Zassenhaus complete factorization (`Factor`), `FindRoots`, `ChienSearch`, and $O(k^2)$ Newton interpolation (`Interpolate`).
-- **Finite-Field Linear Algebra (`xg::linalg`)**
-  - Bit-packed `uint64_t` **M4RI** engine for $\mathrm{GF}(2)$ matrices alongside cache-friendly FMA kernels for arbitrary fields.
-  - Strict Google C++ Style `PascalCase` API: `Dot`, `Vdot`, `Outer`, `Cross`, `Kron`, `MatrixPower`, `RowEchelon`, `Rref`, `MatrixRank`, `Trace`, `Det`, `Inv`, `Solve`, `Nullspace`, `LeftNullspace`, `RowSpace`, `ColumnSpace`, `SystematicForm`, `Plu`, and division-free Berkowitz `CharacteristicPoly`.
-- **Coding Theory (`xg::coding`)**
-  - `LinearCode` (generator/parity-check duality, puncturing, shortening) with classic factories: `HammingCode`, `ExtendedHammingCode`, `BinaryGolayCode`, `ExtendedBinaryGolayCode`, `TernaryGolayCode`, and `ReedMullerCode`.
-  - `CyclicCode` and `BCHCode` (binary and non-binary, narrow- and general-sense, with algebraic Berlekamp–Massey / Chien / Forney decoding).
-  - `GeneralizedReedSolomonCode` (`ReedSolomon`, `ExtendedReedSolomon`, general GRS) with `BerlekampMassey`, `Sugiyama`, and `PGZ` decoders supporting full **Errors-and-Erasures** decoding up to $2e + s \le n - k$, plus **Guruswami–Sudan list decoding** (`xgalois/coding/decoder/guruswami_sudan_decoder.hpp`, `GuruswamiSudanDecoder`, `FromTargetRadius`, `DecodeToList`, `JohnsonRadius`) decoding beyond $\lfloor (d - 1) / 2 \rfloor$ all the way up to the Johnson bound $n - 1 - \lfloor \sqrt{n(k - 1)} \rfloor$.
-  - **LDPC Codes** (`xgalois/coding/ldpc.hpp`): `SparseBinaryMatrix` (CSR/CSC Tanner graph), `LDPCCode` (`FromQuasiCyclic`, `MakeRegularLDPC`), hard-decision `BitFlippingDecoder`, and soft-decision `BeliefPropagationDecoder` supporting Sum-Product, Normalized Min-Sum (`BpAlgorithm::kNormalizedMinSum`), and Offset Min-Sum (`BpAlgorithm::kOffsetMinSum`) over channel LLRs (`DecodeLlr`).
-  - **Polar Codes** (`xgalois/coding/polar.hpp`): `PolarCode` (`FromDesignSnr` Gaussian Approximation and `FromBhattacharyya` construction, systematic & non-systematic, optional CRC-aided CA-Polar), $O(N \log N)$ `PolarEncoder`, `SuccessiveCancellationDecoder` (SC), and `SuccessiveCancellationListDecoder` (SCL / CA-SCL).
-  - Exact arbitrary-precision Singleton/MDS and Hamming/perfection bound checks (`IsMDS`, `SatisfiesHammingBound`, `IsPerfectCode`).
-- **Channels & Simulation (`xg::channel`)**
-  - `BinarySymmetricChannel` (BSC), `QarySymmetricChannel` (QSC), `QaryErasureChannel` / `BinaryErasureChannel` (QEC/BEC), `ErrorErasureChannel`, `StaticErrorRateChannel`, and BPSK `AWGNChannel` with exact LLR computation (`Transmit`, `TransmitWithErasures`, `TransmitSoft`, `TransmitLlr`, `TransmitDetailed`).
-  - Deterministic, seeded Monte Carlo BER/SER/FER evaluation via `SimulateCodePerformance` (`SimulationStats::Fer()`, `Ser()`, `Ber()`).
+| Domain | Modules | Highlights |
+| --- | --- | --- |
+| **Algebraic Structures & Groups** | `xgalois/algebra/` | C++20 algebraic concepts (`Magma`..`Field`, `Module`, `VectorSpace`, `Algebra`), `Permutation`, deterministic & randomized Schreier–Sims `BsgsChain`, `CyclicGroup`, `SymmetricGroup`, `AlternatingGroup`, `DihedralGroup`, `MatrixGroup` ($\mathrm{GL}_n, \mathrm{SL}_n$), `DirectProductGroup`, `SemidirectProductGroup`, `Subgroup`, `QuotientGroup`, `SylowSubgroup`, `GroupHomomorphism`, `SmithNormalForm` Abelian decomposition. |
+| **Rings, Ideals & Skew Polynomials** | `xgalois/ring/` | `IntegerRing`, `ModularRing`, `GaussianIntegerRing`, `EisensteinIntegerRing`, `PolynomialRing`, `QuotientRing`, `NegacyclicRing` ($\mathbb{Z}_q[x]/(x^N+1)$), `CyclicRing`, `MatrixRing` (division-free Berkowitz det), `SkewPolynomialRing` / `FrobeniusSkewRing`, `PrincipalIdeal`, generalized CRT. |
+| **Finite Fields, Towers & Elliptic Curves** | `xgalois/field/`, `xgalois/ec/` | Prime (`GFP`, `GFPLOG`), Binary (`GF2`, `GF2X`, `GF2XLOG`, `GF2XZECH`), dedicated `GF128` ($\mathrm{GF}(2^{128})$ / AES-GCM GHASH), Extension (`GFPX`), Recursive `FieldTower`, Canright `CompositeGF256Tower`, `GaloisGroup` / `FieldIsomorphism`, ONB Type I & II `GaloisFieldNormalBinary`, `GaloisFieldDualBasis`, `GaloisFieldPrimeBig<Bits>` / `GaloisFieldPrimeDyn` (`xg::primes`), `GaloisFieldBinaryLarge<M>`, `GFArray`/`GFMatrix`, `EllipticCurve` (Weierstrass, Binary, Montgomery, Edwards), `WeilPairing`, `TatePairing`, `EllipticRiemannRochMatrix`. |
+| **Fast Polynomials, Linear Algebra & SIMD** | `xgalois/poly/`, `xgalois/linalg/`, `xgalois/simd/` | Shoup `NttPlan`, 3-prime `CrtNttPlan`, `BluesteinDft`, Lin–Chung–Han `AdditiveFftPlan`, Möller `HalfGcd`, `SubproductTree`, `PolynomialDense`, `PolynomialSparse`, PID `HermiteNormalForm` / `SmithNormalForm`, `FrobeniusNormalForm`, `BlockWiedemannNullspace`, `BlockLanczosNullspaceBinary`, `M4riMatMul` / `M4riRref`, `StrassenMatMul`, runtime-dispatched AVX2/PCLMULQDQ, AVX-512 GFNI/VPCLMULQDQ, ARM64 NEON/PMULL, and `std::jthread` `ThreadPool`. |
+| **Classical & Modern Coding Theory** | `xgalois/coding/` | `LinearCode` (Hamming, Golay, Reed–Muller), `CyclicCode`, `BCHCode`, GRS/RS (`BerlekampMassey`, `Sugiyama` + Half-GCD, **Guruswami–Sudan** list decoding, **Power Decoding**), **Tamo–Barg LRC** (single-set, $(r,\delta)$, multi-set availability), **Interleaved RS** (SSB, Kötter–Nielsen, BKY Hankel), **Gabidulin** & **Kötter–Kschischang Subspace**, **LDPC** (Bit-Flipping & BP Sum-Product/Min-Sum), **Polar** (SC/SCL/CA-SCL), **Convolutional** (Viterbi/BCJR), **3GPP LTE Turbo**, **Product** (Hard & Chase–Pyndiah TPC), **Concatenated** (Forney GMD), **Hermitian AG** (Feng–Rao + BMS & Sudan), **LT & RaptorQ Fountain** (inactivation), **Code Modifiers** (`PlotkinCode`, puncturing, shortening, extending, expurgating), and `BigInt` **MacWilliams** weight enumerator. |
+| **Channels, Simulation, Python & Oracle** | `xgalois/channel/`, `python/`, `test/oracle/` | AWGN, BSC, QSC, BEC/QEC, Error–Erasure, Gilbert–Elliott Burst, Gray BPSK/QPSK/8-PSK/16-QAM/64-QAM, Rayleigh/Rician Fading, BAC/Z-Channel, IDS (Insertion/Deletion/Substitution), deterministic parallel BER/SER/FER sweeps, `nanobind` Python/NumPy/SageMath interop, and 2-tier SageMath 10.5 differential verification. |
 
 ## Requirements
 
@@ -35,9 +19,11 @@
 - **Build System**:
   - [Bazel](https://bazel.build/) 8 or 9 (pure Bzlmod via `MODULE.bazel`), **or**
   - [CMake](https://cmake.org/) `>= 3.20` (`FetchContent` or system `xtl` / `xtensor`)
+- **Python bindings (optional)**: Python 3.10+, `scikit-build-core`, `nanobind`, `numpy`
+- **Live Differential Oracle (optional)**: SageMath 10.5 (`sagemath/sagemath:10.5`)
 - **Documentation (optional)**: Doxygen and Python 3.10+ (`sphinx`, `furo`, `breathe`, `exhale`)
 
-## Quickstart
+## C++20 Quickstart
 
 ```cpp
 #include <iostream>
@@ -80,44 +66,33 @@ int main() {
 }
 ```
 
-## Build, Test, Install, Benchmarks & Docs
+## Quick-Start Builds & Workflows
 
-### Building with Bazel (Pure Bzlmod, Bazel 8/9)
+### Bazel 9 (Pure Bzlmod)
 
 ```bash
-# Build library and all examples
-bazel build //xgalois/... //example/...
+# Build the library and all examples
+bazel build --cxxopt=-std=c++20 //xgalois/... //example/...
 
-# Run all unit tests
-bazel test //test/...
+# Run all unit tests (including Tier-1 SageMath golden JSON tests)
+bazel test --cxxopt=-std=c++20 //test:galois_field_tests --test_output=errors
 
-# Run the aggregated test suite with error output
-bazel test //test:galois_field_tests --test_output=errors
-
-# Run an example binary
-bazel run //example:coding_example
+# Run with ASan / UBSan / TSan or native SIMD benchmarks
+bazel test --config=asan //test:galois_field_tests
+bazel run --config=native //benchmark/gf_binary_extension/src:gf_binary_extension_benchmark
 ```
 
-### Building & Installing with CMake (`>= 3.20`)
-
-CMake automatically uses system-installed `xtl` / `xtensor` if found, or fetches pinned releases via `FetchContent`:
+### CMake (`>= 3.20`) & `find_package(xgalois CONFIG REQUIRED)`
 
 ```bash
-# Configure and build (add -DXGALOIS_ENABLE_NATIVE=ON for -march=native / PCLMULQDQ)
-cmake -S . -B build -DCMAKE_BUILD_TYPE=Release
-cmake --build build -j
-
-# Run unit tests via CTest
-ctest --test-dir build --output-on-failure
-
-# Run an example binary
-./build/example/coding_example
-
-# Install headers, databases, and CMake package config
+# Configure, build, test, and install (add -DXGALOIS_ENABLE_NATIVE=ON for -march=native)
+cmake -S . -B build -DCMAKE_BUILD_TYPE=Release -DCMAKE_CXX_STANDARD=20
+cmake --build build --parallel 2
+ctest --test-dir build --output-on-failure --parallel "$(nproc)"
 cmake --install build --prefix /usr/local
 ```
 
-**Consuming an installed `xgalois` via `find_package`:**
+Consume an installed `xgalois` from any downstream CMake project:
 
 ```cmake
 cmake_minimum_required(VERSION 3.20)
@@ -129,14 +104,14 @@ add_executable(my_app main.cpp)
 target_link_libraries(my_app PRIVATE xgalois::xgalois)
 ```
 
-**Consuming directly via `FetchContent`:**
+Or pull directly via `FetchContent`:
 
 ```cmake
 include(FetchContent)
 FetchContent_Declare(
   xgalois
   GIT_REPOSITORY https://github.com/amirmulla/xgalois.git
-  GIT_TAG        main
+  GIT_TAG        v1.0.0
 )
 FetchContent_MakeAvailable(xgalois)
 
@@ -144,36 +119,40 @@ add_executable(my_app main.cpp)
 target_link_libraries(my_app PRIVATE xgalois::xgalois)
 ```
 
-### Sanitizers & Coverage (Bazel)
-
-Configured in `.bazelrc`:
+### Python (`nanobind` / NumPy / SageMath Interop)
 
 ```bash
-# AddressSanitizer
-bazel test --config=asan //test:galois_field_tests
-
-# UndefinedBehaviorSanitizer
-bazel test --config=ubsan //test:galois_field_tests
-
-# ThreadSanitizer
-bazel test --config=tsan //test:galois_field_tests
-
-# Code coverage (LCOV)
-bazel coverage --config=coverage //test:galois_field_tests
+# Install the Python package and compiled C++20 extension from source
+pip install .
 ```
 
-### Native Benchmarks
+### SageMath 10.5 Live Differential Oracle (2-Tier Verification)
 
-Use `--config=native` (`-c opt -O3 -march=native`) to enable `PCLMULQDQ` / `SSSE3` / native SIMD tuning:
+XGalois verifies mathematical correctness against **SageMath 10.5** via two tiers:
+- **Tier 1 (Offline Golden JSON)**: Deterministic golden vectors under `test/oracle/golden/` executed in standard C++ unit tests (`sage_golden_test`).
+- **Tier 2 (Live Differential Oracle)**: Builds `xgalois_oracle_cli` and runs randomized differential checks directly against SageMath 10.5 (also executed in CI via `sagemath/sagemath:10.5`).
 
 ```bash
-bazel run --config=native //benchmark/gf_binary_extension/src:gf_binary_extension_benchmark
-bazel run --config=native //benchmark/gf_prime/src:gf_prime_benchmark
+# 1. Build the oracle CLI (ABI-safe standalone target)
+cmake -S . -B build-oracle \
+  -DCMAKE_BUILD_TYPE=Release \
+  -DCMAKE_CXX_STANDARD=20 \
+  -DXGALOIS_BUILD_TESTS=OFF \
+  -DXGALOIS_BUILD_EXAMPLES=OFF \
+  -DXGALOIS_BUILD_ORACLE=ON
+cmake --build build-oracle --target xgalois_oracle_cli --parallel 2
+
+# 2. Verify golden JSON freshness (zero drift)
+sage -python test/oracle/sage/generate_golden.py \
+  --seed=2026 --check-dir=test/oracle/golden
+
+# 3. Run the live differential oracle suite
+sage -python test/oracle/sage/live_oracle.py \
+  --cli=build-oracle/xgalois_oracle_cli \
+  --seed=2026 --trials=250
 ```
 
 ### Building Documentation
-
-Requires Doxygen and Python 3.10+:
 
 ```bash
 cd doc
@@ -190,20 +169,25 @@ The generated HTML documentation is written to `doc/_build/html/index.html`.
 ```text
 xgalois/
 ├── xgalois/
-│   ├── field/       # gf_base, gf_concepts, gf_element, gf_array, gf_prime, gf_binary, gf128, gf_extension, gf_factory
-│   ├── poly/        # PolynomialDense (Karatsuba, DivRem, PowMod, Derivative, EvalBatch)
-│   ├── utils/       # math (primality, factorization), field helpers, poly (GCD, Rabin, Cantor-Zassenhaus, Interpolate)
-│   ├── linalg/      # Contiguous GFArray linear algebra + bit-packed GF(2) M4RI engine (PascalCase Google Style)
-│   ├── channel/     # BSC, QSC, QEC/BEC, ErrorErasure, StaticErrorRate, AWGN-LLR, SimulateCodePerformance
-│   ├── coding/      # LinearCode, Hamming, Golay, ReedMuller, CyclicCode, BCHCode, GRS/RS, Guruswami-Sudan, LDPC, Polar
+│   ├── algebra/     # Algebraic concepts, Permutation, BsgsChain, Cyclic/Symmetric/Alternating/Dihedral/Matrix/Product/Quotient/Sylow groups
+│   ├── ring/        # Integer, Modular, Gaussian/Eisenstein, Polynomial, Quotient, Negacyclic, Cyclic, Matrix, Skew rings & ideals
+│   ├── field/       # Prime, Binary, GF(2^128), Extension, FieldTower, CompositeGF256Tower, ONB/Dual basis, Big/Dyn primes, GFArray
+│   ├── ec/          # EllipticCurve (Weierstrass/Binary/Montgomery/Edwards), WeilPairing, TatePairing, EllipticRiemannRochMatrix
+│   ├── poly/        # Dense & Sparse polynomials, Shoup NTT, 3-prime CRT-NTT, Bluestein DFT, Additive FFT, Half-GCD, SubproductTree
+│   ├── linalg/      # GFArray linear algebra, M4RI, Strassen, PID HNF/SNF, Frobenius normal form, Block Wiedemann & Block Lanczos
+│   ├── simd/        # Runtime-dispatched AVX2/PCLMULQDQ, AVX-512 GFNI/VPCLMULQDQ, ARM64 NEON/PMULL, std::jthread ThreadPool
+│   ├── coding/      # Linear, Cyclic, BCH, GRS/RS (BM/Sugiyama/GS/Power), LRC, IRS, Gabidulin/Subspace, LDPC, Polar, Conv, Turbo, TPC, GMD, AG, Fountain, Modifiers, MacWilliams
+│   ├── channel/     # AWGN, BSC, QSC, BEC, Gilbert-Elliott, Gray PSK/QAM, Rayleigh/Rician, BAC/Z-Channel, IDS, parallel simulation
+│   ├── utils/       # Number theory, BigInt, polynomial factorization, interpolation, field & coding helpers
 │   ├── databases/   # Embedded Conway and irreducible polynomial databases
-│   └── BUILD.bazel  # Granular targets (:field_core, :gf_array, :field, :poly, :linalg, :channel, :coding, :xgalois)
+│   └── BUILD.bazel  # Granular Bazel targets (:field_core, :gf_array, :field, :poly, :linalg, :channel, :coding, :xgalois, ...)
+├── python/          # nanobind C++20 Python bindings with NumPy & SageMath interop
+├── test/            # GoogleTest unit, algebraic-property, ODR, fuzz, and 2-tier SageMath 10.5 oracle suites (test/oracle/)
+├── benchmark/       # Google Benchmark suites
+├── example/         # End-to-end runnable C++20 examples
 ├── cmake/           # CMake package configuration template (xgaloisConfig.cmake.in)
-├── test/            # Unit, differential, algebraic-property, ODR, DB-integrity, and fuzz tests (GoogleTest)
-├── benchmark/       # Google Benchmark suites for prime, binary extension, and Zech implementations
-├── example/         # End-to-end runnable examples for every module (8 binaries)
 ├── doc/             # Sphinx + Breathe + Exhale API documentation
-├── CMakeLists.txt   # CMake >= 3.20 header-only build, CTest, FetchContent, and install config
+├── CMakeLists.txt   # CMake >= 3.20 header-only build, CTest, FetchContent, oracle CLI, and install config
 ├── MODULE.bazel     # Pure Bzlmod dependency manifest (Bazel 8/9)
 └── .bazelrc         # C++20, strict warnings, opt/native/dbg, ASan/UBSan/TSan, and coverage configs
 ```

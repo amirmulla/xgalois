@@ -5,7 +5,7 @@ if(POLICY CMP0135)
 endif()
 
 project(xgalois
-  VERSION 0.5.0
+  VERSION 1.0.0
   DESCRIPTION "High-performance C++20 Galois field, algebra, polynomial, linear algebra, and coding theory library"
   LANGUAGES CXX
 )
@@ -26,6 +26,7 @@ string(COMPARE EQUAL "${CMAKE_CURRENT_SOURCE_DIR}" "${CMAKE_SOURCE_DIR}" _xgaloi
 option(XGALOIS_BUILD_TESTS "Build XGalois unit tests" ${_xgalois_is_top_level})
 option(XGALOIS_BUILD_EXAMPLES "Build XGalois example binaries" ${_xgalois_is_top_level})
 option(XGALOIS_BUILD_ORACLE "Build xgalois_oracle_cli for live SageMath differential testing" OFF)
+option(XGALOIS_BUILD_PYTHON "Build nanobind Python extension module (_xgalois)" OFF)
 option(XGALOIS_ENABLE_NATIVE "Enable -march=native SIMD/PCLMULQDQ optimizations" OFF)
 
 # ------------------------------------------------------------------------------
@@ -193,4 +194,8 @@ endif()
 
 if(XGALOIS_BUILD_EXAMPLES)
   add_subdirectory(example)
+endif()
+
+if(XGALOIS_BUILD_PYTHON)
+  add_subdirectory(python)
 endif()
