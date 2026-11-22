@@ -110,6 +110,33 @@ cc_library(
 )
 
 cc_library(
+    name = "algebra_groups",
+    hdrs = [
+        "algebra/group_algorithms.hpp",
+        "algebra/group_base.hpp",
+        "algebra/groups.hpp",
+        "algebra/permutation.hpp",
+        "algebra/schreier_sims.hpp",
+    ],
+    deps = [
+        ":algebra_concepts",
+        ":algebra_snf",
+        ":utils_bigint",
+    ],
+)
+
+cc_library(
+    name = "ring",
+    hdrs = glob(["ring/*.hpp"]),
+    deps = [
+        ":algebra_concepts",
+        ":algebra_ring_core",
+        ":field_core",
+        ":utils_bigint",
+    ],
+)
+
+cc_library(
     name = "field",
     hdrs = glob(
         ["field/*.hpp"],
@@ -121,11 +148,15 @@ cc_library(
         ],
     ),
     deps = [
+        ":algebra_concepts",
         ":databases",
         ":field_core",
         ":gf_array",
+        ":poly",
+        ":utils_bigint",
         ":utils_field",
         ":utils_math",
+        ":utils_poly",
     ],
 )
 
@@ -172,6 +203,7 @@ cc_library(
     name = "xgalois",
     deps = [
         ":algebra_concepts",
+        ":algebra_groups",
         ":algebra_ring_core",
         ":algebra_snf",
         ":channel",
@@ -181,6 +213,7 @@ cc_library(
         ":field_core",
         ":linalg",
         ":poly",
+        ":ring",
         ":simd",
         ":utils",
         "@xtensor",

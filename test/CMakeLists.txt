@@ -82,3 +82,8 @@ xgalois_add_test(odr_multi_tu_test build/odr_tu1.cpp build/odr_tu2.cpp)
 xgalois_add_test(bigint_test utils/bigint_test.cpp)
 xgalois_add_test(concepts_snf_test algebra/concepts_snf_test.cpp)
 xgalois_add_test(simd_dispatch_test simd/simd_dispatch_test.cpp)
+
+# v0.3 Wave B tests (Groups/BSGS, Rings/Skew, Field Towers/ONB/BigInt Fields)
+xgalois_add_test(groups_test algebra/groups_test.cpp)
+xgalois_add_test(rings_test ring/rings_test.cpp)
+xgalois_add_test(advanced_fields_test field/advanced_fields_test.cpp)
