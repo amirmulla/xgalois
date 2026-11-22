@@ -66,3 +66,7 @@ compile_commands.json
 .everything-claude-code/
 .agent/
 .agents/
+
+# Python
+__pycache__/
+*.pyc

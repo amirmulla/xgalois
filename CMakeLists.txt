@@ -5,7 +5,7 @@ if(POLICY CMP0135)
 endif()
 
 project(xgalois
-  VERSION 0.3.0
+  VERSION 0.4.0
   DESCRIPTION "High-performance C++20 Galois field, algebra, polynomial, linear algebra, and coding theory library"
   LANGUAGES CXX
 )
@@ -25,6 +25,7 @@ string(COMPARE EQUAL "${CMAKE_CURRENT_SOURCE_DIR}" "${CMAKE_SOURCE_DIR}" _xgaloi
 
 option(XGALOIS_BUILD_TESTS "Build XGalois unit tests" ${_xgalois_is_top_level})
 option(XGALOIS_BUILD_EXAMPLES "Build XGalois example binaries" ${_xgalois_is_top_level})
+option(XGALOIS_BUILD_ORACLE "Build xgalois_oracle_cli for live SageMath differential testing" OFF)
 option(XGALOIS_ENABLE_NATIVE "Enable -march=native SIMD/PCLMULQDQ optimizations" OFF)
 
 # ------------------------------------------------------------------------------
@@ -179,6 +180,15 @@ install(
 if(XGALOIS_BUILD_TESTS)
   enable_testing()
   add_subdirectory(test)
+elseif(XGALOIS_BUILD_ORACLE)
+  find_package(Threads REQUIRED)
+  add_executable(xgalois_oracle_cli test/oracle/xgalois_oracle_cli.cpp)
+  target_link_libraries(xgalois_oracle_cli PRIVATE xgalois::xgalois Threads::Threads)
+  target_compile_options(xgalois_oracle_cli
+    PRIVATE
+      $<$<CXX_COMPILER_ID:GNU,Clang,AppleClang>:-Wall -Wextra -Wpedantic>
+      $<$<CXX_COMPILER_ID:MSVC>:/W4>
+  )
 endif()
 
 if(XGALOIS_BUILD_EXAMPLES)

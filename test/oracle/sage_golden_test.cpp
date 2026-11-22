@@ -17,6 +17,8 @@
 #include "xgalois/algebra/snf.hpp"
 #include "xgalois/coding/decoder/guruswami_sudan_decoder.hpp"
 #include "xgalois/coding/grs.hpp"
+#include "xgalois/coding/interleaved_rs.hpp"
+#include "xgalois/coding/lrc.hpp"
 #include "xgalois/field/gf_bigint.hpp"
 #include "xgalois/field/gf_binary.hpp"
 #include "xgalois/field/gf_binary_large.hpp"
@@ -186,6 +188,35 @@ GFArray<GaloisField> MakeGFArrayFromJson(
         field->SetElementValue(static_cast<StorageType>(elems[i].AsUint64()));
   }
   return GFArray<GaloisField>::FromRaw(field, std::move(raw));
+}
+
+std::vector<std::size_t> ExtractSizeArray(const JsonValue& arr) {
+  std::vector<std::size_t> out;
+  out.reserve(arr.Size());
+  for (const auto& elem : arr.AsArray()) {
+    out.push_back(static_cast<std::size_t>(elem.AsUint64()));
+  }
+  return out;
+}
+
+template <typename GaloisField>
+GFMatrix<GaloisField> MakeGFMatrixFromJson(
+    const std::shared_ptr<GaloisField>& field, const JsonValue& mat_json) {
+  using StorageType = typename GaloisField::element_type;
+  using RawArray = typename GFMatrix<GaloisField>::raw_array_type;
+  using ShapeType = typename GFMatrix<GaloisField>::shape_type;
+  const auto& rows = mat_json.AsArray();
+  const std::size_t num_rows = rows.size();
+  const std::size_t num_cols = rows.empty() ? 0U : rows[0].AsArray().size();
+  RawArray raw = RawArray::from_shape(ShapeType{num_rows, num_cols});
+  for (std::size_t r = 0; r < num_rows; ++r) {
+    const auto& row = rows[r].AsArray();
+    for (std::size_t c = 0; c < num_cols; ++c) {
+      raw(r, c) =
+          field->SetElementValue(static_cast<StorageType>(row[c].AsUint64()));
+    }
+  }
+  return GFMatrix<GaloisField>::FromRaw(field, std::move(raw));
 }
 
 // ============================================================================
@@ -486,6 +517,141 @@ void VerifyFieldVector(const JsonValue& vec) {
   }
 }
 
+template <typename GaloisField>
+void VerifyTamoBargLrcImpl(const std::shared_ptr<GaloisField>& gf,
+                           const JsonValue& vec) {
+  const std::string& id = vec.At("id").AsString();
+  const std::size_t n = static_cast<std::size_t>(vec.At("n").AsUint64());
+  const std::size_t k = static_cast<std::size_t>(vec.At("k").AsUint64());
+  const std::size_t r =
+      static_cast<std::size_t>(vec.At("locality_r").AsUint64());
+  const std::size_t delta =
+      vec.Contains("local_distance")
+          ? static_cast<std::size_t>(vec.At("local_distance").AsUint64())
+          : 2U;
+  const std::string& pt_str = vec.At("partition_type").AsString();
+  const coding::LRCPartitionType ptype =
+      (pt_str == "additive") ? coding::LRCPartitionType::kAdditive
+                             : coding::LRCPartitionType::kMultiplicative;
+
+  const auto code = coding::LocallyRecoverableCode<GaloisField>::CreateTamoBarg(
+      gf, n, k, r, delta, ptype);
+
+  EXPECT_EQ(code.MinimumDistance(), vec.At("expected_min_distance").AsUint64())
+      << id;
+  EXPECT_EQ(code.GoodPolynomial().Degree(),
+            vec.At("good_poly_degree").AsInt64())
+      << id;
+  EXPECT_EQ(code.EvaluationPoints(),
+            MakeGFArrayFromJson(gf, vec.At("eval_points")))
+      << id;
+
+  const auto msg = MakeGFArrayFromJson(gf, vec.At("message"));
+  const auto expected_cw = MakeGFArrayFromJson(gf, vec.At("expected_codeword"));
+  const auto encoded = code.Encode(msg);
+  EXPECT_EQ(encoded, expected_cw) << id;
+  EXPECT_TRUE(code.Contains(encoded)) << id;
+  EXPECT_EQ(code.Unencode(encoded), msg) << id;
+
+  // Single-erasure strict local repair
+  const std::size_t erased_pos =
+      static_cast<std::size_t>(vec.At("erased_position").AsUint64());
+  auto corrupted = encoded;
+  corrupted.Raw(erased_pos) =
+      gf->Add(corrupted.Raw(erased_pos), gf->MultiplicativeIdentity());
+  const auto repair = code.LocalRepair(corrupted, erased_pos, 0);
+  ASSERT_TRUE(repair.Ok()) << id << ": " << repair.error_message;
+  EXPECT_EQ(repair.symbols_read, vec.At("expected_symbols_read").AsUint64())
+      << id;
+  EXPECT_EQ(repair.recovered_symbol.RawValue(), expected_cw.Raw(erased_pos))
+      << id;
+
+  // Multi-erasure local-only repair for (r, delta) with delta >= 3
+  if (vec.Contains("multi_erased_positions")) {
+    const auto multi_pos = ExtractSizeArray(vec.At("multi_erased_positions"));
+    auto multi_corrupted = encoded;
+    for (std::size_t pos : multi_pos) {
+      multi_corrupted.Raw(pos) =
+          gf->Add(multi_corrupted.Raw(pos), gf->MultiplicativeIdentity());
+    }
+    const auto mres = code.LocalRepairMultiple(multi_corrupted, multi_pos,
+                                               /*allow_global_fallback=*/false);
+    ASSERT_TRUE(mres.Ok()) << id << ": " << mres.error_message;
+    EXPECT_FALSE(mres.used_global_fallback) << id;
+    EXPECT_EQ(mres.total_symbols_read,
+              vec.At("expected_symbols_read").AsUint64())
+        << id;
+    EXPECT_EQ(mres.codeword, expected_cw) << id;
+    EXPECT_EQ(mres.message, msg) << id;
+  }
+}
+
+template <typename GaloisField>
+void VerifyLrcAvailabilityImpl(const std::shared_ptr<GaloisField>& gf,
+                               const JsonValue& vec) {
+  const std::string& id = vec.At("id").AsString();
+  const std::size_t n = static_cast<std::size_t>(vec.At("n").AsUint64());
+  const std::size_t k = static_cast<std::size_t>(vec.At("k").AsUint64());
+  const auto localities = ExtractSizeArray(vec.At("localities"));
+  const auto local_distances = ExtractSizeArray(vec.At("local_distances"));
+
+  const auto code = coding::LocallyRecoverableCode<
+      GaloisField>::CreateMultiplicativeAvailability(gf, n, k, localities,
+                                                     local_distances);
+
+  EXPECT_EQ(code.Availability(), vec.At("expected_availability").AsUint64())
+      << id;
+  EXPECT_EQ(code.DesignedDistance(),
+            vec.At("expected_designed_distance").AsUint64())
+      << id;
+  EXPECT_EQ(code.EvaluationPoints(),
+            MakeGFArrayFromJson(gf, vec.At("eval_points")))
+      << id;
+
+  const auto msg = MakeGFArrayFromJson(gf, vec.At("message"));
+  const auto expected_cw = MakeGFArrayFromJson(gf, vec.At("expected_codeword"));
+  const auto encoded = code.Encode(msg);
+  EXPECT_EQ(encoded, expected_cw) << id;
+  EXPECT_TRUE(code.Contains(encoded)) << id;
+  EXPECT_EQ(code.Unencode(encoded), msg) << id;
+
+  // Verify pairwise disjointness of repair sets at every coordinate
+  const std::size_t avail = code.Availability();
+  for (std::size_t i = 0; i < n; ++i) {
+    std::vector<bool> used(n, false);
+    for (std::size_t u = 0; u < avail; ++u) {
+      for (std::size_t idx : code.RepairSet(i, u)) {
+        EXPECT_NE(idx, i) << id;
+        EXPECT_FALSE(used[idx]) << id << " overlapping repair set at " << i;
+        used[idx] = true;
+      }
+    }
+  }
+
+  // Verify independent local repair from EVERY disjoint repair set
+  const std::size_t test_coord =
+      static_cast<std::size_t>(vec.At("test_coord").AsUint64());
+  for (std::size_t u = 0; u < avail; ++u) {
+    const auto& rset = code.RepairSet(test_coord, u);
+    std::vector<bool> in_rset(n, false);
+    for (std::size_t idx : rset) {
+      in_rset[idx] = true;
+    }
+    auto corrupted = encoded;
+    for (std::size_t j = 0; j < n; ++j) {
+      if (!in_rset[j]) {
+        corrupted.Raw(j) =
+            gf->Add(corrupted.Raw(j), gf->MultiplicativeIdentity());
+      }
+    }
+    const auto res = code.LocalRepair(corrupted, test_coord, u);
+    ASSERT_TRUE(res.Ok()) << id << " set " << u << ": " << res.error_message;
+    EXPECT_EQ(res.symbols_read, localities[u]) << id;
+    EXPECT_EQ(res.recovered_symbol.RawValue(), expected_cw.Raw(test_coord))
+        << id;
+  }
+}
+
 void VerifyCodingVector(const JsonValue& vec) {
   const std::string& op = vec.At("operation").AsString();
 
@@ -554,6 +720,81 @@ void VerifyCodingVector(const JsonValue& vec) {
     for (const auto& cand : cw_list) {
       EXPECT_TRUE(grs.Contains(cand));
       EXPECT_LE(grs.Distance(cand, received), gs_decoder.DecodingRadius());
+    }
+  } else if (op == "tamo_barg_lrc") {
+    const auto& fld_json = vec.At("field");
+    const uint64_t p = fld_json.At("p").AsUint64();
+    const uint64_t m = fld_json.At("m").AsUint64();
+    if (m == 1ULL) {
+      auto gf = std::make_shared<GaloisFieldPrime<uint32_t>>(
+          static_cast<uint32_t>(p));
+      VerifyTamoBargLrcImpl(gf, vec);
+    } else {
+      const std::string poly_str =
+          BinaryModulusPolyString(fld_json.At("modulus"));
+      auto gf = std::make_shared<GaloisFieldBinaryExtension<uint32_t>>(
+          static_cast<uint8_t>(m), "int", poly_str);
+      VerifyTamoBargLrcImpl(gf, vec);
+    }
+  } else if (op == "lrc_availability") {
+    const auto& fld_json = vec.At("field");
+    const uint64_t p = fld_json.At("p").AsUint64();
+    const uint64_t m = fld_json.At("m").AsUint64();
+    if (m == 1ULL) {
+      auto gf = std::make_shared<GaloisFieldPrime<uint32_t>>(
+          static_cast<uint32_t>(p));
+      VerifyLrcAvailabilityImpl(gf, vec);
+    } else {
+      const std::string poly_str =
+          BinaryModulusPolyString(fld_json.At("modulus"));
+      auto gf = std::make_shared<GaloisFieldBinaryExtension<uint32_t>>(
+          static_cast<uint8_t>(m), "int", poly_str);
+      VerifyLrcAvailabilityImpl(gf, vec);
+    }
+  } else if (op == "interleaved_rs_collaborative_decode") {
+    const auto& fld_json = vec.At("field");
+    const uint8_t m = static_cast<uint8_t>(fld_json.At("m").AsUint64());
+    const std::string poly_str =
+        BinaryModulusPolyString(fld_json.At("modulus"));
+    auto gf = std::make_shared<GaloisFieldBinaryExtension<uint32_t>>(m, "int",
+                                                                     poly_str);
+
+    const std::size_t k = static_cast<std::size_t>(vec.At("k").AsUint64());
+    const std::size_t ell =
+        static_cast<std::size_t>(vec.At("interleaving_order").AsUint64());
+    const auto eval_pts = MakeGFArrayFromJson(gf, vec.At("eval_points"));
+
+    const auto irs = coding::InterleavedGRSCode<
+        GaloisFieldBinaryExtension<uint32_t>>::CreateHomogeneous(gf, eval_pts,
+                                                                 k, ell);
+    EXPECT_EQ(irs.UniqueDecodingRadius(), vec.At("unique_radius").AsUint64());
+    EXPECT_EQ(irs.CollaborativeDecodingRadius(),
+              vec.At("collaborative_radius").AsUint64());
+
+    std::vector<GFArray<GaloisFieldBinaryExtension<uint32_t>>> msgs;
+    for (const auto& m_arr : vec.At("messages").AsArray()) {
+      msgs.push_back(MakeGFArrayFromJson(gf, m_arr));
+    }
+    const auto expected_cw =
+        MakeGFMatrixFromJson(gf, vec.At("expected_codeword_matrix"));
+    const auto received = MakeGFMatrixFromJson(gf, vec.At("received_matrix"));
+    const auto expected_burst =
+        ExtractSizeArray(vec.At("burst_error_positions"));
+
+    const auto encoded = irs.Encode(msgs);
+    EXPECT_EQ(encoded, expected_cw);
+    EXPECT_TRUE(irs.Contains(encoded));
+
+    for (const auto mode :
+         {coding::IRSDecoderMode::kSsb, coding::IRSDecoderMode::kSsbExact,
+          coding::IRSDecoderMode::kBkyHankel}) {
+      const auto res =
+          irs.Decode(received, mode, /*fallback_to_independent=*/false);
+      ASSERT_TRUE(res.Ok()) << res.error_message;
+      EXPECT_FALSE(res.used_fallback);
+      EXPECT_EQ(res.codeword_matrix, expected_cw);
+      EXPECT_EQ(res.burst_error_positions, expected_burst);
+      EXPECT_EQ(res.messages, msgs);
     }
   } else {
     FAIL() << "Unhandled required coding operation: " << op;
@@ -698,10 +939,10 @@ TEST(SageGoldenOracleTest, ExecuteAllRequiredAndSkipPlannedVectors) {
     ++required_executed;
   }
 
-  EXPECT_GE(required_executed, 15U);
+  EXPECT_GE(required_executed, 27U);
   EXPECT_EQ(required_executed, summary.At("required_vectors").AsUint64());
   EXPECT_EQ(planned_skipped, summary.At("planned_vectors").AsUint64());
-  EXPECT_EQ(planned_skipped, 3U);
+  EXPECT_EQ(planned_skipped, 1U);
 }
 
 }  // namespace

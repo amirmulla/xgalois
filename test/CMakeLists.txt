@@ -95,3 +95,21 @@ target_compile_definitions(sage_golden_test
   PRIVATE
     XGALOIS_GOLDEN_DIR="${CMAKE_CURRENT_SOURCE_DIR}/oracle/golden"
 )
+
+# v0.4 Wave A tests (Tamo-Barg LRC, Interleaved RS/Power Decoding, Advanced Channels/Sim)
+xgalois_add_test(lrc_test coding/lrc_test.cpp)
+xgalois_add_test(interleaved_rs_test coding/interleaved_rs_test.cpp)
+xgalois_add_test(advanced_channels_test channel/advanced_channels_test.cpp)
+
+# v0.4 Wave B tests (Gabidulin Rank-Metric & Kotter-Kschischang Subspace Codes)
+xgalois_add_test(gabidulin_subspace_test coding/gabidulin_subspace_test.cpp)
+
+if(XGALOIS_BUILD_ORACLE)
+  add_executable(xgalois_oracle_cli oracle/xgalois_oracle_cli.cpp)
+  target_link_libraries(xgalois_oracle_cli PRIVATE xgalois::xgalois Threads::Threads)
+  target_compile_options(xgalois_oracle_cli
+    PRIVATE
+      $<$<CXX_COMPILER_ID:GNU,Clang,AppleClang>:-Wall -Wextra -Wpedantic>
+      $<$<CXX_COMPILER_ID:MSVC>:/W4>
+  )
+endif()

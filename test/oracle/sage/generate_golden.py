@@ -1117,34 +1117,283 @@ def build_coding_vectors(rng: random.Random) -> List[Dict[str, Any]]:
       "expected_johnson_radius": 7,
   })
 
-  # 3. Planned v0.4 placeholders
+  # 3. Promoted v0.4 LRC vectors (required)
+
+  # 3a. Tamo-Barg optimal LRC (12, 6, r=3) over F_13 with g(x) = x^4 (d = 6)
+  p13 = 13
+  gamma13 = 2  # smallest primitive root mod 13
+  omega13_4 = pow(gamma13, (p13 - 1) // 4, p13)  # 8
+  h13_4 = [pow(omega13_4, t, p13) for t in range(4)]
+  lrc12_evals: List[int] = []
+  for ell in range(3):
+    rep = pow(gamma13, ell, p13)
+    for h_el in h13_4:
+      lrc12_evals.append((rep * h_el) % p13)
+  lrc12_msg = [rng.randrange(p13) for _ in range(6)]
+  if HAS_SAGE:
+    f13 = sage.GF(p13)
+    pr13 = sage.PolynomialRing(f13, "X")
+    x13 = pr13.gen()
+    g13 = x13**4
+    f_lrc12 = sum(
+        f13(lrc12_msg[j * 3 + i]) * (g13**j) * (x13**i)
+        for j in range(2)
+        for i in range(3)
+    )
+    lrc12_cw = [int(f_lrc12(f13(pt))) for pt in lrc12_evals]
+  else:
+    lrc12_cw = []
+    for pt in lrc12_evals:
+      g_val = pow(pt, 4, p13)
+      acc = 0
+      for j in range(2):
+        gp = pow(g_val, j, p13)
+        for i in range(3):
+          acc = (acc + lrc12_msg[j * 3 + i] * gp * pow(pt, i, p13)) % p13
+      lrc12_cw.append(acc)
+
   vectors.append({
-      "id": "planned_v04_tamo_barg_lrc_12_6_3",
+      "id": "coding_tamo_barg_lrc_12_6_3",
       "category": "coding",
       "operation": "tamo_barg_lrc",
-      "status": "planned",
-      "target_version": "v0.4",
+      "status": "required",
       "field": {"p": 13, "m": 1, "modulus": [0, 1]},
       "n": 12,
       "k": 6,
       "locality_r": 3,
+      "local_distance": 2,
+      "partition_type": "multiplicative",
       "good_poly_degree": 4,
       "expected_min_distance": 6,
+      "eval_points": lrc12_evals,
+      "message": lrc12_msg,
+      "expected_codeword": lrc12_cw,
+      "erased_position": 5,
+      "expected_symbols_read": 3,
       "description": "Tamo-Barg optimal LRC (12, 6, r=3) over F_13 with g(x) = x^4",
   })
+
+  # 3b. (r, delta)-LRC (15, 6, r=3, delta=3) over GF(16) with g(x) = x^5 (d = 8)
+  omega16_5 = gf2m_pow(2, 15 // 5, gf16_mask, 4)  # alpha^3 = 8
+  h16_5 = [gf2m_pow(omega16_5, t, gf16_mask, 4) for t in range(5)]
+  lrc15_evals: List[int] = []
+  for ell in range(3):
+    rep = gf2m_pow(2, ell, gf16_mask, 4)
+    for h_el in h16_5:
+      lrc15_evals.append(gf2m_mul(rep, h_el, gf16_mask, 4))
+  lrc15_msg = [rng.randrange(16) for _ in range(6)]
+  if HAS_SAGE:
+    r2 = sage.PolynomialRing(sage.GF(2), "x")
+    x = r2.gen()
+    f16 = sage.GF(16, name="a", modulus=x**4 + x + 1)
+    pr16 = sage.PolynomialRing(f16, "X")
+    x16 = pr16.gen()
+    g16 = x16**5
+    f_lrc15 = sum(
+        f16.from_integer(lrc15_msg[j * 3 + i]) * (g16**j) * (x16**i)
+        for j in range(2)
+        for i in range(3)
+    )
+    lrc15_cw = [
+        int(f_lrc15(f16.from_integer(pt)).to_integer()) for pt in lrc15_evals
+    ]
+  else:
+    lrc15_cw = []
+    for pt in lrc15_evals:
+      g_val = gf2m_pow(pt, 5, gf16_mask, 4)
+      acc = 0
+      for j in range(2):
+        gp = gf2m_pow(g_val, j, gf16_mask, 4)
+        for i in range(3):
+          xp = gf2m_pow(pt, i, gf16_mask, 4)
+          term = gf2m_mul(
+              lrc15_msg[j * 3 + i], gf2m_mul(gp, xp, gf16_mask, 4), gf16_mask, 4
+          )
+          acc ^= term
+      lrc15_cw.append(acc)
+
   vectors.append({
-      "id": "planned_v04_interleaved_rs_15_7_l3",
+      "id": "coding_lrc_rdelta_15_6_r3_d3",
       "category": "coding",
-      "operation": "interleaved_rs_collaborative_decode",
-      "status": "planned",
-      "target_version": "v0.4",
+      "operation": "tamo_barg_lrc",
+      "status": "required",
       "field": {"p": 2, "m": 4, "modulus": gf16_mod},
       "n": 15,
-      "k": 7,
-      "interleaving_order": 3,
-      "collaborative_radius": 6,
-      "description": "Interleaved RS (15, 7; l=3) over GF(16) collaborative burst decoding",
+      "k": 6,
+      "locality_r": 3,
+      "local_distance": 3,
+      "partition_type": "multiplicative",
+      "good_poly_degree": 5,
+      "expected_min_distance": 8,
+      "eval_points": lrc15_evals,
+      "message": lrc15_msg,
+      "expected_codeword": lrc15_cw,
+      "erased_position": 2,
+      "multi_erased_positions": [5, 8],
+      "expected_symbols_read": 3,
+      "description": "Tamo-Barg (r, delta)-LRC (15, 6, r=3, delta=3) over GF(16) with g(x) = x^5",
   })
+
+  # 3c. Multiplicative CRT Availability LRC (12, 4, r=[2, 3]) over F_13
+  avail_evals = [pow(gamma13, j, p13) for j in range(12)]
+  avail_exps = [
+      e for e in range(12) if (e % 3) < 2 and (e % 4) < 3
+  ][:4]  # [0, 1, 4, 6]
+  assert avail_exps == [0, 1, 4, 6]
+  avail_msg = [rng.randrange(p13) for _ in range(4)]
+  if HAS_SAGE:
+    f13 = sage.GF(p13)
+    avail_cw = [
+        int(
+            sum(
+                f13(avail_msg[i]) * (f13(pt) ** avail_exps[i]) for i in range(4)
+            )
+        )
+        for pt in avail_evals
+    ]
+  else:
+    avail_cw = [
+        sum(avail_msg[i] * pow(pt, avail_exps[i], p13) for i in range(4)) % p13
+        for pt in avail_evals
+    ]
+
+  vectors.append({
+      "id": "coding_lrc_availability_12_4_r2_3",
+      "category": "coding",
+      "operation": "lrc_availability",
+      "status": "required",
+      "field": {"p": 13, "m": 1, "modulus": [0, 1]},
+      "construction": "multiplicative",
+      "n": 12,
+      "k": 4,
+      "localities": [2, 3],
+      "local_distances": [2, 2],
+      "expected_availability": 2,
+      "expected_designed_distance": 12 - avail_exps[-1],
+      "crt_exponents": avail_exps,
+      "eval_points": avail_evals,
+      "message": avail_msg,
+      "expected_codeword": avail_cw,
+      "test_coord": 3,
+      "description": "Multiplicative CRT Availability LRC (12, 4, r=[2, 3]) over F_13",
+  })
+
+  # 4. Promoted v0.4 Interleaved RS (15, 7; l=3) over GF(16) with t=6 > t_u=4
+  irs_n, irs_k, irs_ell = 15, 7, 3
+  irs_red = irs_n - irs_k  # 8
+  irs_msgs = [[rng.randrange(16) for _ in range(irs_k)] for _ in range(irs_ell)]
+  if HAS_SAGE:
+    r2 = sage.PolynomialRing(sage.GF(2), "x")
+    x = r2.gen()
+    f16 = sage.GF(16, name="a", modulus=x**4 + x + 1)
+    s_evals = [f16.from_integer(e) for e in eval_points]
+    grs7 = sage.codes.GeneralizedReedSolomonCode(s_evals, irs_k)
+    enc7 = grs7.encoder("EvaluationPolynomial")
+    pr16 = sage.PolynomialRing(f16, "X")
+    irs_cols = [
+        [
+            int(c.to_integer())
+            for c in enc7.encode(pr16([f16.from_integer(v) for v in m]))
+        ]
+        for m in irs_msgs
+    ]
+  else:
+    irs_cols = [
+        [eval_poly_gf16(m, pt) for pt in eval_points] for m in irs_msgs
+    ]
+  irs_cw_mat = [[irs_cols[m][j] for m in range(irs_ell)] for j in range(irs_n)]
+
+  # Dual multipliers w_j = (prod_{i != j}(alpha_j - alpha_i))^-1 in GF(16)
+  irs_duals = []
+  for j in range(irs_n):
+    prod = 1
+    for i in range(irs_n):
+      if i != j:
+        prod = gf2m_mul(prod, eval_points[j] ^ eval_points[i], gf16_mask, 4)
+    irs_duals.append(gf2m_inv(prod, gf16_mask, 4))
+
+  def _irs_hankel_full_rank(rx_mat: Sequence[Sequence[int]], tau: int) -> bool:
+    seqs: List[List[int]] = []
+    for m in range(irs_ell):
+      seq_m: List[int] = []
+      for i in range(irs_red):
+        acc = 0
+        for j in range(irs_n):
+          w_ap = gf2m_mul(
+              irs_duals[j], gf2m_pow(eval_points[j], i, gf16_mask, 4),
+              gf16_mask, 4
+          )
+          acc ^= gf2m_mul(w_ap, rx_mat[j][m], gf16_mask, 4)
+        seq_m.append(acc)
+      seqs.append(seq_m)
+    rows: List[List[int]] = []
+    for seq_m in seqs:
+      for i in range(irs_red - tau):
+        row = [seq_m[i + tau - 1 - c] for c in range(tau)]
+        row.append(seq_m[i + tau])
+        rows.append(row)
+    # RREF over GF(16)
+    m_rows = len(rows)
+    n_cols = tau + 1
+    pivots: List[int] = []
+    cur = 0
+    for col in range(n_cols):
+      if cur >= m_rows:
+        break
+      piv = -1
+      for r_i in range(cur, m_rows):
+        if rows[r_i][col] != 0:
+          piv = r_i
+          break
+      if piv == -1:
+        continue
+      rows[cur], rows[piv] = rows[piv], rows[cur]
+      inv_p = gf2m_inv(rows[cur][col], gf16_mask, 4)
+      for c in range(col, n_cols):
+        rows[cur][c] = gf2m_mul(rows[cur][c], inv_p, gf16_mask, 4)
+      for r_i in range(m_rows):
+        if r_i != cur and rows[r_i][col] != 0:
+          fac = rows[r_i][col]
+          for c in range(col, n_cols):
+            rows[r_i][c] ^= gf2m_mul(fac, rows[cur][c], gf16_mask, 4)
+      pivots.append(col)
+      cur += 1
+    return len(pivots) == tau and pivots[-1] < tau and rows[tau - 1][tau] != 0
+
+  irs_err_positions = [0, 3, 5, 8, 11, 14]
+  irs_received: List[List[int]] = []
+  while True:
+    cand_rx = [list(row) for row in irs_cw_mat]
+    for pos in irs_err_positions:
+      row_err = [rng.randrange(16) for _ in range(irs_ell)]
+      if all(v == 0 for v in row_err):
+        row_err[0] = 1
+      for m in range(irs_ell):
+        cand_rx[pos][m] ^= row_err[m]
+    if _irs_hankel_full_rank(cand_rx, len(irs_err_positions)):
+      irs_received = cand_rx
+      break
+
+  vectors.append({
+      "id": "coding_interleaved_rs_15_7_l3",
+      "category": "coding",
+      "operation": "interleaved_rs_collaborative_decode",
+      "status": "required",
+      "field": {"p": 2, "m": 4, "modulus": gf16_mod},
+      "n": irs_n,
+      "k": irs_k,
+      "interleaving_order": irs_ell,
+      "unique_radius": 4,
+      "collaborative_radius": 6,
+      "eval_points": eval_points,
+      "messages": irs_msgs,
+      "expected_codeword_matrix": irs_cw_mat,
+      "burst_error_positions": irs_err_positions,
+      "received_matrix": irs_received,
+      "description": "Interleaved RS (15, 7; l=3) over GF(16) collaborative burst decoding at t=6 > t_u=4",
+  })
+
+  # 5. Planned v0.4 placeholder (Gabidulin kept planned for Gatekeeper promotion)
   vectors.append({
       "id": "planned_v04_gabidulin_8_4_gf256",
       "category": "coding",

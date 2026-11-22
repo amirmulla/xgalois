@@ -410,14 +410,16 @@ class GaloisFieldBinaryLarge {
       }
     };
 
-    auto has_high_bits = [this, &t]() noexcept -> bool {
+    const uint64_t top_mask = top_mask_;
+    auto has_high_bits = [top_mask, &t]() noexcept -> bool {
+      (void)top_mask;
       for (std::size_t i = kLimbs; i < 2 * kLimbs; ++i) {
         if (t[i] != 0ULL) {
           return true;
         }
       }
       if constexpr (M % 64 != 0) {
-        if ((t[kLimbs - 1] & ~top_mask_) != 0ULL) {
+        if ((t[kLimbs - 1] & ~top_mask) != 0ULL) {
           return true;
         }
       }
