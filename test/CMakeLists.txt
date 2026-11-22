@@ -109,6 +109,11 @@ xgalois_add_test(ec_pairing_test ec/ec_pairing_test.cpp)
 xgalois_add_test(advanced_linalg_test linalg/advanced_linalg_test.cpp)
 xgalois_add_test(simd_kernels_test simd/simd_kernels_test.cpp)
 
+# v0.5 Wave B tests (Convolutional/Turbo, Product/Concatenated/Modifiers/MacWilliams, Hermitian/Fountain)
+xgalois_add_test(conv_turbo_test coding/conv_turbo_test.cpp)
+xgalois_add_test(prod_concat_mod_test coding/prod_concat_mod_test.cpp)
+xgalois_add_test(hermitian_fountain_test coding/hermitian_fountain_test.cpp)
+
 if(XGALOIS_BUILD_ORACLE)
   add_executable(xgalois_oracle_cli oracle/xgalois_oracle_cli.cpp)
   target_link_libraries(xgalois_oracle_cli PRIVATE xgalois::xgalois Threads::Threads)

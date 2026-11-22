@@ -551,6 +551,42 @@ cc_test(
     ],
 )
 
+cc_test(
+    name = "conv_turbo_test",
+    size = "medium",
+    timeout = "moderate",
+    srcs = ["coding/conv_turbo_test.cpp"],
+    deps = [
+        "//xgalois",
+        "@googletest//:gtest",
+        "@googletest//:gtest_main",
+    ],
+)
+
+cc_test(
+    name = "prod_concat_mod_test",
+    size = "medium",
+    timeout = "moderate",
+    srcs = ["coding/prod_concat_mod_test.cpp"],
+    deps = [
+        "//xgalois",
+        "@googletest//:gtest",
+        "@googletest//:gtest_main",
+    ],
+)
+
+cc_test(
+    name = "hermitian_fountain_test",
+    size = "large",
+    timeout = "long",
+    srcs = ["coding/hermitian_fountain_test.cpp"],
+    deps = [
+        "//xgalois",
+        "@googletest//:gtest",
+        "@googletest//:gtest_main",
+    ],
+)
+
 test_suite(
     name = "galois_field_tests",
     tests = [
@@ -562,6 +598,7 @@ test_suite(
         ":channel_test",
         ":coding_test",
         ":concepts_snf_test",
+        ":conv_turbo_test",
         ":cyclic_bch_test",
         ":db_integrity_test",
         ":ec_pairing_test",
@@ -579,6 +616,7 @@ test_suite(
         ":groups_test",
         ":grs_test",
         ":guruswami_sudan_test",
+        ":hermitian_fountain_test",
         ":interface_test",
         ":interleaved_rs_test",
         ":ldpc_polar_test",
@@ -592,6 +630,7 @@ test_suite(
         ":poly_algo_test",
         ":poly_dense_test",
         ":poly_test",
+        ":prod_concat_mod_test",
         ":rings_test",
         ":sage_golden_test",
         ":simd_dispatch_test",
