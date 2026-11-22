@@ -1,4 +1,4 @@
-load("@rules_cc//cc:defs.bzl", "cc_test")
+load("@rules_cc//cc:defs.bzl", "cc_library", "cc_test")
 
 package(default_visibility = ["//visibility:public"])
 
@@ -354,14 +354,122 @@ cc_test(
     ],
 )
 
+cc_test(
+    name = "bigint_test",
+    size = "medium",
+    timeout = "moderate",
+    srcs = ["utils/bigint_test.cpp"],
+    deps = [
+        "//xgalois",
+        "@googletest//:gtest",
+        "@googletest//:gtest_main",
+    ],
+)
+
+cc_test(
+    name = "concepts_snf_test",
+    size = "medium",
+    timeout = "moderate",
+    srcs = ["algebra/concepts_snf_test.cpp"],
+    deps = [
+        "//xgalois",
+        "@googletest//:gtest",
+        "@googletest//:gtest_main",
+    ],
+)
+
+cc_test(
+    name = "simd_dispatch_test",
+    size = "medium",
+    timeout = "moderate",
+    srcs = ["simd/simd_dispatch_test.cpp"],
+    deps = [
+        "//xgalois",
+        "@googletest//:gtest",
+        "@googletest//:gtest_main",
+    ],
+)
+
+cc_test(
+    name = "groups_test",
+    size = "medium",
+    timeout = "moderate",
+    srcs = ["algebra/groups_test.cpp"],
+    deps = [
+        "//xgalois",
+        "@googletest//:gtest",
+        "@googletest//:gtest_main",
+    ],
+)
+
+cc_test(
+    name = "rings_test",
+    size = "medium",
+    timeout = "moderate",
+    srcs = ["ring/rings_test.cpp"],
+    deps = [
+        "//xgalois",
+        "@googletest//:gtest",
+        "@googletest//:gtest_main",
+    ],
+)
+
+cc_test(
+    name = "advanced_fields_test",
+    size = "medium",
+    timeout = "moderate",
+    srcs = ["field/advanced_fields_test.cpp"],
+    deps = [
+        "//xgalois",
+        "@googletest//:gtest",
+        "@googletest//:gtest_main",
+    ],
+)
+
+cc_library(
+    name = "tiny_json",
+    hdrs = ["oracle/tiny_json.hpp"],
+)
+
+cc_test(
+    name = "fast_poly_test",
+    size = "large",
+    timeout = "long",
+    srcs = ["poly/fast_poly_test.cpp"],
+    deps = [
+        "//xgalois",
+        "@googletest//:gtest",
+        "@googletest//:gtest_main",
+    ],
+)
+
+cc_test(
+    name = "sage_golden_test",
+    size = "medium",
+    timeout = "moderate",
+    srcs = ["oracle/sage_golden_test.cpp"],
+    data = glob(["oracle/golden/*.json"]),
+    deps = [
+        ":tiny_json",
+        "//xgalois",
+        "@googletest//:gtest",
+        "@googletest//:gtest_main",
+        "@rules_cc//cc/runfiles",
+    ],
+)
+
 test_suite(
     name = "galois_field_tests",
     tests = [
+        ":advanced_fields_test",
         ":algebraic_property_test",
+        ":bigint_test",
         ":channel_test",
         ":coding_test",
+        ":concepts_snf_test",
         ":cyclic_bch_test",
         ":db_integrity_test",
+        ":fast_poly_test",
         ":field_test",
         ":fuzz_smoke_test",
         ":gf128_test",
@@ -371,6 +479,7 @@ test_suite(
         ":gf_factory_test",
         ":gf_prime_test",
         ":gf_tables_test",
+        ":groups_test",
         ":grs_test",
         ":guruswami_sudan_test",
         ":interface_test",
@@ -384,6 +493,9 @@ test_suite(
         ":poly_algo_test",
         ":poly_dense_test",
         ":poly_test",
+        ":rings_test",
+        ":sage_golden_test",
+        ":simd_dispatch_test",
         ":syndrome_linear_test",
     ],
 )

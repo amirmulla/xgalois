@@ -15,39 +15,56 @@
 #include "xgalois/coding/decoder/decoder.hpp"
 #include "xgalois/coding/decoder/grs_decoder.hpp"
 #include "xgalois/coding/grs.hpp"
+#include "xgalois/poly/half_gcd.hpp"
 #include "xgalois/poly/poly_dense.hpp"
 
 namespace xg {
 namespace coding {
 
+inline constexpr std::size_t kSugiyamaHalfGcdThreshold = 256;
+
 namespace detail {
 
-// O(t^2) Sugiyama (Extended Euclidean Algorithm) key-equation solver.
+// Sugiyama (Extended Euclidean Algorithm) key-equation solver.
 // Runs polynomial EEA on (z^L, T(z)) stopping as soon as deg(r_i) < max_errors
 // + s, then normalizes by t_i(0)^-1 to obtain Lambda(0) = 1 and Omega(z)
-// directly.
+// directly. Dispatches to O(M(L) log L) Half-GCD (xg::PartialExtendedGcd) when
+// L >= half_gcd_threshold, and uses classical O(t^2) EEA below.
 template <typename GaloisField>
 inline std::optional<KeyEquationSolution<GaloisField>> SolveKeyEquationSugiyama(
     const PolynomialDense<GaloisField> &mod_syn, std::size_t L, std::size_t s,
-    std::size_t max_errors) {
+    std::size_t max_errors,
+    std::size_t half_gcd_threshold = kSugiyamaHalfGcdThreshold) {
   using Poly = PolynomialDense<GaloisField>;
 
   const auto field = mod_syn.Field();
   const auto one = field->MultiplicativeIdentity();
   const int stop_deg = static_cast<int>(max_errors + s);
 
-  Poly r_prev = Poly::Monomial(field, L, one);
-  Poly r_curr = mod_syn;
-  Poly t_prev = Poly::Zero(field);
-  Poly t_curr = Poly::One(field);
+  Poly r_curr;
+  Poly t_curr;
 
-  while (!r_curr.IsZero() && r_curr.Degree() >= stop_deg) {
-    auto [q, r_next] = r_prev.DivRem(r_curr);
-    Poly t_next = t_prev - q * t_curr;
-    r_prev = std::move(r_curr);
-    r_curr = std::move(r_next);
-    t_prev = std::move(t_curr);
-    t_curr = std::move(t_next);
+  if (L >= half_gcd_threshold) {
+    Poly x_l = Poly::Monomial(field, L, one);
+    auto [r_out, u_out, t_out] =
+        xg::PartialExtendedGcd(x_l, mod_syn, static_cast<int64_t>(stop_deg));
+    (void)u_out;
+    r_curr = std::move(r_out);
+    t_curr = std::move(t_out);
+  } else {
+    Poly r_prev = Poly::Monomial(field, L, one);
+    r_curr = mod_syn;
+    Poly t_prev = Poly::Zero(field);
+    t_curr = Poly::One(field);
+
+    while (!r_curr.IsZero() && r_curr.Degree() >= stop_deg) {
+      auto [q, r_next] = r_prev.DivRem(r_curr);
+      Poly t_next = t_prev - q * t_curr;
+      r_prev = std::move(r_curr);
+      r_curr = std::move(r_next);
+      t_prev = std::move(t_curr);
+      t_curr = std::move(t_next);
+    }
   }
 
   if (t_curr.IsZero()) {
@@ -70,7 +87,7 @@ inline std::optional<KeyEquationSolution<GaloisField>> SolveKeyEquationSugiyama(
 
 }  // namespace detail
 
-// O(t^2) Sugiyama (Extended Euclidean Algorithm) + Chien search + Forney
+// Sugiyama (Extended Euclidean Algorithm / Half-GCD) + Chien search + Forney
 // decoder for Generalized Reed-Solomon codes, supporting full
 // errors-and-erasures decoding up to 2e + s <= n - k and alpha_j = 0.
 template <typename GaloisField>
@@ -84,7 +101,10 @@ class SugiyamaDecoder : public Decoder<GaloisField> {
   using message_type = typename Base::message_type;
   using result_type = typename Base::result_type;
 
-  explicit SugiyamaDecoder(const AbstractCode<GaloisField> &code) : Base(code) {
+  explicit SugiyamaDecoder(
+      const AbstractCode<GaloisField> &code,
+      std::size_t half_gcd_threshold = kSugiyamaHalfGcdThreshold)
+      : Base(code), half_gcd_threshold_(half_gcd_threshold) {
     grs_code_ =
         dynamic_cast<const GeneralizedReedSolomonCode<GaloisField> *>(&code);
     if (!grs_code_) {
@@ -102,11 +122,13 @@ class SugiyamaDecoder : public Decoder<GaloisField> {
   result_type DecodeWithErasures(
       const codeword_type &received_word,
       const std::vector<std::size_t> &erasure_positions) const override {
+    const std::size_t threshold = half_gcd_threshold_;
     return detail::DecodeGRSWithErasures(
         *grs_code_, received_word, erasure_positions, "Sugiyama",
-        [](const PolynomialDense<GaloisField> &mod_syn, std::size_t L,
-           std::size_t s, std::size_t max_errors) {
-          return detail::SolveKeyEquationSugiyama(mod_syn, L, s, max_errors);
+        [threshold](const PolynomialDense<GaloisField> &mod_syn, std::size_t L,
+                    std::size_t s, std::size_t max_errors) {
+          return detail::SolveKeyEquationSugiyama(mod_syn, L, s, max_errors,
+                                                  threshold);
         });
   }
 
@@ -116,9 +138,12 @@ class SugiyamaDecoder : public Decoder<GaloisField> {
 
   std::size_t MaxErrors() const noexcept { return max_errors_; }
 
+  std::size_t HalfGcdThreshold() const noexcept { return half_gcd_threshold_; }
+
  private:
   const GeneralizedReedSolomonCode<GaloisField> *grs_code_;
   std::size_t max_errors_;
+  std::size_t half_gcd_threshold_;
 };
 
 }  // namespace coding

@@ -77,3 +77,21 @@ xgalois_add_test(guruswami_sudan_test coding/guruswami_sudan_test.cpp)
 xgalois_add_test(algebraic_property_test property/algebraic_property_test.cpp)
 xgalois_add_test(fuzz_smoke_test fuzz/fuzz_smoke_test.cpp)
 xgalois_add_test(odr_multi_tu_test build/odr_tu1.cpp build/odr_tu2.cpp)
+
+# v0.3 Wave A tests (BigInt, Algebra Concepts/SNF, SIMD Dispatch/ThreadPool)
+xgalois_add_test(bigint_test utils/bigint_test.cpp)
+xgalois_add_test(concepts_snf_test algebra/concepts_snf_test.cpp)
+xgalois_add_test(simd_dispatch_test simd/simd_dispatch_test.cpp)
+
+# v0.3 Wave B tests (Groups/BSGS, Rings/Skew, Field Towers/ONB/BigInt Fields)
+xgalois_add_test(groups_test algebra/groups_test.cpp)
+xgalois_add_test(rings_test ring/rings_test.cpp)
+xgalois_add_test(advanced_fields_test field/advanced_fields_test.cpp)
+
+# v0.3 Wave C tests (Fast Polynomials / NTT / Additive FFT / Half-GCD & Tier-1 Golden Oracle)
+xgalois_add_test(fast_poly_test poly/fast_poly_test.cpp)
+xgalois_add_test(sage_golden_test oracle/sage_golden_test.cpp)
+target_compile_definitions(sage_golden_test
+  PRIVATE
+    XGALOIS_GOLDEN_DIR="${CMAKE_CURRENT_SOURCE_DIR}/oracle/golden"
+)
