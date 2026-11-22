@@ -515,11 +515,48 @@ cc_binary(
     ],
 )
 
+cc_test(
+    name = "ec_pairing_test",
+    size = "medium",
+    timeout = "moderate",
+    srcs = ["ec/ec_pairing_test.cpp"],
+    deps = [
+        "//xgalois",
+        "@googletest//:gtest",
+        "@googletest//:gtest_main",
+    ],
+)
+
+cc_test(
+    name = "advanced_linalg_test",
+    size = "medium",
+    timeout = "moderate",
+    srcs = ["linalg/advanced_linalg_test.cpp"],
+    deps = [
+        "//xgalois",
+        "@googletest//:gtest",
+        "@googletest//:gtest_main",
+    ],
+)
+
+cc_test(
+    name = "simd_kernels_test",
+    size = "medium",
+    timeout = "moderate",
+    srcs = ["simd/simd_kernels_test.cpp"],
+    deps = [
+        "//xgalois",
+        "@googletest//:gtest",
+        "@googletest//:gtest_main",
+    ],
+)
+
 test_suite(
     name = "galois_field_tests",
     tests = [
         ":advanced_channels_test",
         ":advanced_fields_test",
+        ":advanced_linalg_test",
         ":algebraic_property_test",
         ":bigint_test",
         ":channel_test",
@@ -527,6 +564,7 @@ test_suite(
         ":concepts_snf_test",
         ":cyclic_bch_test",
         ":db_integrity_test",
+        ":ec_pairing_test",
         ":fast_poly_test",
         ":field_test",
         ":fuzz_smoke_test",
@@ -557,6 +595,7 @@ test_suite(
         ":rings_test",
         ":sage_golden_test",
         ":simd_dispatch_test",
+        ":simd_kernels_test",
         ":syndrome_linear_test",
     ],
 )

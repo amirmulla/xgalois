@@ -167,11 +167,42 @@ cc_library(
     name = "linalg",
     hdrs = glob(["linalg/*.hpp"]),
     deps = [
+        ":algebra_concepts",
+        ":algebra_snf",
         ":field_core",
         ":gf_array",
         ":poly",
+        ":simd",
+        ":utils_bigint",
         "@xtensor",
         "@xtl",
+    ],
+)
+
+cc_library(
+    name = "algebra_matrix_group",
+    hdrs = ["algebra/matrix_group.hpp"],
+    deps = [
+        ":algebra_concepts",
+        ":algebra_groups",
+        ":field_core",
+        ":gf_array",
+        ":linalg",
+        ":utils_bigint",
+    ],
+)
+
+cc_library(
+    name = "ec",
+    hdrs = glob(["ec/*.hpp"]),
+    deps = [
+        ":algebra_concepts",
+        ":field",
+        ":field_core",
+        ":gf_array",
+        ":linalg",
+        ":utils_bigint",
+        ":utils_math",
     ],
 )
 
@@ -210,11 +241,13 @@ cc_library(
     deps = [
         ":algebra_concepts",
         ":algebra_groups",
+        ":algebra_matrix_group",
         ":algebra_ring_core",
         ":algebra_snf",
         ":channel",
         ":coding",
         ":databases",
+        ":ec",
         ":field",
         ":field_core",
         ":linalg",
