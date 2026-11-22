@@ -181,6 +181,7 @@ cc_library(
     deps = [
         ":field_core",
         ":gf_array",
+        ":simd",
         "@xtensor",
         "@xtl",
     ],
@@ -195,6 +196,8 @@ cc_library(
         ":gf_array",
         ":linalg",
         ":poly",
+        ":ring",
+        ":utils_bigint",
         ":utils_math",
         ":utils_poly",
         "@xtensor",

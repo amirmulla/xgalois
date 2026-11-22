@@ -458,9 +458,46 @@ cc_test(
     ],
 )
 
+cc_test(
+    name = "lrc_test",
+    size = "medium",
+    timeout = "moderate",
+    srcs = ["coding/lrc_test.cpp"],
+    deps = [
+        "//xgalois",
+        "@googletest//:gtest",
+        "@googletest//:gtest_main",
+    ],
+)
+
+cc_test(
+    name = "interleaved_rs_test",
+    size = "medium",
+    timeout = "moderate",
+    srcs = ["coding/interleaved_rs_test.cpp"],
+    deps = [
+        "//xgalois",
+        "@googletest//:gtest",
+        "@googletest//:gtest_main",
+    ],
+)
+
+cc_test(
+    name = "advanced_channels_test",
+    size = "medium",
+    timeout = "moderate",
+    srcs = ["channel/advanced_channels_test.cpp"],
+    deps = [
+        "//xgalois",
+        "@googletest//:gtest",
+        "@googletest//:gtest_main",
+    ],
+)
+
 test_suite(
     name = "galois_field_tests",
     tests = [
+        ":advanced_channels_test",
         ":advanced_fields_test",
         ":algebraic_property_test",
         ":bigint_test",
@@ -483,11 +520,13 @@ test_suite(
         ":grs_test",
         ":guruswami_sudan_test",
         ":interface_test",
+        ":interleaved_rs_test",
         ":ldpc_polar_test",
         ":linalg_binary_test",
         ":linalg_extension_test",
         ":linalg_gf2_test",
         ":linalg_prime_test",
+        ":lrc_test",
         ":math_test",
         ":odr_multi_tu_test",
         ":poly_algo_test",

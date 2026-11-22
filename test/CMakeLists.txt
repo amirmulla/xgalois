@@ -95,3 +95,8 @@ target_compile_definitions(sage_golden_test
   PRIVATE
     XGALOIS_GOLDEN_DIR="${CMAKE_CURRENT_SOURCE_DIR}/oracle/golden"
 )
+
+# v0.4 Wave A tests (Tamo-Barg LRC, Interleaved RS/Power Decoding, Advanced Channels/Sim)
+xgalois_add_test(lrc_test coding/lrc_test.cpp)
+xgalois_add_test(interleaved_rs_test coding/interleaved_rs_test.cpp)
+xgalois_add_test(advanced_channels_test channel/advanced_channels_test.cpp)
