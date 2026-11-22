@@ -1,4 +1,4 @@
-load("@rules_cc//cc:defs.bzl", "cc_test")
+load("@rules_cc//cc:defs.bzl", "cc_library", "cc_test")
 
 package(default_visibility = ["//visibility:public"])
 
@@ -426,6 +426,38 @@ cc_test(
     ],
 )
 
+cc_library(
+    name = "tiny_json",
+    hdrs = ["oracle/tiny_json.hpp"],
+)
+
+cc_test(
+    name = "fast_poly_test",
+    size = "large",
+    timeout = "long",
+    srcs = ["poly/fast_poly_test.cpp"],
+    deps = [
+        "//xgalois",
+        "@googletest//:gtest",
+        "@googletest//:gtest_main",
+    ],
+)
+
+cc_test(
+    name = "sage_golden_test",
+    size = "medium",
+    timeout = "moderate",
+    srcs = ["oracle/sage_golden_test.cpp"],
+    data = glob(["oracle/golden/*.json"]),
+    deps = [
+        ":tiny_json",
+        "//xgalois",
+        "@googletest//:gtest",
+        "@googletest//:gtest_main",
+        "@rules_cc//cc/runfiles",
+    ],
+)
+
 test_suite(
     name = "galois_field_tests",
     tests = [
@@ -437,6 +469,7 @@ test_suite(
         ":concepts_snf_test",
         ":cyclic_bch_test",
         ":db_integrity_test",
+        ":fast_poly_test",
         ":field_test",
         ":fuzz_smoke_test",
         ":gf128_test",
@@ -461,6 +494,7 @@ test_suite(
         ":poly_dense_test",
         ":poly_test",
         ":rings_test",
+        ":sage_golden_test",
         ":simd_dispatch_test",
         ":syndrome_linear_test",
     ],

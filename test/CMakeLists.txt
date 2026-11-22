@@ -87,3 +87,11 @@ xgalois_add_test(simd_dispatch_test simd/simd_dispatch_test.cpp)
 xgalois_add_test(groups_test algebra/groups_test.cpp)
 xgalois_add_test(rings_test ring/rings_test.cpp)
 xgalois_add_test(advanced_fields_test field/advanced_fields_test.cpp)
+
+# v0.3 Wave C tests (Fast Polynomials / NTT / Additive FFT / Half-GCD & Tier-1 Golden Oracle)
+xgalois_add_test(fast_poly_test poly/fast_poly_test.cpp)
+xgalois_add_test(sage_golden_test oracle/sage_golden_test.cpp)
+target_compile_definitions(sage_golden_test
+  PRIVATE
+    XGALOIS_GOLDEN_DIR="${CMAKE_CURRENT_SOURCE_DIR}/oracle/golden"
+)

@@ -87,7 +87,10 @@ cc_library(
     name = "poly",
     hdrs = glob(["poly/*.hpp"]),
     deps = [
+        ":algebra_concepts",
         ":field_core",
+        ":simd",
+        ":utils_math",
     ],
 )
 

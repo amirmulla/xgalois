@@ -5,8 +5,8 @@ if(POLICY CMP0135)
 endif()
 
 project(xgalois
-  VERSION 0.2.0
-  DESCRIPTION "High-performance C++20 Galois field, polynomial, linear algebra, and coding theory library"
+  VERSION 0.3.0
+  DESCRIPTION "High-performance C++20 Galois field, algebra, polynomial, linear algebra, and coding theory library"
   LANGUAGES CXX
 )
 

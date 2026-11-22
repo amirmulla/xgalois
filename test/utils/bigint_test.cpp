@@ -312,10 +312,14 @@ TEST(BigUIntTest, FreeModularHelpers) {
 // ============================================================================
 
 TEST(MontgomeryTest, InvalidModuliThrow) {
-  EXPECT_THROW(MontgomeryCtx<256>(BigUInt<256>::Zero()), std::invalid_argument);
-  EXPECT_THROW(MontgomeryCtx<256>(BigUInt<256>::One()), std::invalid_argument);
-  EXPECT_THROW(MontgomeryCtx<256>(BigUInt<256>(2)), std::invalid_argument);
-  EXPECT_THROW(MontgomeryCtx<256>(BigUInt<256>(1000)), std::invalid_argument);
+  EXPECT_THROW(static_cast<void>(MontgomeryCtx<256>(BigUInt<256>::Zero())),
+               std::invalid_argument);
+  EXPECT_THROW(static_cast<void>(MontgomeryCtx<256>(BigUInt<256>::One())),
+               std::invalid_argument);
+  EXPECT_THROW(static_cast<void>(MontgomeryCtx<256>(BigUInt<256>(2))),
+               std::invalid_argument);
+  EXPECT_THROW(static_cast<void>(MontgomeryCtx<256>(BigUInt<256>(1000))),
+               std::invalid_argument);
 }
 
 TEST(MontgomeryTest, Curve25519Prime) {
