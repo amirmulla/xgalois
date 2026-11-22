@@ -25,7 +25,7 @@
 namespace xg {
 namespace coding {
 
-enum class Metric : std::uint8_t { HAMMING, LEE, RANK };
+enum class Metric : std::uint8_t { HAMMING, LEE, RANK, SUBSPACE };
 
 template <typename GaloisField>
 class AbstractCode {
@@ -298,7 +298,7 @@ class AbstractCode {
     return Weight(w1 - w2);
   }
 
-  std::size_t Weight(const codeword_type &word) const {
+  virtual std::size_t Weight(const codeword_type &word) const {
     if (!word.HasField() || word.Field() != field_) {
       throw std::invalid_argument("Weight: field mismatch");
     }
@@ -333,6 +333,11 @@ class AbstractCode {
         throw std::invalid_argument(
             "Lee metric is defined only for prime fields");
       }
+    }
+    if (metric_ == Metric::SUBSPACE) {
+      throw std::invalid_argument(
+          "Subspace metric requires subspace basis matrices; use "
+          "KotterKschischangCode::SubspaceDistance");
     }
     throw std::invalid_argument(
         "Rank metric requires matrix-valued codewords; use "

@@ -1,4 +1,4 @@
-load("@rules_cc//cc:defs.bzl", "cc_library", "cc_test")
+load("@rules_cc//cc:defs.bzl", "cc_binary", "cc_library", "cc_test")
 
 package(default_visibility = ["//visibility:public"])
 
@@ -494,6 +494,27 @@ cc_test(
     ],
 )
 
+cc_test(
+    name = "gabidulin_subspace_test",
+    size = "medium",
+    timeout = "moderate",
+    srcs = ["coding/gabidulin_subspace_test.cpp"],
+    deps = [
+        "//xgalois",
+        "@googletest//:gtest",
+        "@googletest//:gtest_main",
+    ],
+)
+
+cc_binary(
+    name = "xgalois_oracle_cli",
+    srcs = ["oracle/xgalois_oracle_cli.cpp"],
+    deps = [
+        ":tiny_json",
+        "//xgalois",
+    ],
+)
+
 test_suite(
     name = "galois_field_tests",
     tests = [
@@ -509,6 +530,7 @@ test_suite(
         ":fast_poly_test",
         ":field_test",
         ":fuzz_smoke_test",
+        ":gabidulin_subspace_test",
         ":gf128_test",
         ":gf_binary_test",
         ":gf_element_test",

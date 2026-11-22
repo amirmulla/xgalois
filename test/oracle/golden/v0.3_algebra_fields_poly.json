@@ -3,9 +3,9 @@
   "schema_version": "1.0",
   "seed": 2026,
   "summary": {
-    "planned_vectors": 3,
-    "required_vectors": 23,
-    "total_vectors": 26
+    "planned_vectors": 1,
+    "required_vectors": 27,
+    "total_vectors": 28
   },
   "vectors": [
     {
@@ -951,7 +951,37 @@
     {
       "category": "coding",
       "description": "Tamo-Barg optimal LRC (12, 6, r=3) over F_13 with g(x) = x^4",
+      "erased_position": 5,
+      "eval_points": [
+        1,
+        8,
+        12,
+        5,
+        2,
+        3,
+        11,
+        10,
+        4,
+        6,
+        9,
+        7
+      ],
+      "expected_codeword": [
+        1,
+        7,
+        9,
+        6,
+        10,
+        3,
+        9,
+        8,
+        6,
+        0,
+        6,
+        0
+      ],
       "expected_min_distance": 6,
+      "expected_symbols_read": 3,
       "field": {
         "m": 1,
         "modulus": [
@@ -961,18 +991,63 @@
         "p": 13
       },
       "good_poly_degree": 4,
-      "id": "planned_v04_tamo_barg_lrc_12_6_3",
+      "id": "coding_tamo_barg_lrc_12_6_3",
       "k": 6,
+      "local_distance": 2,
       "locality_r": 3,
+      "message": [
+        0,
+        2,
+        10,
+        9,
+        7,
+        12
+      ],
       "n": 12,
       "operation": "tamo_barg_lrc",
-      "status": "planned",
-      "target_version": "v0.4"
+      "partition_type": "multiplicative",
+      "status": "required"
     },
     {
       "category": "coding",
-      "collaborative_radius": 6,
-      "description": "Interleaved RS (15, 7; l=3) over GF(16) collaborative burst decoding",
+      "description": "Tamo-Barg (r, delta)-LRC (15, 6, r=3, delta=3) over GF(16) with g(x) = x^5",
+      "erased_position": 2,
+      "eval_points": [
+        1,
+        8,
+        12,
+        10,
+        15,
+        2,
+        3,
+        11,
+        7,
+        13,
+        4,
+        6,
+        5,
+        14,
+        9
+      ],
+      "expected_codeword": [
+        11,
+        11,
+        3,
+        5,
+        1,
+        4,
+        15,
+        11,
+        10,
+        0,
+        15,
+        1,
+        5,
+        0,
+        9
+      ],
+      "expected_min_distance": 8,
+      "expected_symbols_read": 3,
       "field": {
         "m": 4,
         "modulus": [
@@ -984,13 +1059,327 @@
         ],
         "p": 2
       },
-      "id": "planned_v04_interleaved_rs_15_7_l3",
+      "good_poly_degree": 5,
+      "id": "coding_lrc_rdelta_15_6_r3_d3",
+      "k": 6,
+      "local_distance": 3,
+      "locality_r": 3,
+      "message": [
+        15,
+        11,
+        6,
+        8,
+        15,
+        14
+      ],
+      "multi_erased_positions": [
+        5,
+        8
+      ],
+      "n": 15,
+      "operation": "tamo_barg_lrc",
+      "partition_type": "multiplicative",
+      "status": "required"
+    },
+    {
+      "category": "coding",
+      "construction": "multiplicative",
+      "crt_exponents": [
+        0,
+        1,
+        4,
+        6
+      ],
+      "description": "Multiplicative CRT Availability LRC (12, 4, r=[2, 3]) over F_13",
+      "eval_points": [
+        1,
+        2,
+        4,
+        8,
+        3,
+        6,
+        12,
+        11,
+        9,
+        5,
+        10,
+        7
+      ],
+      "expected_availability": 2,
+      "expected_codeword": [
+        0,
+        2,
+        1,
+        8,
+        12,
+        1,
+        2,
+        6,
+        9,
+        11,
+        5,
+        0
+      ],
+      "expected_designed_distance": 6,
+      "field": {
+        "m": 1,
+        "modulus": [
+          0,
+          1
+        ],
+        "p": 13
+      },
+      "id": "coding_lrc_availability_12_4_r2_3",
+      "k": 4,
+      "local_distances": [
+        2,
+        2
+      ],
+      "localities": [
+        2,
+        3
+      ],
+      "message": [
+        8,
+        12,
+        7,
+        12
+      ],
+      "n": 12,
+      "operation": "lrc_availability",
+      "status": "required",
+      "test_coord": 3
+    },
+    {
+      "burst_error_positions": [
+        0,
+        3,
+        5,
+        8,
+        11,
+        14
+      ],
+      "category": "coding",
+      "collaborative_radius": 6,
+      "description": "Interleaved RS (15, 7; l=3) over GF(16) collaborative burst decoding at t=6 > t_u=4",
+      "eval_points": [
+        1,
+        2,
+        4,
+        8,
+        3,
+        6,
+        12,
+        11,
+        5,
+        10,
+        7,
+        14,
+        15,
+        13,
+        9
+      ],
+      "expected_codeword_matrix": [
+        [
+          12,
+          11,
+          6
+        ],
+        [
+          13,
+          6,
+          8
+        ],
+        [
+          15,
+          0,
+          8
+        ],
+        [
+          4,
+          7,
+          12
+        ],
+        [
+          10,
+          2,
+          14
+        ],
+        [
+          14,
+          13,
+          6
+        ],
+        [
+          1,
+          12,
+          14
+        ],
+        [
+          15,
+          2,
+          0
+        ],
+        [
+          12,
+          1,
+          6
+        ],
+        [
+          14,
+          2,
+          3
+        ],
+        [
+          11,
+          11,
+          7
+        ],
+        [
+          10,
+          10,
+          8
+        ],
+        [
+          9,
+          8,
+          12
+        ],
+        [
+          4,
+          9,
+          5
+        ],
+        [
+          3,
+          0,
+          0
+        ]
+      ],
+      "field": {
+        "m": 4,
+        "modulus": [
+          1,
+          1,
+          0,
+          0,
+          1
+        ],
+        "p": 2
+      },
+      "id": "coding_interleaved_rs_15_7_l3",
       "interleaving_order": 3,
       "k": 7,
+      "messages": [
+        [
+          13,
+          1,
+          9,
+          10,
+          14,
+          3,
+          14
+        ],
+        [
+          8,
+          14,
+          5,
+          13,
+          15,
+          2,
+          8
+        ],
+        [
+          15,
+          11,
+          3,
+          6,
+          13,
+          4,
+          14
+        ]
+      ],
       "n": 15,
       "operation": "interleaved_rs_collaborative_decode",
-      "status": "planned",
-      "target_version": "v0.4"
+      "received_matrix": [
+        [
+          12,
+          9,
+          6
+        ],
+        [
+          13,
+          6,
+          8
+        ],
+        [
+          15,
+          0,
+          8
+        ],
+        [
+          10,
+          5,
+          10
+        ],
+        [
+          10,
+          2,
+          14
+        ],
+        [
+          9,
+          14,
+          7
+        ],
+        [
+          1,
+          12,
+          14
+        ],
+        [
+          15,
+          2,
+          0
+        ],
+        [
+          4,
+          10,
+          2
+        ],
+        [
+          14,
+          2,
+          3
+        ],
+        [
+          11,
+          11,
+          7
+        ],
+        [
+          10,
+          0,
+          7
+        ],
+        [
+          9,
+          8,
+          12
+        ],
+        [
+          4,
+          9,
+          5
+        ],
+        [
+          7,
+          7,
+          15
+        ]
+      ],
+      "status": "required",
+      "unique_radius": 4
     },
     {
       "base_field": {
