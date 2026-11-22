@@ -515,18 +515,93 @@ cc_binary(
     ],
 )
 
+cc_test(
+    name = "ec_pairing_test",
+    size = "medium",
+    timeout = "moderate",
+    srcs = ["ec/ec_pairing_test.cpp"],
+    deps = [
+        "//xgalois",
+        "@googletest//:gtest",
+        "@googletest//:gtest_main",
+    ],
+)
+
+cc_test(
+    name = "advanced_linalg_test",
+    size = "medium",
+    timeout = "moderate",
+    srcs = ["linalg/advanced_linalg_test.cpp"],
+    deps = [
+        "//xgalois",
+        "@googletest//:gtest",
+        "@googletest//:gtest_main",
+    ],
+)
+
+cc_test(
+    name = "simd_kernels_test",
+    size = "medium",
+    timeout = "moderate",
+    srcs = ["simd/simd_kernels_test.cpp"],
+    deps = [
+        "//xgalois",
+        "@googletest//:gtest",
+        "@googletest//:gtest_main",
+    ],
+)
+
+cc_test(
+    name = "conv_turbo_test",
+    size = "medium",
+    timeout = "moderate",
+    srcs = ["coding/conv_turbo_test.cpp"],
+    deps = [
+        "//xgalois",
+        "@googletest//:gtest",
+        "@googletest//:gtest_main",
+    ],
+)
+
+cc_test(
+    name = "prod_concat_mod_test",
+    size = "medium",
+    timeout = "moderate",
+    srcs = ["coding/prod_concat_mod_test.cpp"],
+    deps = [
+        "//xgalois",
+        "@googletest//:gtest",
+        "@googletest//:gtest_main",
+    ],
+)
+
+cc_test(
+    name = "hermitian_fountain_test",
+    size = "large",
+    timeout = "long",
+    srcs = ["coding/hermitian_fountain_test.cpp"],
+    deps = [
+        "//xgalois",
+        "@googletest//:gtest",
+        "@googletest//:gtest_main",
+    ],
+)
+
 test_suite(
     name = "galois_field_tests",
     tests = [
         ":advanced_channels_test",
         ":advanced_fields_test",
+        ":advanced_linalg_test",
         ":algebraic_property_test",
         ":bigint_test",
         ":channel_test",
         ":coding_test",
         ":concepts_snf_test",
+        ":conv_turbo_test",
         ":cyclic_bch_test",
         ":db_integrity_test",
+        ":ec_pairing_test",
         ":fast_poly_test",
         ":field_test",
         ":fuzz_smoke_test",
@@ -541,6 +616,7 @@ test_suite(
         ":groups_test",
         ":grs_test",
         ":guruswami_sudan_test",
+        ":hermitian_fountain_test",
         ":interface_test",
         ":interleaved_rs_test",
         ":ldpc_polar_test",
@@ -554,9 +630,11 @@ test_suite(
         ":poly_algo_test",
         ":poly_dense_test",
         ":poly_test",
+        ":prod_concat_mod_test",
         ":rings_test",
         ":sage_golden_test",
         ":simd_dispatch_test",
+        ":simd_kernels_test",
         ":syndrome_linear_test",
     ],
 )

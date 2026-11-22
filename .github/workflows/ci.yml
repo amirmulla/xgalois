@@ -77,11 +77,11 @@ jobs:
 
       - name: Build library, tests, and examples
         run: |
-          cmake --build build --parallel
+          cmake --build build --parallel 2
 
       - name: Run CTest unit tests
         run: |
-          ctest --test-dir build --output-on-failure --parallel
+          ctest --test-dir build --output-on-failure --parallel "$(nproc)"
 
       - name: Install XGalois package
         run: |

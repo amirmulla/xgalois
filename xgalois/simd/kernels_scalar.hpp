@@ -10,6 +10,9 @@
 #include <utility>
 
 #include "xgalois/simd/dispatch.hpp"
+#include "xgalois/simd/kernels_avx2.hpp"
+#include "xgalois/simd/kernels_avx512.hpp"
+#include "xgalois/simd/kernels_neon.hpp"
 
 namespace xg {
 namespace simd {
@@ -358,37 +361,60 @@ inline void GfPrimeMulShoupArray(std::span<uint64_t> dst,
 }  // namespace scalar
 
 // Top-level runtime-dispatched entrypoints in xg::simd.
-// Currently route all ISA levels to the portable scalar reference kernels;
-// vectorized AVX2/AVX-512/NEON backends plug into these dispatch points in
-// v0.5.
+// Routes calls to the active AVX-512+GFNI+VPCLMULQDQ, AVX2+PCLMULQDQ,
+// NEON+PMULL, or portable scalar backend selected by GetActiveIsaLevel().
 
 inline void Gf2XorArray(std::span<uint64_t> dst, std::span<const uint64_t> a,
                         std::span<const uint64_t> b) {
   switch (GetActiveIsaLevel()) {
+#if XGALOIS_SIMD_HAS_AVX512
     case IsaLevel::kAvx512Gfni:
+      avx512::Gf2XorArray(dst, a, b);
+      return;
+#endif
+#if XGALOIS_SIMD_HAS_AVX2
     case IsaLevel::kAvx2:
-    case IsaLevel::kSse42Pclmul:
+      avx2::Gf2XorArray(dst, a, b);
+      return;
+#endif
+#if XGALOIS_SIMD_HAS_NEON
     case IsaLevel::kNeonPmull:
     case IsaLevel::kNeon:
+      neon::Gf2XorArray(dst, a, b);
+      return;
+#endif
+    case IsaLevel::kSse42Pclmul:
     case IsaLevel::kScalar:
     default:
       scalar::Gf2XorArray(dst, a, b);
-      break;
+      return;
   }
 }
 
 inline void Gf28AddArray(std::span<uint8_t> dst, std::span<const uint8_t> a,
                          std::span<const uint8_t> b) {
   switch (GetActiveIsaLevel()) {
+#if XGALOIS_SIMD_HAS_AVX512
     case IsaLevel::kAvx512Gfni:
+      avx512::Gf28AddArray(dst, a, b);
+      return;
+#endif
+#if XGALOIS_SIMD_HAS_AVX2
     case IsaLevel::kAvx2:
-    case IsaLevel::kSse42Pclmul:
+      avx2::Gf28AddArray(dst, a, b);
+      return;
+#endif
+#if XGALOIS_SIMD_HAS_NEON
     case IsaLevel::kNeonPmull:
     case IsaLevel::kNeon:
+      neon::Gf28AddArray(dst, a, b);
+      return;
+#endif
+    case IsaLevel::kSse42Pclmul:
     case IsaLevel::kScalar:
     default:
       scalar::Gf28AddArray(dst, a, b);
-      break;
+      return;
   }
 }
 
@@ -396,37 +422,65 @@ inline void Gf28ScalarMulArray(std::span<uint8_t> dst,
                                std::span<const uint8_t> src, uint8_t scalar,
                                uint16_t irred_poly) {
   switch (GetActiveIsaLevel()) {
+#if XGALOIS_SIMD_HAS_AVX512
     case IsaLevel::kAvx512Gfni:
+      avx512::Gf28ScalarMulArray(dst, src, scalar, irred_poly);
+      return;
+#endif
+#if XGALOIS_SIMD_HAS_AVX2
     case IsaLevel::kAvx2:
-    case IsaLevel::kSse42Pclmul:
+      avx2::Gf28ScalarMulArray(dst, src, scalar, irred_poly);
+      return;
+#endif
+#if XGALOIS_SIMD_HAS_NEON
     case IsaLevel::kNeonPmull:
     case IsaLevel::kNeon:
+      neon::Gf28ScalarMulArray(dst, src, scalar, irred_poly);
+      return;
+#endif
+    case IsaLevel::kSse42Pclmul:
     case IsaLevel::kScalar:
     default:
       scalar::Gf28ScalarMulArray(dst, src, scalar, irred_poly);
-      break;
+      return;
   }
 }
 
 inline void Gf28FmaArray(std::span<uint8_t> dst, std::span<const uint8_t> src,
                          uint8_t scalar, uint16_t irred_poly) {
   switch (GetActiveIsaLevel()) {
+#if XGALOIS_SIMD_HAS_AVX512
     case IsaLevel::kAvx512Gfni:
+      avx512::Gf28FmaArray(dst, src, scalar, irred_poly);
+      return;
+#endif
+#if XGALOIS_SIMD_HAS_AVX2
     case IsaLevel::kAvx2:
-    case IsaLevel::kSse42Pclmul:
+      avx2::Gf28FmaArray(dst, src, scalar, irred_poly);
+      return;
+#endif
+#if XGALOIS_SIMD_HAS_NEON
     case IsaLevel::kNeonPmull:
     case IsaLevel::kNeon:
+      neon::Gf28FmaArray(dst, src, scalar, irred_poly);
+      return;
+#endif
+    case IsaLevel::kSse42Pclmul:
     case IsaLevel::kScalar:
     default:
       scalar::Gf28FmaArray(dst, src, scalar, irred_poly);
-      break;
+      return;
   }
 }
 
 inline void Gf28MulArray(std::span<uint8_t> dst, std::span<const uint8_t> a,
                          std::span<const uint8_t> b, uint16_t irred_poly) {
   switch (GetActiveIsaLevel()) {
+#if XGALOIS_SIMD_HAS_AVX512
     case IsaLevel::kAvx512Gfni:
+      avx512::Gf28MulArray(dst, a, b, irred_poly);
+      return;
+#endif
     case IsaLevel::kAvx2:
     case IsaLevel::kSse42Pclmul:
     case IsaLevel::kNeonPmull:
@@ -434,7 +488,7 @@ inline void Gf28MulArray(std::span<uint8_t> dst, std::span<const uint8_t> a,
     case IsaLevel::kScalar:
     default:
       scalar::Gf28MulArray(dst, a, b, irred_poly);
-      break;
+      return;
   }
 }
 
@@ -443,15 +497,27 @@ inline void Gf128MulArray(std::span<std::pair<uint64_t, uint64_t>> dst,
                           std::span<const std::pair<uint64_t, uint64_t>> b,
                           uint64_t reduction_poly_lo) {
   switch (GetActiveIsaLevel()) {
+#if XGALOIS_SIMD_HAS_AVX512
     case IsaLevel::kAvx512Gfni:
+      avx512::Gf128MulArray(dst, a, b, reduction_poly_lo);
+      return;
+#endif
+#if XGALOIS_SIMD_HAS_AVX2
     case IsaLevel::kAvx2:
-    case IsaLevel::kSse42Pclmul:
+      avx2::Gf128MulArray(dst, a, b, reduction_poly_lo);
+      return;
+#endif
+#if XGALOIS_SIMD_HAS_NEON_PMULL
     case IsaLevel::kNeonPmull:
+      neon::Gf128MulArray(dst, a, b, reduction_poly_lo);
+      return;
+#endif
+    case IsaLevel::kSse42Pclmul:
     case IsaLevel::kNeon:
     case IsaLevel::kScalar:
     default:
       scalar::Gf128MulArray(dst, a, b, reduction_poly_lo);
-      break;
+      return;
   }
 }
 
@@ -459,15 +525,27 @@ inline void GfPrimeAddArray(std::span<uint64_t> dst,
                             std::span<const uint64_t> a,
                             std::span<const uint64_t> b, uint64_t mod) {
   switch (GetActiveIsaLevel()) {
+#if XGALOIS_SIMD_HAS_AVX512
     case IsaLevel::kAvx512Gfni:
+      avx512::GfPrimeAddArray(dst, a, b, mod);
+      return;
+#endif
+#if XGALOIS_SIMD_HAS_AVX2
     case IsaLevel::kAvx2:
-    case IsaLevel::kSse42Pclmul:
+      avx2::GfPrimeAddArray(dst, a, b, mod);
+      return;
+#endif
+#if XGALOIS_SIMD_HAS_NEON
     case IsaLevel::kNeonPmull:
     case IsaLevel::kNeon:
+      neon::GfPrimeAddArray(dst, a, b, mod);
+      return;
+#endif
+    case IsaLevel::kSse42Pclmul:
     case IsaLevel::kScalar:
     default:
       scalar::GfPrimeAddArray(dst, a, b, mod);
-      break;
+      return;
   }
 }
 
@@ -475,15 +553,27 @@ inline void GfPrimeSubArray(std::span<uint64_t> dst,
                             std::span<const uint64_t> a,
                             std::span<const uint64_t> b, uint64_t mod) {
   switch (GetActiveIsaLevel()) {
+#if XGALOIS_SIMD_HAS_AVX512
     case IsaLevel::kAvx512Gfni:
+      avx512::GfPrimeSubArray(dst, a, b, mod);
+      return;
+#endif
+#if XGALOIS_SIMD_HAS_AVX2
     case IsaLevel::kAvx2:
-    case IsaLevel::kSse42Pclmul:
+      avx2::GfPrimeSubArray(dst, a, b, mod);
+      return;
+#endif
+#if XGALOIS_SIMD_HAS_NEON
     case IsaLevel::kNeonPmull:
     case IsaLevel::kNeon:
+      neon::GfPrimeSubArray(dst, a, b, mod);
+      return;
+#endif
+    case IsaLevel::kSse42Pclmul:
     case IsaLevel::kScalar:
     default:
       scalar::GfPrimeSubArray(dst, a, b, mod);
-      break;
+      return;
   }
 }
 
@@ -499,7 +589,7 @@ inline void GfPrimeMulShoupArray(std::span<uint64_t> dst,
     case IsaLevel::kScalar:
     default:
       scalar::GfPrimeMulShoupArray(dst, a, b, b_shoup, mod);
-      break;
+      return;
   }
 }
 
