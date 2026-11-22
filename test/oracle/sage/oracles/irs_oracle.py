@@ -69,7 +69,7 @@ def reference_grs_encode(
     s_mults = [ff.to_sage(v) for v in col_multipliers]
     code = sage.codes.GeneralizedReedSolomonCode(s_evals, len(message), s_mults)
     enc = code.encoder("EvaluationPolynomial")
-    pr = sage.PolynomialRing(f_sage, "X")
+    pr = enc.message_space()
     msg_poly = pr([ff.to_sage(c) for c in message])
     return [ff.from_sage(c) for c in enc.encode(msg_poly)]
   return [

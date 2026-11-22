@@ -1043,7 +1043,7 @@ def build_coding_vectors(rng: random.Random) -> List[Dict[str, Any]]:
     s_evals = [f16.from_integer(e) for e in eval_points]
     grs_code = sage.codes.GeneralizedReedSolomonCode(s_evals, 9)
     enc = grs_code.encoder("EvaluationPolynomial")
-    poly_ring = sage.PolynomialRing(f16, "X")
+    poly_ring = enc.message_space()
     msg_poly = poly_ring([f16.from_integer(c) for c in rs_msg])
     rs_cw = [int(c.to_integer()) for c in enc.encode(msg_poly)]
   else:
@@ -1083,7 +1083,7 @@ def build_coding_vectors(rng: random.Random) -> List[Dict[str, Any]]:
     s_mults = [f16.from_integer(v) for v in grs_col_mults]
     grs_code = sage.codes.GeneralizedReedSolomonCode(s_evals, 5, s_mults)
     enc = grs_code.encoder("EvaluationPolynomial")
-    poly_ring = sage.PolynomialRing(f16, "X")
+    poly_ring = enc.message_space()
     msg_poly = poly_ring([f16.from_integer(c) for c in grs_msg])
     grs_cw = [int(c.to_integer()) for c in enc.encode(msg_poly)]
   else:
@@ -1289,7 +1289,7 @@ def build_coding_vectors(rng: random.Random) -> List[Dict[str, Any]]:
     s_evals = [f16.from_integer(e) for e in eval_points]
     grs7 = sage.codes.GeneralizedReedSolomonCode(s_evals, irs_k)
     enc7 = grs7.encoder("EvaluationPolynomial")
-    pr16 = sage.PolynomialRing(f16, "X")
+    pr16 = enc7.message_space()
     irs_cols = [
         [
             int(c.to_integer())

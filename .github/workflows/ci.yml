@@ -5,6 +5,9 @@ on:
     branches: [main]
   pull_request:
     branches: [main]
+  schedule:
+    - cron: '0 4 * * *'
+  workflow_dispatch:
 
 jobs:
   build-and-test:
@@ -156,7 +159,11 @@ jobs:
 
       - name: Check formatting
         run: |
-          find xgalois test example -type f \( -name '*.hpp' -o -name '*.cpp' \) \
+          DIRS=(xgalois test example)
+          if [ -d python/src ]; then
+            DIRS+=(python/src)
+          fi
+          find "${DIRS[@]}" -type f \( -name '*.hpp' -o -name '*.cpp' \) \
             -exec clang-format --dry-run --Werror {} +
 
   docs:
@@ -180,3 +187,42 @@ jobs:
       - name: Build Sphinx documentation
         run: |
           sphinx-build -b html doc doc/_build/html
+
+  sage-oracle:
+    name: SageMath 10.5 Live Differential Oracle
+    runs-on: ubuntu-24.04
+    container:
+      image: sagemath/sagemath:10.5
+      options: --user root
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+
+      - name: Ensure CMake and C++20 compiler are installed
+        run: |
+          if ! command -v cmake >/dev/null 2>&1 || ! command -v g++ >/dev/null 2>&1; then
+            apt-get update
+            apt-get install -y cmake g++
+          fi
+
+      - name: Build xgalois_oracle_cli inside Sage container (ABI-safe)
+        run: |
+          cmake -S . -B build-oracle \
+            -DCMAKE_BUILD_TYPE=Release \
+            -DCMAKE_CXX_STANDARD=20 \
+            -DXGALOIS_BUILD_TESTS=OFF \
+            -DXGALOIS_BUILD_EXAMPLES=OFF \
+            -DXGALOIS_BUILD_ORACLE=ON
+          cmake --build build-oracle --target xgalois_oracle_cli --parallel 2
+
+      - name: Verify golden JSON freshness (zero drift)
+        run: |
+          sage -python test/oracle/sage/generate_golden.py \
+            --seed=2026 --check-dir=test/oracle/golden
+
+      - name: Run live differential oracle suite
+        run: |
+          TRIALS=${{ github.event_name == 'schedule' && '2500' || '250' }}
+          sage -python test/oracle/sage/live_oracle.py \
+            --cli=build-oracle/xgalois_oracle_cli \
+            --seed=2026 --trials="${TRIALS}"
