@@ -354,12 +354,50 @@ cc_test(
     ],
 )
 
+cc_test(
+    name = "bigint_test",
+    size = "medium",
+    timeout = "moderate",
+    srcs = ["utils/bigint_test.cpp"],
+    deps = [
+        "//xgalois",
+        "@googletest//:gtest",
+        "@googletest//:gtest_main",
+    ],
+)
+
+cc_test(
+    name = "concepts_snf_test",
+    size = "medium",
+    timeout = "moderate",
+    srcs = ["algebra/concepts_snf_test.cpp"],
+    deps = [
+        "//xgalois",
+        "@googletest//:gtest",
+        "@googletest//:gtest_main",
+    ],
+)
+
+cc_test(
+    name = "simd_dispatch_test",
+    size = "medium",
+    timeout = "moderate",
+    srcs = ["simd/simd_dispatch_test.cpp"],
+    deps = [
+        "//xgalois",
+        "@googletest//:gtest",
+        "@googletest//:gtest_main",
+    ],
+)
+
 test_suite(
     name = "galois_field_tests",
     tests = [
         ":algebraic_property_test",
+        ":bigint_test",
         ":channel_test",
         ":coding_test",
+        ":concepts_snf_test",
         ":cyclic_bch_test",
         ":db_integrity_test",
         ":field_test",
@@ -384,6 +422,7 @@ test_suite(
         ":poly_algo_test",
         ":poly_dense_test",
         ":poly_test",
+        ":simd_dispatch_test",
         ":syndrome_linear_test",
     ],
 )
