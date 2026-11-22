@@ -197,6 +197,13 @@ jobs:
       - name: Checkout repository
         uses: actions/checkout@v4
 
+      - name: Ensure CMake and C++20 compiler are installed
+        run: |
+          if ! command -v cmake >/dev/null 2>&1 || ! command -v g++ >/dev/null 2>&1; then
+            sudo apt-get update
+            sudo apt-get install -y cmake g++
+          fi
+
       - name: Build xgalois_oracle_cli inside Sage container (ABI-safe)
         run: |
           cmake -S . -B build-oracle \
